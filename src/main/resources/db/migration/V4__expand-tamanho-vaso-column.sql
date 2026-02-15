@@ -1,0 +1,1 @@
+ALTER TABLE plantas MODIFY COLUMN tamanho_vaso VARCHAR(20);

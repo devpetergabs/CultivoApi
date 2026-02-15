@@ -26,6 +26,7 @@ public class PlantaAditivo {
     @JoinColumn(name = "aditivo_id", nullable = false)
     private Aditivo aditivo;
 
+    @Column(name = "dose_em_ml")
     private Double doseEmML;
 
     public PlantaAditivo(Planta planta, Aditivo aditivo, Double doseEmML) {

@@ -26,8 +26,12 @@ public class PlantaEvento {
     @Enumerated(EnumType.STRING)
     private TipoEvento tipo;
 
+    @Column(name = "data_evento")
     private LocalDateTime dataEvento;
+
     private String descricao;
+
+    @Column(name = "dose_em_ml")
     private Double doseEmML;
 
     public PlantaEvento(Planta planta, TipoEvento tipo, String descricao, Double doseEmML) {

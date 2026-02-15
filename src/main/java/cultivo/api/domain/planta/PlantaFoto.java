@@ -27,8 +27,12 @@ public class PlantaFoto {
     @Column(columnDefinition = "LONGBLOB")
     private byte[] imagem;
 
+    @Column(name = "content_type")
     private String contentType;
+
+    @Column(name = "data_upload")
     private LocalDateTime dataUpload;
+
     private String descricao;
 
     public PlantaFoto(Planta planta, byte[] imagem, String contentType, String descricao) {

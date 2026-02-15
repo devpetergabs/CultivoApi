@@ -26,15 +26,23 @@ public class Planta {
 
     private String nome;
     private String strain;
+
+    @Column(name = "data_germinacao")
     private LocalDate dataGerminacao;
+
     private Double altura;
     private Double largura;
+
+    @Column(name = "largura_caule")
     private Double larguraCaule;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "tamanho_vaso")
     private TamanhVaso tamanhoVaso;
 
     private Boolean ativo;
+
+    @Column(name = "data_criacao")
     private LocalDate dataCriacao;
 
     public Planta(String nome, String strain, LocalDate dataGerminacao, Double altura,
