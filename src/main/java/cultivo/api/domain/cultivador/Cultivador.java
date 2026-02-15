@@ -30,6 +30,12 @@ public class Cultivador {
         this.ativo = true;
     }
 
+    public Cultivador(Usuario usuario, String telefone) {
+        this.usuario = usuario;
+        this.telefone = telefone;
+        this.ativo = true;
+    }
+
     public void atualizarDados(String telefone) {
         if (telefone != null && !telefone.isBlank()) {
             this.telefone = telefone;
