@@ -3,6 +3,7 @@ package cultivo.api.api.controller.planta;
 import cultivo.api.domain.planta.PlantaFoto;
 import cultivo.api.infrastructure.persistence.planta.PlantaFotoRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +25,7 @@ public class PlantaFotoController {
 
     @PostMapping
     public ResponseEntity<DadosDetalhePlantaFoto> cadastrar(@PathVariable Long plantaId,
-                                                             @RequestBody DadosCadastroPlantaFoto dados,
+                                                             @Valid @RequestBody DadosCadastroPlantaFoto dados,
                                                              UriComponentsBuilder uri) {
         var planta = plantaRepository.findById(plantaId);
         if (planta.isEmpty()) {

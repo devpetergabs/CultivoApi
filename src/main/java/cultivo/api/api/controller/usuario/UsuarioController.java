@@ -2,6 +2,7 @@ package cultivo.api.api.controller.usuario;
 
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.persistence.usuario.UsuarioRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +22,7 @@ public class UsuarioController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/registrar")
-    public ResponseEntity<DadosDetalheUsuario> registrar(@RequestBody DadosCadastroUsuario dados, UriComponentsBuilder uri) {
+    public ResponseEntity<DadosDetalheUsuario> registrar(@Valid @RequestBody DadosCadastroUsuario dados, UriComponentsBuilder uri) {
         // Verificar se usuário já existe
         var usuarioExistente = repository.findByLogin(dados.login());
         if (usuarioExistente != null) {

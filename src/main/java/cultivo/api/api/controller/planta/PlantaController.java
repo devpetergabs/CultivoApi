@@ -4,8 +4,7 @@ import cultivo.api.domain.planta.Planta;
 import cultivo.api.domain.planta.TamanhVaso;
 import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
+import jakarta.validation.Valid;import org.springframework.beans.factory.annotation.Autowired;import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +23,7 @@ public class PlantaController {
     private CultivadorRepository cultivadorRepository;
 
     @PostMapping
-    public ResponseEntity<DadosDetalhePlanta> cadastrar(@RequestBody DadosCadastroPlanta dados, UriComponentsBuilder uri) {
+    public ResponseEntity<DadosDetalhePlanta> cadastrar(@Valid @RequestBody DadosCadastroPlanta dados, UriComponentsBuilder uri) {
         var cultivador = cultivadorRepository.findById(dados.cultivadorId());
         if (cultivador.isEmpty()) {
             return ResponseEntity.badRequest().build();
@@ -66,7 +65,7 @@ public class PlantaController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<DadosDetalhePlanta> atualizar(@PathVariable Long id, @RequestBody DadosAtualizacaoPlanta dados) {
+    public ResponseEntity<DadosDetalhePlanta> atualizar(@PathVariable Long id, @Valid @RequestBody DadosAtualizacaoPlanta dados) {
         var planta = repository.findById(id);
         if (planta.isEmpty()) {
             return ResponseEntity.notFound().build();

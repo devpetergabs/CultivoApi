@@ -4,6 +4,7 @@ import cultivo.api.domain.cultivador.Cultivador;
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import cultivo.api.infrastructure.persistence.usuario.UsuarioRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +23,7 @@ public class CultivadorController {
     private UsuarioRepository usuarioRepository;
 
     @PostMapping
-    public ResponseEntity<DadosDetalheCultivador> cadastrar(@RequestBody DadosCadastroCultivador dados, UriComponentsBuilder uri) {
+    public ResponseEntity<DadosDetalheCultivador> cadastrar(@Valid @RequestBody DadosCadastroCultivador dados, UriComponentsBuilder uri) {
         var usuario = usuarioRepository.findById(dados.usuarioId());
         if (usuario.isEmpty()) {
             return ResponseEntity.badRequest().build();
@@ -57,7 +58,7 @@ public class CultivadorController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<DadosDetalheCultivador> atualizar(@PathVariable Long id, @RequestBody DadosAtualizacaoCultivador dados) {
+    public ResponseEntity<DadosDetalheCultivador> atualizar(@PathVariable Long id, @Valid @RequestBody DadosAtualizacaoCultivador dados) {
         var cultivador = repository.findById(id);
         if (cultivador.isEmpty()) {
             return ResponseEntity.notFound().build();

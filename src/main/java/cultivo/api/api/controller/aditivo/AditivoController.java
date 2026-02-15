@@ -2,6 +2,7 @@ package cultivo.api.api.controller.aditivo;
 
 import cultivo.api.domain.aditivo.Aditivo;
 import cultivo.api.infrastructure.persistence.aditivo.AditivoRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +18,7 @@ public class AditivoController {
     private AditivoRepository repository;
 
     @PostMapping
-    public ResponseEntity<Aditivo> cadastrar(@RequestBody DadosCadastroAditivo dados, UriComponentsBuilder uri) {
+    public ResponseEntity<Aditivo> cadastrar(@Valid @RequestBody DadosCadastroAditivo dados, UriComponentsBuilder uri) {
         var aditivo = new Aditivo(dados.nome(), dados.marca(), dados.descricao(), dados.dosePadraoEmML());
         repository.save(aditivo);
         var uriBuilder = uri.path("/aditivos/{id}").buildAndExpand(aditivo.getId()).toUri();
@@ -38,7 +39,7 @@ public class AditivoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Aditivo> atualizar(@PathVariable Long id, @RequestBody DadosAtualizacaoAditivo dados) {
+    public ResponseEntity<Aditivo> atualizar(@PathVariable Long id, @Valid @RequestBody DadosAtualizacaoAditivo dados) {
         var aditivo = repository.findById(id);
         if (aditivo.isEmpty()) {
             return ResponseEntity.notFound().build();

@@ -4,6 +4,7 @@ import cultivo.api.domain.planta.PlantaEvento;
 import cultivo.api.domain.planta.TipoEvento;
 import cultivo.api.infrastructure.persistence.planta.PlantaEventoRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,7 +26,7 @@ public class PlantaEventoController {
 
     @PostMapping
     public ResponseEntity<DadosDetalheEvento> cadastrar(@PathVariable Long plantaId,
-                                                         @RequestBody DadosCadastroEvento dados,
+                                                         @Valid @RequestBody DadosCadastroEvento dados,
                                                          UriComponentsBuilder uri) {
         var planta = plantaRepository.findById(plantaId);
         if (planta.isEmpty()) {

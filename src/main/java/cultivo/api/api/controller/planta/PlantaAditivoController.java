@@ -4,6 +4,7 @@ import cultivo.api.domain.planta.PlantaAditivo;
 import cultivo.api.infrastructure.persistence.aditivo.AditivoRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaAditivoRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +27,7 @@ public class PlantaAditivoController {
 
     @PostMapping
     public ResponseEntity<DadosDetalhePlantaAditivo> cadastrar(@PathVariable Long plantaId, 
-                                                                @RequestBody DadosCadastroPlantaAditivo dados,
+                                                                @Valid @RequestBody DadosCadastroPlantaAditivo dados,
                                                                 UriComponentsBuilder uri) {
         var planta = plantaRepository.findById(plantaId);
         if (planta.isEmpty()) {

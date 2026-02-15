@@ -1,9 +1,19 @@
 package cultivo.api.api.controller.aditivo;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+
 public record DadosAtualizacaoAditivo(
+        @NotBlank(message = "Nome é obrigatório")
         String nome,
+
+        @NotBlank(message = "Marca é obrigatória")
         String marca,
+
+        @NotBlank(message = "Descrição é obrigatória")
         String descricao,
+
+        @Positive(message = "Dose padrão deve ser maior que zero")
         Double dosePadraoEmML
 ) {
 }
