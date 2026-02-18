@@ -73,9 +73,16 @@ public class Planta {
         this.dataCriacao = LocalDate.now();
     }
 
-    public void atualizarDados(String nome, Double altura, Double largura, Double larguraCaule, TamanhVaso tamanhoVaso, EstagioPlanta estagio, SexoPlanta sexo, LocalDate dataSexagem, LocalDate dataFloracao) {
+    public void atualizarDados(String nome, String strain, LocalDate dataGerminacao, Double altura, Double largura, Double larguraCaule, TamanhVaso tamanhoVaso, EstagioPlanta estagio, SexoPlanta sexo, LocalDate dataSexagem, LocalDate dataFloracao) {
+        EstagioPlanta estagioAnterior = this.estagio;
         if (nome != null && !nome.isBlank()) {
             this.nome = nome;
+        }
+        if (strain != null && !strain.isBlank()) {
+            this.strain = strain;
+        }
+        if (dataGerminacao != null) {
+            this.dataGerminacao = dataGerminacao;
         }
         if (altura != null) {
             this.altura = altura;
@@ -90,7 +97,14 @@ public class Planta {
             this.tamanhoVaso = tamanhoVaso;
         }
         if (estagio != null) {
+            boolean mudouDeVegetativoParaPreFloracao = (estagioAnterior == EstagioPlanta.VEGETATIVO)
+                && (estagio == EstagioPlanta.FLORACAO_INICIAL);
+
             this.estagio = estagio;
+
+            if (mudouDeVegetativoParaPreFloracao) {
+                this.dataFloracao = LocalDate.now();
+            }
         }
         if (sexo != null) {
             this.sexo = sexo;
@@ -98,7 +112,10 @@ public class Planta {
         if (dataSexagem != null) {
             this.dataSexagem = dataSexagem;
         }
-        if (dataFloracao != null) {
+        boolean mudandoParaPreFloracaoAgora = (estagioAnterior == EstagioPlanta.VEGETATIVO)
+            && (estagio == EstagioPlanta.FLORACAO_INICIAL);
+
+        if (!mudandoParaPreFloracaoAgora && dataFloracao != null) {
             this.dataFloracao = dataFloracao;
         }
     }

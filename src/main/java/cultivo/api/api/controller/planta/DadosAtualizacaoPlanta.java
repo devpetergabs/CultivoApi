@@ -11,6 +11,10 @@ public record DadosAtualizacaoPlanta(
         @NotBlank(message = "Nome da planta é obrigatório")
         String nome,
 
+        String strain,
+
+        LocalDate dataGerminacao,
+
         @Positive(message = "Altura deve ser maior que zero")
         Double altura,
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { apiService } from '../services/api';
 import type { Planta, PlantaFoto, PlantaCompleta, PlantaAditivo } from '../types';
 import './PlantaCard.css';
@@ -11,8 +12,9 @@ interface PlantaCardProps {
 const tipos = ['Selvagem', 'Equilibrado', 'Potente', 'Delicado', 'Robusto'];
 const cores = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
 
-function getTipo(strain: string): { tipo: string; cor: string; emoji: string } {
-  const index = strain.charCodeAt(0) % tipos.length;
+function getTipo(strain: string | null | undefined): { tipo: string; cor: string; emoji: string } {
+  const safe = (strain && strain.length > 0) ? strain : 'Desconhecida';
+  const index = safe.charCodeAt(0) % tipos.length;
   const emojis = ['🌿', '🌱', '💪', '🌸', '🛡️'];
   return {
     tipo: tipos[index],
@@ -201,10 +203,11 @@ export function PlantaCard({ planta, onClose }: PlantaCardProps) {
       </div>
 
       {/* Modal Pokédex */}
-      {modal && plantaCompleta && (
-        <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal-content" style={{ borderColor: tipo.cor }} onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={fecharModal}>✕</button>
+      {modal && plantaCompleta && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="modal-overlay" onClick={fecharModal}>
+              <div className="modal-content" style={{ borderColor: tipo.cor }} onClick={e => e.stopPropagation()}>
+                <button className="modal-close" onClick={fecharModal}>✕</button>
 
             <div className="modal-main">
               {/* Coluna da foto/imagem */}
@@ -339,9 +342,11 @@ export function PlantaCard({ planta, onClose }: PlantaCardProps) {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }

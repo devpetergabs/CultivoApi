@@ -1,36 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useContext } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { Login } from './pages/Login';
 import { Pokedex } from './pages/Pokedex';
-import { apiService } from './services/api';
 import './App.css';
 
 function AppContent() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const context = useContext(AuthContext);
+  const isRestoring = context?.isRestoring ?? true;
+  const isAuthenticated = context?.isAuthenticated ?? false;
 
-  useEffect(() => {
-    // Tentar restaurar sessão
-    const credentials = localStorage.getItem('credentials');
-    if (credentials) {
-      const { login, senha } = JSON.parse(credentials);
-      apiService.setCredentials(login, senha);
-      setIsAuthenticated(true);
-    }
-    setLoading(false);
-  }, []);
-
-  if (loading) {
-    return <div className="loading-app">Carregando...</div>;
-  }
-
-  return (
-    <AuthContext.Consumer>
-      {(context) => (
-        isAuthenticated || context?.isAuthenticated ? <Pokedex /> : <Login />
-      )}
-    </AuthContext.Consumer>
-  );
+  if (isRestoring) return <div className="loading-app">Carregando...</div>;
+  return isAuthenticated ? <Pokedex /> : <Login />;
 }
 
 function App() {

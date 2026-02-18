@@ -9,9 +9,11 @@ interface PlantDetailDrawerProps {
   plant: Plant | null;
   allPlants: Plant[];
   onClose: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export function PlantDetailDrawer({ plant, allPlants, onClose }: PlantDetailDrawerProps) {
+export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete }: PlantDetailDrawerProps) {
   const { setSelectedPlant } = usePokedexStore();
 
   // Keyboard navigation
@@ -104,35 +106,56 @@ export function PlantDetailDrawer({ plant, allPlants, onClose }: PlantDetailDraw
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed right-0 top-0 h-full w-full md:w-[520px] z-50 overflow-y-auto border-l-4 border-[#9BEF00]/50 bg-gradient-to-b from-[#111A2E] to-[#0B1220] shadow-2xl"
+        className="fixed right-0 top-0 h-full w-full md:w-[520px] z-50 overflow-y-auto border-l-4 border-[#7BD389]/35 bg-gradient-to-b from-[#111A2E] to-[#0B1220] shadow-2xl"
       >
         {/* Header */}
-        <div className="sticky top-0 z-50 bg-gradient-to-r from-[#E23A3A] to-[#c92a2a] border-b-4 border-[#9BEF00] px-6 py-4 flex justify-between items-center shadow-lg">
-          <h2 className="text-lg font-black text-white uppercase tracking-widest">📊 POKÉDEX</h2>
-          <button
-            onClick={onClose}
-            className="text-white hover:text-[#9BEF00] text-3xl transition-colors font-black"
-            aria-label="Fechar"
-          >
-            ⊕
-          </button>
+        <div className="sticky top-0 z-50 bg-gradient-to-r from-[#2b0f0f] to-[#3a1212] border-b-4 border-[#6fbf86] px-6 py-4 flex justify-between items-center shadow-lg">
+          <h2 className="text-lg font-semibold text-white uppercase tracking-tight">📊 POKÉDEX</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onEdit}
+              className="h-9 w-9 rounded-lg border-2 border-slate-500/60 bg-transparent text-slate-100/90 transition-all hover:border-slate-200/70 hover:shadow-[0_0_12px_rgba(148,163,184,0.18)] disabled:opacity-50"
+              aria-label="Editar"
+              disabled={!onEdit}
+              type="button"
+            >
+              ✎
+            </button>
+            <button
+              onClick={onDelete}
+              className="h-9 w-9 rounded-lg border-2 border-slate-500/60 bg-transparent text-slate-100/90 transition-all hover:text-red-300 hover:border-red-500/60 hover:shadow-[0_0_12px_rgba(239,68,68,0.18)] disabled:opacity-50"
+              aria-label="Excluir"
+              disabled={!onDelete}
+              type="button"
+            >
+              ✕
+            </button>
+            <button
+              onClick={onClose}
+              className="h-9 w-9 rounded-lg border-2 border-slate-500/60 bg-transparent text-slate-100/90 transition-all hover:text-[#6fbf86] hover:border-[#6fbf86]/60 hover:shadow-[0_0_12px_rgba(111,191,134,0.18)] disabled:opacity-50"
+              aria-label="Minimizar"
+              type="button"
+            >
+              <span className="block text-xl leading-none -mt-1">—</span>
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-5">
           {/* ID and Name */}
           <div className="space-y-3">
-            <div className="text-xs font-black text-[#9BEF00]/70 font-mono uppercase tracking-wider">
+            <div className="text-xs font-medium text-[#6fbf86]/70 font-mono uppercase tracking-[0.06em]">
               #{plant.id.toString().padStart(3, '0')} — POKÉDEX
             </div>
-            <h1 className="text-4xl font-black text-white tracking-tight">
+            <h1 className="text-4xl font-semibold text-white tracking-tight">
               {plant.name}
             </h1>
             <TypeBadge type={plant.type} size="lg" />
           </div>
 
           {/* Image Area - Large display */}
-          <div className="rounded-xl p-8 border-2 border-[#9BEF00]/40 bg-gradient-to-b from-[#1a1f2e] to-[#0B1220] text-center shadow-[0_0_20px_rgba(155,239,0,0.15)]">
-            <div className="text-8xl animate-float drop-shadow-xl" style={{ textShadow: '0 0 30px rgba(155, 239, 0, 0.4)' }}>
+          <div className="rounded-xl p-8 border-2 border-[#6fbf86]/25 bg-gradient-to-b from-[#1a1f2e] to-[#0B1220] text-center shadow-[0_0_16px_rgba(111,191,134,0.10)]">
+            <div className="text-8xl animate-float drop-shadow-xl" style={{ textShadow: '0 0 18px rgba(123, 211, 137, 0.25)' }}>
               {plant.imageUrl}
             </div>
           </div>
@@ -140,17 +163,17 @@ export function PlantDetailDrawer({ plant, allPlants, onClose }: PlantDetailDraw
           {/* Stats Section */}
           <div className={`space-y-4 rounded-xl p-5 border-2 backdrop-blur-sm ${
             plant.heightCm > 180 
-              ? 'border-[#ffd700] bg-gradient-to-br from-[#1f1a0f]/70 to-[#111A2E]/60 shadow-[0_0_20px_rgba(255,215,0,0.3)]' 
-              : 'border-[#9BEF00]/30 bg-[#111A2E]/60'
+              ? 'border-[#e7c35a] bg-gradient-to-br from-[#1f1a0f]/70 to-[#111A2E]/60 shadow-[0_0_12px_rgba(231,195,90,0.16)]' 
+              : 'border-[#6fbf86]/25 bg-[#111A2E]/60'
           }`}>
             <div className="flex items-center justify-between">
-              <h3 className={`text-xs font-black uppercase tracking-wider ${
-                plant.heightCm > 180 ? 'text-[#ffd700]' : 'text-[#9BEF00]'
+              <h3 className={`text-xs font-medium uppercase tracking-[0.06em] ${
+                plant.heightCm > 180 ? 'text-[#e7c35a]' : 'text-[#6fbf86]'
               }`}>
                 📏 DIMENSÕES {plant.heightCm > 180 && '⭐'}
               </h3>
               {plant.heightCm > 180 && (
-                <span className="text-[10px] font-black text-[#ffd700] bg-[#1f1a0f] px-2 py-1 rounded-full border border-[#ffd700] animate-pulse">
+                <span className="text-[10px] font-semibold text-[#e7c35a] bg-[#1f1a0f] px-2 py-1 rounded-full border border-[#e7c35a]">
                   PLANTA ÉPICA
                 </span>
               )}
@@ -163,25 +186,25 @@ export function PlantDetailDrawer({ plant, allPlants, onClose }: PlantDetailDraw
           </div>
 
           {/* Details Section */}
-          <div className="space-y-3 rounded-xl p-5 border-2 border-[#9BEF00]/30 bg-[#111A2E]/60 backdrop-blur-sm">
-            <h3 className="text-xs font-black text-[#9BEF00] uppercase tracking-wider">📋 DETALHES</h3>
+          <div className="space-y-3 rounded-xl p-5 border-2 border-[#7BD389]/20 bg-[#111A2E]/60 backdrop-blur-sm">
+            <h3 className="text-xs font-medium text-[#7BD389] uppercase tracking-wider">📋 DETALHES</h3>
             
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(155,239,0,0.2)]">
-                <div className="text-xs text-[#9BEF00]/60 font-bold uppercase">VARIANTE</div>
-                <div className="font-black text-white mt-2">{plant.variant}</div>
+              <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
+                  <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">VARIANTE</div>
+                <div className="font-semibold text-white mt-2">{plant.variant}</div>
               </div>
-              <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(155,239,0,0.2)]">
-                <div className="text-xs text-[#9BEF00]/60 font-bold uppercase">VASO</div>
-                <div className="font-black text-white mt-2">{plant.potLiters}L</div>
+              <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
+                  <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">VASO</div>
+                <div className="font-semibold text-white mt-2">{plant.potLiters}L</div>
               </div>
-              <div className="col-span-2 p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(155,239,0,0.2)]">
-                <div className="text-xs text-[#9BEF00]/60 font-bold uppercase">GERMINAÇÃO</div>
+              <div className="col-span-2 p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
+                <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">GERMINAÇÃO</div>
                 <div className="flex justify-between items-center mt-2">
-                  <div className="font-mono text-[#9BEF00] font-black">{formatDate(plant.germinationDate)}</div>
+                  <div className="font-mono text-[#6fbf86] font-semibold">{formatDate(plant.germinationDate)}</div>
                   <div className="text-right">
-                    <div className="text-xs text-[#9BEF00]/60 font-bold">IDADE</div>
-                    <div className="font-black text-white text-lg">{calculateAge(plant.germinationDate) !== null ? `${calculateAge(plant.germinationDate)}d` : '⚠️'}</div>
+                    <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">IDADE</div>
+                    <div className="font-semibold text-white text-lg">{calculateAge(plant.germinationDate) !== null ? `${calculateAge(plant.germinationDate)}d` : '⚠️'}</div>
                   </div>
                 </div>
               </div>
@@ -190,23 +213,23 @@ export function PlantDetailDrawer({ plant, allPlants, onClose }: PlantDetailDraw
               {(plant.sexo || plant.dataSexagem || plant.dataFloracao) && (
                 <>
                   {plant.sexo && (
-                    <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(155,239,0,0.2)]">
-                      <div className="text-xs text-[#9BEF00]/60 font-bold uppercase">SEXO</div>
-                      <div className={`font-black mt-2 ${plant.sexo === 'FEMEA' ? 'text-pink-400' : plant.sexo === 'MACHO' ? 'text-blue-400' : 'text-yellow-400'}`}>
+                    <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
+                      <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">SEXO</div>
+                      <div className={`font-semibold mt-2 ${plant.sexo === 'FEMEA' ? 'text-pink-400' : plant.sexo === 'MACHO' ? 'text-blue-400' : 'text-yellow-400'}`}>
                         {plant.sexo === 'FEMEA' ? '♀ Fêmea' : plant.sexo === 'MACHO' ? '♂ Macho' : '⚥ Hermafrodita'}
                       </div>
                     </div>
                   )}
                   {plant.dataSexagem && (
-                    <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(155,239,0,0.2)]">
-                      <div className="text-xs text-[#9BEF00]/60 font-bold uppercase">SEXAGEM</div>
-                      <div className="font-mono text-white font-black mt-2 text-sm">{formatDate(plant.dataSexagem)}</div>
+                    <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
+                      <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">SEXAGEM</div>
+                      <div className="font-mono text-white font-semibold mt-2 text-sm">{formatDate(plant.dataSexagem)}</div>
                     </div>
                   )}
                   {plant.dataFloracao && (
-                    <div className="col-span-2 p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(155,239,0,0.2)]">
-                      <div className="text-xs text-[#9BEF00]/60 font-bold uppercase">🌸 INÍCIO DA FLORAÇÃO</div>
-                      <div className="font-mono text-[#9BEF00] font-black mt-2">{formatDate(plant.dataFloracao)}</div>
+                    <div className="col-span-2 p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
+                      <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">🌸 INÍCIO DA FLORAÇÃO</div>
+                      <div className="font-mono text-[#6fbf86] font-semibold mt-2">{formatDate(plant.dataFloracao)}</div>
                     </div>
                   )}
                 </>
@@ -215,12 +238,12 @@ export function PlantDetailDrawer({ plant, allPlants, onClose }: PlantDetailDraw
           </div>
 
           {/* Grower Card */}
-          <div className="space-y-3 rounded-xl p-5 border-2 border-[#9BEF00]/50 bg-gradient-to-br from-[#111A2E]/80 to-[#0B1220]/50 shadow-[0_0_15px_rgba(155,239,0,0.15)]">
-            <h3 className="text-xs font-black text-[#9BEF00] uppercase tracking-wider">👨‍🌾 CULTIVADOR</h3>
+          <div className="space-y-3 rounded-xl p-5 border-2 border-[#6fbf86]/35 bg-gradient-to-br from-[#111A2E]/80 to-[#0B1220]/50 shadow-[0_0_12px_rgba(111,191,134,0.10)]">
+            <h3 className="text-xs font-medium text-[#6fbf86] uppercase tracking-[0.06em]">👨‍🌾 CULTIVADOR</h3>
             <div className="space-y-2">
-              <div className="font-black text-white text-lg">{plant.growerName}</div>
+              <div className="font-semibold text-white text-lg">{plant.growerName}</div>
               {plant.growerPhone && (
-                <div className="text-[#9BEF00] font-mono text-sm font-bold">📱 {plant.growerPhone}</div>
+                <div className="text-[#6fbf86] font-mono text-sm font-medium">📱 {plant.growerPhone}</div>
               )}
             </div>
           </div>
@@ -230,9 +253,9 @@ export function PlantDetailDrawer({ plant, allPlants, onClose }: PlantDetailDraw
             <button
               onClick={handlePrev}
               disabled={!canGoPrev}
-              className={`py-3 rounded-lg font-black uppercase tracking-wide transition-all text-sm border-2 ${
+              className={`py-3 rounded-lg font-semibold uppercase tracking-[0.06em] transition-all text-sm border-2 ${
                 canGoPrev
-                  ? 'bg-[#E23A3A] text-white border-[#E23A3A] hover:bg-[#c92a2a] shadow-[0_0_15px_rgba(226,58,58,0.3)]'
+                  ? 'bg-[#7a1f1f] text-white border-[#7a1f1f] hover:bg-[#8c2626] shadow-[0_0_10px_rgba(122,31,31,0.22)]'
                   : 'bg-[#0B1220]/60 text-slate-500 border-slate-600 cursor-not-allowed opacity-50'
               }`}
             >
@@ -241,9 +264,9 @@ export function PlantDetailDrawer({ plant, allPlants, onClose }: PlantDetailDraw
             <button
               onClick={handleNext}
               disabled={!canGoNext}
-              className={`py-3 rounded-lg font-black uppercase tracking-wide transition-all text-sm border-2 ${
+              className={`py-3 rounded-lg font-semibold uppercase tracking-[0.06em] transition-all text-sm border-2 ${
                 canGoNext
-                  ? 'bg-[#E23A3A] text-white border-[#E23A3A] hover:bg-[#c92a2a] shadow-[0_0_15px_rgba(226,58,58,0.3)]'
+                  ? 'bg-[#7a1f1f] text-white border-[#7a1f1f] hover:bg-[#8c2626] shadow-[0_0_10px_rgba(122,31,31,0.22)]'
                   : 'bg-[#0B1220]/60 text-slate-500 border-slate-600 cursor-not-allowed opacity-50'
               }`}
             >
@@ -252,9 +275,9 @@ export function PlantDetailDrawer({ plant, allPlants, onClose }: PlantDetailDraw
           </div>
 
           {/* Keyboard hints */}
-          <div className="text-xs text-[#9BEF00]/40 text-center space-y-1 pb-4 font-mono border-t border-[rgba(255,255,255,0.12)] pt-4">
-            <div className="font-bold text-[#9BEF00]/60">[ESC] FECHAR | [←→] NAVEGAR</div>
-            <div className="text-[#9BEF00]/30">
+          <div className="text-xs text-[#7BD389]/45 text-center space-y-1 pb-4 font-mono border-t border-[rgba(255,255,255,0.12)] pt-4">
+            <div className="font-medium text-[#7BD389]/65">[ESC] FECHAR | [←→] NAVEGAR</div>
+            <div className="text-[#7BD389]/35">
               {currentIndex + 1} / {allPlants.length}
             </div>
           </div>

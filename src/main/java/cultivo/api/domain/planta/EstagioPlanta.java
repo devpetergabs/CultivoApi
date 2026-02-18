@@ -4,7 +4,9 @@ public enum EstagioPlanta {
     GERMINACAO("Germinação"),
     VEGETATIVO("Vegetativo"),
     FLORACAO_INICIAL("Floração Inicial"),
-    FLORACAO_AVANCADA("Floração Avançada");
+    FLORACAO_MEDIA("Floração Média"),
+    FLORACAO_AVANCADA("Floração Avançada"),
+    FINALIZACAO("Finalização");
 
     private final String descricao;
 

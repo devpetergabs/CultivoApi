@@ -1,5 +1,7 @@
 package cultivo.api.api.controller.aditivo;
 
+import cultivo.api.application.aditivo.ClassificadorAditivoService;
+import cultivo.api.domain.aditivo.ClasseAditivo;
 import cultivo.api.domain.aditivo.Aditivo;
 import cultivo.api.infrastructure.persistence.aditivo.AditivoRepository;
 import jakarta.validation.Valid;
@@ -17,9 +19,16 @@ public class AditivoController {
     @Autowired
     private AditivoRepository repository;
 
+    @Autowired
+    private ClassificadorAditivoService classificadorAditivoService;
+
     @PostMapping
     public ResponseEntity<Aditivo> cadastrar(@Valid @RequestBody DadosCadastroAditivo dados, UriComponentsBuilder uri) {
-        var aditivo = new Aditivo(dados.nome(), dados.marca(), dados.descricao(), dados.estagio(), dados.dosePadraoEmML());
+        ClasseAditivo classe = (dados.classe() != null)
+            ? dados.classe()
+            : classificadorAditivoService.inferirClasse(dados.nome(), dados.descricao());
+
+        var aditivo = new Aditivo(dados.nome(), dados.marca(), dados.descricao(), dados.estagio(), classe, dados.dosePadraoEmML());
         repository.save(aditivo);
         var uriBuilder = uri.path("/aditivos/{id}").buildAndExpand(aditivo.getId()).toUri();
         return ResponseEntity.created(uriBuilder).body(aditivo);
@@ -51,6 +60,7 @@ public class AditivoController {
                     dados.marca() != null ? dados.marca() : aditivoExistente.getMarca(),
                     dados.descricao() != null ? dados.descricao() : "",
                     dados.estagio() != null ? dados.estagio() : aditivoExistente.getEstagio(),
+                    dados.classe() != null ? dados.classe() : aditivoExistente.getClasse(),
                     dados.dosePadraoEmML() != null ? dados.dosePadraoEmML() : aditivoExistente.getDosePadraoEmML(),
                     aditivoExistente.getAtivo());
             repository.save(aditivoExistente);

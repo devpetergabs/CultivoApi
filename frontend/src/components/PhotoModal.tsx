@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiService } from '../services/api';
 
 interface PhotoModalProps {
@@ -48,7 +49,7 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
 
   const contentType = useMemo(() => file?.type ?? '', [file]);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
   const handleSave = async () => {
     if (!file) {
@@ -89,26 +90,26 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={onClose}
     >
       <div
-        className="w-[360px] rounded-xl border border-pokedex-neon/40 bg-[#0B1220] p-4 shadow-[0_0_25px_rgba(155,239,0,0.2)]"
+        className="w-[360px] rounded-xl border border-[#6fbf86]/20 bg-gradient-to-b from-[#101a2b] to-[#0B1220] p-4 shadow-[0_12px_30px_rgba(9,15,25,0.5)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-3">
-          <h3 className="text-sm font-black text-white">Salvar foto</h3>
-          <p className="text-xs text-slate-400">Planta: {plantName}</p>
+          <h3 className="text-sm font-semibold text-white tracking-tight">Salvar foto</h3>
+          <p className="text-xs text-[#9fb0c0] font-normal">Planta: {plantName}</p>
         </div>
 
-        <label className="text-xs font-bold text-slate-300">Imagem</label>
+        <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Imagem</label>
         <input
           type="file"
           accept="image/*"
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          className="mt-1 w-full text-xs text-slate-300 file:mr-2 file:rounded-lg file:border-0 file:bg-pokedex-neon-green file:px-3 file:py-1 file:text-xs file:font-black file:text-black hover:file:brightness-110"
+          className="mt-1 w-full text-xs text-slate-300 file:mr-2 file:rounded-lg file:border-0 file:bg-[#6fbf86] file:px-3 file:py-1 file:text-xs file:font-semibold file:text-[#0B1220] hover:file:brightness-110"
         />
 
         {previewUrl && (
@@ -117,12 +118,12 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
           </div>
         )}
 
-        <label className="mt-3 block text-xs font-bold text-slate-300">Descricao (opcional)</label>
+        <label className="mt-3 block text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Descricao (opcional)</label>
         <textarea
           rows={2}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-700 bg-[#111A2E] px-3 py-2 text-sm text-white outline-none focus:border-pokedex-neon"
+          className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
         />
 
         {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
@@ -131,7 +132,7 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-300 hover:border-slate-400"
+            className="rounded-lg border border-slate-600/70 px-3 py-2 text-xs font-medium text-slate-300 hover:border-slate-400"
             disabled={isSaving}
           >
             Cancelar
@@ -139,13 +140,14 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
           <button
             type="button"
             onClick={handleSave}
-            className="rounded-lg bg-pokedex-neon-green px-3 py-2 text-xs font-black text-black hover:brightness-110"
+            className="rounded-lg bg-[#6fbf86] px-3 py-2 text-xs font-semibold text-[#0B1220] hover:brightness-110"
             disabled={isSaving}
           >
             {isSaving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

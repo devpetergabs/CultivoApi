@@ -1,4 +1,4 @@
-export type PlantType = 'GERMINACAO' | 'VEGETATIVO' | 'FLORACAO_INICIAL' | 'FLORACAO_AVANCADA';
+export type PlantType = 'GERMINACAO' | 'VEGETATIVO' | 'FLORACAO_INICIAL' | 'FLORACAO_MEDIA' | 'FLORACAO_AVANCADA' | 'FINALIZACAO';
 
 export interface Plant {
   id: number;
@@ -25,10 +25,14 @@ export interface PokedexStore {
   selectedType: PlantType | null;
   sortBy: 'id' | 'widthCm' | 'heightCm';
   
+  setPlants: (plants: Plant[]) => void;
   setSelectedPlant: (id: number | null) => void;
   setSearchQuery: (query: string) => void;
   setSelectedType: (type: PlantType | null) => void;
   setSortBy: (sort: 'id' | 'widthCm' | 'heightCm') => void;
+  addPlant: (plant: Plant) => void;
+  updatePlant: (plant: Plant) => void;
+  removePlant: (plantId: number) => void;
   
   filteredPlants: () => Plant[];
 }

@@ -13,13 +13,15 @@ interface PokedexGridProps {
   onSortChange: (sort: 'id' | 'widthCm' | 'heightCm') => void;
 }
 
-const STAGES: PlantType[] = ['GERMINACAO', 'VEGETATIVO', 'FLORACAO_INICIAL', 'FLORACAO_AVANCADA'];
+const STAGES: PlantType[] = ['GERMINACAO', 'VEGETATIVO', 'FLORACAO_INICIAL', 'FLORACAO_MEDIA', 'FLORACAO_AVANCADA', 'FINALIZACAO'];
 
-const STAGE_CONFIG: Record<PlantType, { emoji: string; label: string; color: string }> = {
-  'GERMINACAO': { emoji: '🌱', label: 'Germinação', color: 'bg-blue-600 border-blue-400' },
-  'VEGETATIVO': { emoji: '🌿', label: 'Vegetativo', color: 'bg-green-600 border-green-400' },
-  'FLORACAO_INICIAL': { emoji: '🌸', label: 'Floração Inicial', color: 'bg-pink-600 border-pink-400' },
-  'FLORACAO_AVANCADA': { emoji: '🌷', label: 'Floração Avançada', color: 'bg-red-600 border-red-400' },
+const STAGE_CONFIG: Record<PlantType, { emoji: string; label: string; selectedClasses: string }> = {
+  'GERMINACAO': { emoji: '🌱', label: 'Germinação', selectedClasses: 'bg-blue-500/15 border-blue-300/40 text-blue-100' },
+  'VEGETATIVO': { emoji: '🍃', label: 'Vegetativo', selectedClasses: 'bg-emerald-500/15 border-emerald-300/40 text-emerald-100' },
+  'FLORACAO_INICIAL': { emoji: '🌸', label: 'Floração Inicial', selectedClasses: 'bg-rose-500/15 border-rose-300/40 text-rose-100' },
+  'FLORACAO_MEDIA': { emoji: '🌺', label: 'Floração Média', selectedClasses: 'bg-fuchsia-500/15 border-fuchsia-300/40 text-fuchsia-100' },
+  'FLORACAO_AVANCADA': { emoji: '🌼', label: 'Floração Avançada', selectedClasses: 'bg-amber-500/15 border-amber-300/40 text-amber-100' },
+  'FINALIZACAO': { emoji: '🧼', label: 'Finalização', selectedClasses: 'bg-slate-500/15 border-slate-300/40 text-slate-100' },
 };
 
 export function PokedexGrid({
@@ -38,10 +40,10 @@ export function PokedexGrid({
       {/* ═══════════════════════════════════════════════════════════════════════════
           CONTROL PANEL
           ═══════════════════════════════════════════════════════════════════════════ */}
-      <div className="sticky top-0 z-20 pokedex-card-frame p-5 space-y-4 border-cyan-500/30">
+      <div className="sticky top-0 z-20 pokedex-card-frame p-5 space-y-4 border-cyan-500/20">
         {/* Search Bar */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-pokedex-neon uppercase tracking-widest">
+          <label className="text-xs font-medium text-[#8FD6A4] uppercase tracking-[0.06em]">
             🔍 Buscar Pokédex
           </label>
           <input
@@ -49,24 +51,26 @@ export function PokedexGrid({
             placeholder="Nome, ID ou strain..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-pokedex-dark-2 border-2 border-pokedex-dark-2 rounded-lg px-4 py-3 text-white placeholder-slate-500 
-              focus:outline-none focus:border-pokedex-neon focus:ring-1 focus:ring-pokedex-neon/50
-              font-semibold transition-all duration-200 shadow-neon"
+            className="w-full bg-panel-navy border-2 border-panel-navy rounded-lg px-4 py-3 text-white placeholder-slate-500 
+              focus:outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/30
+              font-medium transition-all duration-200 shadow-[0_6px_18px_rgba(9,15,25,0.35)]"
           />
         </div>
 
         {/* Stage Filter */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-pokedex-neon uppercase tracking-widest">
+          <label className="text-xs font-medium text-[#8FD6A4] uppercase tracking-[0.06em]">
             🌱 Filtrar por Estágio
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
+              type="button"
               onClick={() => onTypeChange(null)}
-              className={`py-2 px-3 rounded-lg font-bold text-xs uppercase tracking-wide transition-all duration-200 border-2 ${
+              aria-pressed={selectedType === null}
+              className={`inline-flex items-center justify-center rounded-full border text-xs font-semibold uppercase tracking-[0.06em] transition-colors duration-200 px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-green/60 focus-visible:ring-offset-2 focus-visible:ring-offset-deep-navy ${
                 selectedType === null
-                  ? 'bg-pokedex-neon text-black border-pokedex-neon shadow-neon-strong'
-                  : 'bg-pokedex-dark-2 text-slate-300 border-slate-600 hover:border-pokedex-neon/50'
+                  ? 'bg-neon-green/20 text-neon-green border-neon-green/50 shadow-neon'
+                  : 'bg-panel-navy text-slate-200 border-slate-700 hover:border-neon-green/40'
               }`}
             >
               Todos
@@ -76,16 +80,19 @@ export function PokedexGrid({
               return (
                 <button
                   key={stage}
+                  type="button"
                   onClick={() => onTypeChange(selectedType === stage ? null : stage)}
                   title={config.label}
-                  className={`py-2 px-2 rounded-lg font-bold text-sm transition-all duration-200 border-2 flex flex-col items-center gap-1 ${
+                  aria-label={config.label}
+                  aria-pressed={selectedType === stage}
+                  className={`inline-flex items-center gap-2 rounded-full border text-sm font-medium transition-colors duration-200 px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-green/60 focus-visible:ring-offset-2 focus-visible:ring-offset-deep-navy ${
                     selectedType === stage
-                      ? `${config.color} text-white shadow-lg`
-                      : 'bg-pokedex-dark-2 text-slate-300 border-slate-600 hover:border-slate-400'
+                      ? `${config.selectedClasses} shadow-neon`
+                      : 'bg-panel-navy text-slate-200 border-slate-700 hover:border-slate-500'
                   }`}
                 >
-                  <span className="text-lg">{config.emoji}</span>
-                  <span className="hidden lg:inline text-xs whitespace-nowrap">{config.label}</span>
+                  <span className="text-base" aria-hidden="true">{config.emoji}</span>
+                  <span className="hidden sm:inline text-xs whitespace-nowrap">{config.label}</span>
                 </button>
               );
             })}
@@ -94,7 +101,7 @@ export function PokedexGrid({
 
         {/* Sort Controls */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-pokedex-neon uppercase tracking-widest">
+          <label className="text-xs font-medium text-[#8FD6A4] uppercase tracking-[0.06em]">
             📊 Ordenar por
           </label>
           <div className="flex gap-2">
@@ -102,10 +109,10 @@ export function PokedexGrid({
               <button
                 key={sort}
                 onClick={() => onSortChange(sort)}
-                className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all duration-200 border-2 ${
+                className={`flex-1 py-2 rounded-lg font-medium text-xs uppercase tracking-[0.06em] transition-all duration-200 border-2 ${
                   sortBy === sort
-                    ? 'bg-pokedex-neon-green text-black border-pokedex-neon-green shadow-lg'
-                    : 'bg-pokedex-dark-2 text-slate-300 border-slate-600 hover:border-pokedex-neon-green/50'
+                    ? 'bg-[#6fbf86] text-[#0B1220] border-[#6fbf86] shadow-[0_6px_18px_rgba(10,16,28,0.3)]'
+                    : 'bg-panel-navy text-slate-300 border-slate-700 hover:border-[#6fbf86]/40'
                 }`}
               >
                 {sort === 'id' && '#ID'}
@@ -117,9 +124,9 @@ export function PokedexGrid({
         </div>
 
         {/* Result Counter */}
-        <div className="text-center pt-2 border-t border-slate-700">
-          <span className="text-sm font-black text-pokedex-neon">
-            ENCONTRADO: <span className="text-pokedex-neon-green">{plants.length}</span>
+        <div className="text-center pt-2 border-t border-slate-700/70">
+          <span className="text-sm font-semibold text-[#8FD6A4]">
+            ENCONTRADO: <span className="text-[#7BD389] font-semibold">{plants.length}</span>
           </span>
         </div>
       </div>
@@ -130,8 +137,8 @@ export function PokedexGrid({
       {plants.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <div className="text-6xl">🌱</div>
-          <p className="text-pokedex-neon font-bold text-lg">NENHUMA PLANTA ENCONTRADA</p>
-          <p className="text-slate-400 text-sm">Tente ajustar seus filtros</p>
+          <p className="text-[#8FD6A4] font-semibold text-lg">NENHUMA PLANTA ENCONTRADA</p>
+          <p className="text-[#9fb0c0] text-sm font-normal">Tente ajustar seus filtros</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
@@ -143,6 +150,24 @@ export function PokedexGrid({
               onClick={() => onSelectPlant(plant.id)}
             />
           ))}
+
+          {/* Botão de nova planta ao lado da última carta */}
+          <button
+            type="button"
+            onClick={() => {
+              // O PokedexLayout irá lidar com a abertura do modal de criação
+              const event = new CustomEvent('pokedex:new-plant');
+              window.dispatchEvent(event);
+            }}
+            className="h-full min-h-[180px] rounded-xl border-2 border-dashed border-slate-700/80 bg-[#0B1220]/60 flex flex-col items-center justify-center text-slate-300 hover:border-[#6fbf86] hover:text-[#6fbf86] transition-all duration-200"
+          >
+            <div className="flex items-center justify-center h-16 w-16 rounded-full border-2 border-current text-4xl">
+              +
+            </div>
+            <span className="mt-4 text-xs font-medium uppercase tracking-[0.06em]">
+              Nova planta
+            </span>
+          </button>
         </div>
       )}
     </div>

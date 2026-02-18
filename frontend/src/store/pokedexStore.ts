@@ -1,18 +1,32 @@
 import { create } from 'zustand';
 import type { PokedexStore, PlantType, Plant } from '../types/pokedex';
-import { MOCK_PLANTS } from '../data/mockPlants';
 
 export const usePokedexStore = create<PokedexStore>((set, get) => ({
-  plants: MOCK_PLANTS,
+  plants: [],
   selectedPlantId: null,
   searchQuery: '',
   selectedType: null,
   sortBy: 'id',
 
+  setPlants: (plants) => set({ plants }),
   setSelectedPlant: (id) => set({ selectedPlantId: id }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSelectedType: (type) => set({ selectedType: type }),
   setSortBy: (sort) => set({ sortBy: sort }),
+
+  addPlant: (plant: Plant) =>
+    set((state) => ({ plants: [...state.plants, plant] })),
+
+  updatePlant: (plant: Plant) =>
+    set((state) => ({
+      plants: state.plants.map((p) => (p.id === plant.id ? plant : p)),
+    })),
+
+  removePlant: (plantId: number) =>
+    set((state) => ({
+      plants: state.plants.filter((p) => p.id !== plantId),
+      selectedPlantId: state.selectedPlantId === plantId ? null : state.selectedPlantId,
+    })),
 
   filteredPlants: () => {
     const { plants, searchQuery, selectedType, sortBy } = get();

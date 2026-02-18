@@ -59,7 +59,20 @@
   border-radius: 4px;
   font-size: 14px;
   font-family: inherit;
+  color: #2d3748;
+  caret-color: #2d3748;
   transition: all 0.2s;
+}
+
+/* Browser autofill (Chrome/Edge/Safari) */
+.form-group input:-webkit-autofill,
+.form-group input:-webkit-autofill:hover,
+.form-group input:-webkit-autofill:focus,
+.form-group input:-webkit-autofill:active {
+  -webkit-text-fill-color: #2d3748;
+  caret-color: #2d3748;
+  box-shadow: 0 0 0px 1000px white inset;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 .form-group input:focus {

@@ -1,5 +1,18 @@
 import axios, { AxiosInstance } from 'axios';
-import type { Planta, PlantaCompleta, PlantaFoto, PlantaEventoPayload, PlantaEvento } from '../types';
+import type {
+  Aditivo,
+  Planta,
+  PlantaCompleta,
+  PlantaFoto,
+  PlantaEventoPayload,
+  PlantaEvento,
+  PlantaCreatePayload,
+  PlantaCreateMePayload,
+  PlantaUpdatePayload,
+  Page,
+  Usuario,
+  CultivadorMe,
+} from '../types';
 
 const API_URL = '/api';
 
@@ -24,6 +37,17 @@ class ApiService {
     delete this.axiosInstance.defaults.headers.common['Authorization'];
   }
 
+  // Auth
+  async getUsuarioMe(): Promise<Usuario> {
+    const response = await this.axiosInstance.get('/usuarios/me');
+    return response.data;
+  }
+
+  async getCultivadorMe(): Promise<CultivadorMe> {
+    const response = await this.axiosInstance.get('/cultivadores/me');
+    return response.data;
+  }
+
   // Plantas
   async getPlantasListagem(page: number = 0, size: number = 20): Promise<any> {
     const response = await this.axiosInstance.get('/plantas', {
@@ -40,6 +64,25 @@ class ApiService {
   async getPlantaCompleta(id: number): Promise<PlantaCompleta> {
     const response = await this.axiosInstance.get(`/plantas/${id}/completa`);
     return response.data;
+  }
+
+  async createPlanta(payload: PlantaCreatePayload): Promise<Planta> {
+    const response = await this.axiosInstance.post('/plantas', payload);
+    return response.data;
+  }
+
+  async createPlantaMe(payload: PlantaCreateMePayload): Promise<Planta> {
+    const response = await this.axiosInstance.post('/plantas/me', payload);
+    return response.data;
+  }
+
+  async updatePlanta(id: number, payload: PlantaUpdatePayload): Promise<Planta> {
+    const response = await this.axiosInstance.put(`/plantas/${id}`, payload);
+    return response.data;
+  }
+
+  async deletePlanta(id: number): Promise<void> {
+    await this.axiosInstance.delete(`/plantas/${id}`);
   }
 
   // Fotos
@@ -73,6 +116,13 @@ class ApiService {
   }
 
   // Aditivos
+  async getAditivos(page: number = 0, size: number = 200): Promise<Page<Aditivo> | Aditivo[]> {
+    const response = await this.axiosInstance.get('/aditivos', {
+      params: { page, size }
+    });
+    return response.data;
+  }
+
   async getPlantaAditivos(plantaId: number, page: number = 0, size: number = 100): Promise<any> {
     const response = await this.axiosInstance.get(`/plantas/${plantaId}/aditivos`, {
       params: { page, size }

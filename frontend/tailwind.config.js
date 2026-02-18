@@ -6,18 +6,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        'pokedex-red': '#E23A3A',
+        'pokedex-red': '#7a1f1f',
         'deep-navy': '#0B1220',
         'panel-navy': '#111A2E',
-        'neon-green': '#9BEF00',
-        'soft-border': 'rgba(155, 239, 0, 0.12)',
+        'pokedex-dark-2': '#111A2E',
+        // Primary botanical accent
+        'neon-green': '#6fbf86',
+        // Softer border using primary accent
+        'soft-border': 'rgba(111, 191, 134, 0.16)',
       },
       fontSize: {
         'pixel': ['0.75rem', { lineHeight: '1rem' }],
       },
       boxShadow: {
-        'neon': '0 0 10px rgba(155, 239, 0, 0.3), 0 0 20px rgba(155, 239, 0, 0.15)',
-        'neon-strong': '0 0 20px rgba(155, 239, 0, 0.6), 0 0 40px rgba(155, 239, 0, 0.3)',
+        // Global neon accents, softened ~20% for premium feel
+        'neon': '0 0 6px rgba(111, 191, 134, 0.18), 0 0 12px rgba(111, 191, 134, 0.10)',
+        'neon-strong': '0 0 14px rgba(111, 191, 134, 0.32), 0 0 24px rgba(111, 191, 134, 0.18)',
+        // Epic selection halo
+        'epic-halo': '0 0 0 1px rgba(255, 220, 120, 0.6), 0 0 18px rgba(255, 220, 120, 0.18)',
       },
       keyframes: {
         'float': {
@@ -25,8 +31,8 @@ export default {
           '50%': { transform: 'translateY(-10px)' },
         },
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 10px rgba(155, 239, 0, 0.3)' },
-          '50%': { boxShadow: '0 0 20px rgba(155, 239, 0, 0.8)' },
+          '0%, 100%': { boxShadow: '0 0 6px rgba(111, 191, 134, 0.16)' },
+          '50%': { boxShadow: '0 0 14px rgba(111, 191, 134, 0.35)' },
         },
         'slide-in-right': {
           'from': { transform: 'translateX(100%)', opacity: '0' },
@@ -44,7 +50,7 @@ export default {
         'slide-out-right': 'slide-out-right 0.3s ease-in',
       },
       backgroundImage: {
-        'pokedex-grid': 'linear-gradient(0deg, transparent 24%, rgba(155, 239, 0, 0.03) 25%, rgba(155, 239, 0, 0.03) 26%, transparent 27%, transparent 74%, rgba(155, 239, 0, 0.03) 75%, rgba(155, 239, 0, 0.03) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(155, 239, 0, 0.03) 25%, rgba(155, 239, 0, 0.03) 26%, transparent 27%, transparent 74%, rgba(155, 239, 0, 0.03) 75%, rgba(155, 239, 0, 0.03) 76%, transparent 77%, transparent)',
+        'pokedex-grid': 'linear-gradient(0deg, transparent 24%, rgba(123, 211, 137, 0.02) 25%, rgba(123, 211, 137, 0.02) 26%, transparent 27%, transparent 74%, rgba(123, 211, 137, 0.02) 75%, rgba(123, 211, 137, 0.02) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(123, 211, 137, 0.02) 25%, rgba(123, 211, 137, 0.02) 26%, transparent 27%, transparent 74%, rgba(123, 211, 137, 0.02) 75%, rgba(123, 211, 137, 0.02) 76%, transparent 77%, transparent)',
       },
     },
   },

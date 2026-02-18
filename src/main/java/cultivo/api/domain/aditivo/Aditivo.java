@@ -24,6 +24,9 @@ public class Aditivo {
     @Enumerated(EnumType.STRING)
     private EstagioAditivo estagio;
 
+    @Enumerated(EnumType.STRING)
+    private ClasseAditivo classe;
+
     @Column(name = "dose_padrao_em_ml")
     private Double dosePadraoEmML;
 
@@ -34,6 +37,17 @@ public class Aditivo {
         this.marca = marca;
         this.descricao = descricao;
         this.estagio = estagio;
+        this.classe = ClasseAditivo.OUTROS;
+        this.dosePadraoEmML = dosePadraoEmML;
+        this.ativo = true;
+    }
+
+    public Aditivo(String nome, String marca, String descricao, EstagioAditivo estagio, ClasseAditivo classe, Double dosePadraoEmML) {
+        this.nome = nome;
+        this.marca = marca;
+        this.descricao = descricao;
+        this.estagio = estagio;
+        this.classe = (classe == null) ? ClasseAditivo.OUTROS : classe;
         this.dosePadraoEmML = dosePadraoEmML;
         this.ativo = true;
     }

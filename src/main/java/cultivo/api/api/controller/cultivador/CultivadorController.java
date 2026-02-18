@@ -2,6 +2,7 @@ package cultivo.api.api.controller.cultivador;
 
 import cultivo.api.domain.cultivador.Cultivador;
 import cultivo.api.domain.usuario.Usuario;
+import cultivo.api.infrastructure.exception.ErrorResponse;
 import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import cultivo.api.infrastructure.persistence.usuario.UsuarioRepository;
 import jakarta.validation.Valid;
@@ -9,8 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
+
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/cultivadores")
@@ -21,6 +26,29 @@ public class CultivadorController {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @GetMapping("/me")
+    public ResponseEntity<?> me(@AuthenticationPrincipal Usuario usuario) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var cultivador = repository.findByUsuarioId(usuario.getId());
+        if (cultivador == null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    new ErrorResponse(
+                            HttpStatus.CONFLICT.value(),
+                            "Usuário autenticado não possui cultivador cadastrado.",
+                            LocalDateTime.now(),
+                            null
+                    )
+            );
+        }
+
+        var resposta = new DadosDetalheCultivador(cultivador.getId(), cultivador.getUsuario().getNome(),
+                cultivador.getUsuario().getLogin(), cultivador.getTelefone(), cultivador.getAtivo());
+        return ResponseEntity.ok(resposta);
+    }
 
     @PostMapping
     public ResponseEntity<DadosDetalheCultivador> cadastrar(@Valid @RequestBody DadosCadastroCultivador dados, UriComponentsBuilder uri) {

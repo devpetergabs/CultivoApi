@@ -67,11 +67,18 @@ export function Login() {
           <div className="form-group">
             <label htmlFor="login">Login</label>
             <input
-              type="text"
+              type="email"
               id="login"
+              name="username"
               value={login}
               onChange={(e) => setLogin(e.target.value)}
+              onInput={(e) => setLogin((e.currentTarget as HTMLInputElement).value)}
               placeholder="seu@login"
+              autoComplete="username"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               disabled={carregando}
               required
             />
@@ -82,9 +89,12 @@ export function Login() {
             <input
               type="password"
               id="senha"
+              name="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              placeholder="••••••••"
+              onInput={(e) => setSenha((e.currentTarget as HTMLInputElement).value)}
+              placeholder="********"
+              autoComplete="current-password"
               disabled={carregando}
               required
             />

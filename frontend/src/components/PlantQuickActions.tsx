@@ -34,9 +34,9 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         label: 'REGAR',
         emoji: '💧',
         angle: 90,
-        gradient: 'from-[#22c55e] to-[#16a34a]',
-        border: 'border-[#bbf7d0]',
-        shadow: 'shadow-[0_0_14px_rgba(34,197,94,0.8)]',
+        gradient: 'from-[#6fbf86] to-[#3f6f57]',
+        border: 'border-[#b7dfc5]',
+        shadow: 'shadow-[0_0_10px_rgba(111,191,134,0.26)]',
         enabled: true,
       },
       {
@@ -44,9 +44,9 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         label: 'NOTA',
         emoji: '📝',
         angle: 0,
-        gradient: 'from-[#facc15] to-[#eab308]',
-        border: 'border-[#fef08a]',
-        shadow: 'shadow-[0_0_14px_rgba(250,204,21,0.9)]',
+        gradient: 'from-[#e8c96a] to-[#d7b04d]',
+        border: 'border-[#f2e0ad]',
+        shadow: 'shadow-[0_0_10px_rgba(232,201,106,0.26)]',
         enabled: true,
       },
       {
@@ -54,9 +54,9 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         label: 'FOTO',
         emoji: '📷',
         angle: 180,
-        gradient: 'from-[#38bdf8] to-[#0ea5e9]',
-        border: 'border-[#bae6fd]',
-        shadow: 'shadow-[0_0_14px_rgba(56,189,248,0.8)]',
+        gradient: 'from-[#63b7ff] to-[#3d8bdd]',
+        border: 'border-[#b5d9ff]',
+        shadow: 'shadow-[0_0_10px_rgba(99,183,255,0.26)]',
         enabled: true,
       },
       {
@@ -64,9 +64,9 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         label: 'INSETICIDA',
         emoji: '☠️',
         angle: 270,
-        gradient: 'from-[#f97316] to-[#ea580c]',
-        border: 'border-[#fed7aa]',
-        shadow: 'shadow-[0_0_14px_rgba(249,115,22,0.8)]',
+        gradient: 'from-[#f39a5c] to-[#df7a3a]',
+        border: 'border-[#f6d2b4]',
+        shadow: 'shadow-[0_0_10px_rgba(243,154,92,0.26)]',
         enabled: true,
       },
     ],
@@ -110,7 +110,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         type="button"
         ref={fabRef}
         onClick={handleOpen}
-        className="absolute bottom-5 right-4 z-20 h-10 w-10 rounded-full bg-transparent text-[#0b1220] flex items-center justify-center shadow-[0_0_12px_rgba(34,197,94,0.5)] border border-transparent hover:scale-105 hover:shadow-[0_0_16px_rgba(34,197,94,0.7)] transition-transform transition-shadow"
+        className="absolute bottom-5 right-4 z-20 h-10 w-10 rounded-full bg-transparent text-[#0b1220] flex items-center justify-center shadow-[0_0_10px_rgba(111,191,134,0.26)] border border-transparent hover:scale-105 hover:shadow-[0_0_12px_rgba(111,191,134,0.32)] transition-transform transition-shadow"
         aria-label="Acoes rapidas da planta"
       >
         <img
@@ -126,9 +126,9 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
           className="absolute bottom-16 right-6 z-30"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-[#020617] to-[#020617] border border-pokedex-neon/60 shadow-[0_0_20px_rgba(155,239,0,0.7)] flex items-center justify-center">
-            <div className="absolute inset-2 rounded-full border border-pokedex-neon/30 pointer-events-none" />
-            <div className="relative z-10 h-9 w-9 rounded-full bg-black/80 border border-pokedex-neon flex items-center justify-center text-pokedex-neon text-lg font-black">
+          <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-[#0b1324] to-[#0a1220] border border-[#6fbf86]/50 shadow-[0_0_14px_rgba(111,191,134,0.26)] flex items-center justify-center">
+            <div className="absolute inset-2 rounded-full border border-[#6fbf86]/24 pointer-events-none" />
+            <div className="relative z-10 h-9 w-9 rounded-full bg-black/70 border border-[#6fbf86] flex items-center justify-center text-[#6fbf86] text-lg font-semibold">
               +
             </div>
 
@@ -138,7 +138,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
                 <button
                   key={action.key}
                   type="button"
-                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-0.5 bg-gradient-to-r ${action.gradient} text-black text-[10px] font-bold whitespace-nowrap ${action.border} ${action.shadow} ${
+                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-0.5 bg-gradient-to-r ${action.gradient} text-black text-[10px] font-semibold tracking-wide whitespace-nowrap ${action.border} ${action.shadow} ${
                     action.enabled ? 'hover:scale-105 transition-transform' : 'opacity-60 cursor-not-allowed'
                   }`}
                   style={{ transform: `translate(-50%, -50%) translate(${pos.x}px, ${pos.y}px)` }}
@@ -159,6 +159,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         onClose={closeModals}
         plantId={plant.id}
         plantName={plant.name}
+        plantStage={plant.type}
       />
 
       <NoteModal

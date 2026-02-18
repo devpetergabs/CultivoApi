@@ -44,7 +44,7 @@ public class PlantaAditivoController {
 
         var resposta = new DadosDetalhePlantaAditivo(plantaAditivo.getId(), plantaAditivo.getPlanta().getNome(),
                 plantaAditivo.getAditivo().getNome(), plantaAditivo.getAditivo().getMarca(),
-                plantaAditivo.getAditivo().getDescricao(), plantaAditivo.getAditivo().getEstagio().toString(), plantaAditivo.getDoseEmML());
+            plantaAditivo.getAditivo().getDescricao(), plantaAditivo.getAditivo().getEstagio().toString(), plantaAditivo.getDoseEmML(), plantaAditivo.getAditivo().getClasse());
         var uriBuilder = uri.path("/plantas/{plantaId}/aditivos/{id}").buildAndExpand(plantaId, plantaAditivo.getId()).toUri();
         return ResponseEntity.created(uriBuilder).body(resposta);
     }
@@ -54,7 +54,7 @@ public class PlantaAditivoController {
         var page = repository.findByPlantaId(plantaId, paginacao)
             .map(pa -> new DadosDetalhePlantaAditivo(pa.getId(), pa.getPlanta().getNome(),
                 pa.getAditivo().getNome(), pa.getAditivo().getMarca(),
-                pa.getAditivo().getDescricao(), pa.getAditivo().getEstagio().toString(), pa.getDoseEmML()));
+                pa.getAditivo().getDescricao(), pa.getAditivo().getEstagio().toString(), pa.getDoseEmML(), pa.getAditivo().getClasse()));
         return ResponseEntity.ok(page);
     }
 
@@ -68,7 +68,7 @@ public class PlantaAditivoController {
         var pa = plantaAditivo.get();
         var resposta = new DadosDetalhePlantaAditivo(pa.getId(), pa.getPlanta().getNome(),
                 pa.getAditivo().getNome(), pa.getAditivo().getMarca(),
-                pa.getAditivo().getDescricao(), pa.getAditivo().getEstagio().toString(), pa.getDoseEmML());
+            pa.getAditivo().getDescricao(), pa.getAditivo().getEstagio().toString(), pa.getDoseEmML(), pa.getAditivo().getClasse());
         return ResponseEntity.ok(resposta);
     }
 

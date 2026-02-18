@@ -54,6 +54,24 @@ public class Usuario implements UserDetails {
         this.role = "ROLE_USER";
     }
 
+    public void atualizarNome(String nome) {
+        if (nome != null && !nome.isBlank()) {
+            this.nome = nome;
+        }
+    }
+
+    public void atualizarSenha(String senha) {
+        if (senha != null && !senha.isBlank()) {
+            this.senha = senha;
+        }
+    }
+
+    public void atualizarRole(String role) {
+        if (role != null && !role.isBlank()) {
+            this.role = role;
+        }
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         String resolvedRole = (role == null || role.isBlank()) ? "ROLE_USER" : role;

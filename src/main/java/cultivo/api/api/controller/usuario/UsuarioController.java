@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -20,6 +21,14 @@ public class UsuarioController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @GetMapping("/me")
+    public ResponseEntity<DadosDetalheUsuario> me(@AuthenticationPrincipal Usuario usuario) {
+        if (usuario == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(new DadosDetalheUsuario(usuario.getId(), usuario.getNome(), usuario.getLogin()));
+    }
 
     @PostMapping("/registrar")
     public ResponseEntity<DadosDetalheUsuario> registrar(@Valid @RequestBody DadosCadastroUsuario dados, UriComponentsBuilder uri) {
