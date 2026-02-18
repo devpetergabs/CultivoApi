@@ -5,6 +5,7 @@ public enum TipoEvento {
     PODA,
     TROCA_VASO,
     APLICACAO_ADITIVO,
+    INSETICIDA,
     OBSERVACAO,
     COLHEITA,
     OUTRO

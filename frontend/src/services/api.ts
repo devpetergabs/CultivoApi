@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import type { Planta, PlantaCompleta, PlantaFoto } from '../types';
+import type { Planta, PlantaCompleta, PlantaFoto, PlantaEventoPayload, PlantaEvento } from '../types';
 
 const API_URL = '/api';
 
@@ -55,6 +55,20 @@ class ApiService {
       `/plantas/${plantaId}/fotos/${fotoId}/imagem`,
       { responseType: 'blob' }
     );
+    return response.data;
+  }
+
+  async createPlantaEvento(plantaId: number, payload: PlantaEventoPayload): Promise<PlantaEvento> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/eventos`, {
+      tipo: payload.tipo,
+      descricao: payload.descricao,
+      doseEmML: payload.doseEmML ?? null,
+    });
+    return response.data;
+  }
+
+  async createPlantaFoto(plantaId: number, data: { imagemBase64: string; contentType: string; descricao?: string }): Promise<PlantaFoto> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/fotos`, data);
     return response.data;
   }
 

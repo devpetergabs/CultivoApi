@@ -30,7 +30,7 @@ export function StatBar({ label, value, max = 100, color = 'blue' }: StatBarProp
       <div className="w-full bg-[#0B1220]/60 rounded-full overflow-visible h-3 border border-[rgba(155,239,0,0.2)]">
         <div
           className={`h-full bg-gradient-to-r ${COLOR_MAP[displayColor]} transition-all duration-300 rounded-full ${isOver ? 'shadow-[0_0_20px_rgba(255,215,0,0.9)] animate-pulse' : 'shadow-[0_0_10px_rgba(155,239,0,0.3)]'}`}
-          style={{ width: `${Math.min(percentage, 120)}%` }}
+          style={{ width: `${Math.min(percentage, 100)}%` }}
         />
       </div>
     </div>

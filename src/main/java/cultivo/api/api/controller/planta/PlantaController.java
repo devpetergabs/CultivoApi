@@ -40,9 +40,10 @@ public class PlantaController {
         repository.save(planta);
 
         var resposta = new DadosDetalhePlanta(planta.getId(), planta.getNome(), planta.getStrain(),
-                planta.getAltura(), planta.getLargura(), planta.getLarguraCaule(),
-                planta.getTamanhoVaso().toString(), planta.getEstagio().toString(), planta.getSexo().toString(), 
-                planta.getDataSexagem(), planta.getDataFloracao(),
+            planta.getAltura(), planta.getLargura(), planta.getLarguraCaule(),
+            planta.getTamanhoVaso().toString(), planta.getEstagio() != null ? planta.getEstagio().toString() : null,
+            planta.getSexo() != null ? planta.getSexo().toString() : null,
+            planta.getDataSexagem(), planta.getDataFloracao(),
                 planta.getAtivo(), planta.getDataGerminacao(), planta.getDataCriacao());
         var uriBuilder = uri.path("/plantas/{id}").buildAndExpand(planta.getId()).toUri();
         return ResponseEntity.created(uriBuilder).body(resposta);
@@ -51,11 +52,12 @@ public class PlantaController {
     @GetMapping
     public ResponseEntity<Page<DadosDetalhePlanta>> listar(Pageable paginacao) {
         var page = repository.findAll(paginacao)
-                .map(p -> new DadosDetalhePlanta(p.getId(), p.getNome(), p.getStrain(),
-                        p.getAltura(), p.getLargura(), p.getLarguraCaule(),
-                        p.getTamanhoVaso().toString(), p.getEstagio().toString(), p.getSexo() != null ? p.getSexo().toString() : null, 
-                        p.getDataSexagem(), p.getDataFloracao(),
-                        p.getAtivo(), p.getDataGerminacao(), p.getDataCriacao()));
+            .map(p -> new DadosDetalhePlanta(p.getId(), p.getNome(), p.getStrain(),
+                p.getAltura(), p.getLargura(), p.getLarguraCaule(),
+                p.getTamanhoVaso().toString(), p.getEstagio() != null ? p.getEstagio().toString() : null,
+                p.getSexo() != null ? p.getSexo().toString() : null,
+                p.getDataSexagem(), p.getDataFloracao(),
+                p.getAtivo(), p.getDataGerminacao(), p.getDataCriacao()));
         return ResponseEntity.ok(page);
     }
 
@@ -84,7 +86,7 @@ public class PlantaController {
                 p.getLargura(),
                 p.getLarguraCaule(),
                 p.getTamanhoVaso().toString(),
-                p.getEstagio().toString(),
+                p.getEstagio() != null ? p.getEstagio().toString() : null,
                 p.getSexo() != null ? p.getSexo().toString() : null,
                 p.getDataSexagem(),
                 p.getDataFloracao(),
@@ -111,10 +113,11 @@ public class PlantaController {
 
         var p = planta.get();
         var resposta = new DadosDetalhePlanta(p.getId(), p.getNome(), p.getStrain(),
-                p.getAltura(), p.getLargura(), p.getLarguraCaule(),
-                p.getTamanhoVaso().toString(), p.getEstagio().toString(), p.getSexo() != null ? p.getSexo().toString() : null, 
-                p.getDataSexagem(), p.getDataFloracao(),
-                p.getAtivo(), p.getDataGerminacao(), p.getDataCriacao());
+            p.getAltura(), p.getLargura(), p.getLarguraCaule(),
+            p.getTamanhoVaso().toString(), p.getEstagio() != null ? p.getEstagio().toString() : null,
+            p.getSexo() != null ? p.getSexo().toString() : null,
+            p.getDataSexagem(), p.getDataFloracao(),
+            p.getAtivo(), p.getDataGerminacao(), p.getDataCriacao());
         return ResponseEntity.ok(resposta);
     }
 
@@ -132,10 +135,11 @@ public class PlantaController {
         repository.save(p);
 
         var resposta = new DadosDetalhePlanta(p.getId(), p.getNome(), p.getStrain(),
-                p.getAltura(), p.getLargura(), p.getLarguraCaule(),
-                p.getTamanhoVaso().toString(), p.getEstagio().toString(), p.getSexo() != null ? p.getSexo().toString() : null, 
-                p.getDataSexagem(), p.getDataFloracao(),
-                p.getAtivo(), p.getDataGerminacao(), p.getDataCriacao());
+            p.getAltura(), p.getLargura(), p.getLarguraCaule(),
+            p.getTamanhoVaso().toString(), p.getEstagio() != null ? p.getEstagio().toString() : null,
+            p.getSexo() != null ? p.getSexo().toString() : null,
+            p.getDataSexagem(), p.getDataFloracao(),
+            p.getAtivo(), p.getDataGerminacao(), p.getDataCriacao());
         return ResponseEntity.ok(resposta);
     }
 
@@ -156,11 +160,12 @@ public class PlantaController {
     @GetMapping("/cultivador/{cultivadorId}")
     public ResponseEntity<Page<DadosDetalhePlanta>> listarPorCultivador(@PathVariable Long cultivadorId, Pageable paginacao) {
         var page = repository.findByCultivadorIdAndAtivoTrue(cultivadorId, paginacao)
-                .map(p -> new DadosDetalhePlanta(p.getId(), p.getNome(), p.getStrain(),
-                        p.getAltura(), p.getLargura(), p.getLarguraCaule(),
-                        p.getTamanhoVaso().toString(), p.getEstagio().toString(), p.getSexo() != null ? p.getSexo().toString() : null, 
-                        p.getDataSexagem(), p.getDataFloracao(),
-                        p.getAtivo(), p.getDataGerminacao(), p.getDataCriacao()));
+            .map(p -> new DadosDetalhePlanta(p.getId(), p.getNome(), p.getStrain(),
+                p.getAltura(), p.getLargura(), p.getLarguraCaule(),
+                p.getTamanhoVaso().toString(), p.getEstagio() != null ? p.getEstagio().toString() : null,
+                p.getSexo() != null ? p.getSexo().toString() : null,
+                p.getDataSexagem(), p.getDataFloracao(),
+                p.getAtivo(), p.getDataGerminacao(), p.getDataCriacao()));
         return ResponseEntity.ok(page);
     }
 }

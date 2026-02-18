@@ -42,6 +42,21 @@ export interface PlantaFoto {
   dataUpload: string;
 }
 
+export interface PlantaEvento {
+  id: number;
+  plantaNome: string;
+  tipo: string;
+  dataEvento: string;
+  descricao: string | null;
+  doseEmML: number | null;
+}
+
+export interface PlantaEventoPayload {
+  tipo: string; // matches backend TipoEvento enum
+  descricao: string;
+  doseEmML?: number | null;
+}
+
 export interface Usuario {
   id: number;
   nome: string;
