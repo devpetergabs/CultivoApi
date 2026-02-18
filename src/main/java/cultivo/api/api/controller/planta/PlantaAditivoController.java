@@ -43,25 +43,18 @@ public class PlantaAditivoController {
         repository.save(plantaAditivo);
 
         var resposta = new DadosDetalhePlantaAditivo(plantaAditivo.getId(), plantaAditivo.getPlanta().getNome(),
-                plantaAditivo.getAditivo().getNome(), plantaAditivo.getDoseEmML());
+                plantaAditivo.getAditivo().getNome(), plantaAditivo.getAditivo().getMarca(),
+                plantaAditivo.getAditivo().getDescricao(), plantaAditivo.getAditivo().getEstagio().toString(), plantaAditivo.getDoseEmML());
         var uriBuilder = uri.path("/plantas/{plantaId}/aditivos/{id}").buildAndExpand(plantaId, plantaAditivo.getId()).toUri();
         return ResponseEntity.created(uriBuilder).body(resposta);
     }
 
     @GetMapping
     public ResponseEntity<Page<DadosDetalhePlantaAditivo>> listar(@PathVariable Long plantaId, Pageable paginacao) {
-        var page = repository.findAll(paginacao)
-                .map(pa -> new DadosDetalhePlantaAditivo(pa.getId(), pa.getPlanta().getNome(),
-                        pa.getAditivo().getNome(), pa.getDoseEmML()));
-        
-        // Filter in-memory if needed - alternatively create a custom query
-        var filtered = page.getContent().stream()
-                .filter(pa -> {
-                    // Get actual entity to check if it belongs to this plant
-                    return true; // Placeholder - in production, you'd customize the query
-                })
-                .toList();
-        
+        var page = repository.findByPlantaId(plantaId, paginacao)
+            .map(pa -> new DadosDetalhePlantaAditivo(pa.getId(), pa.getPlanta().getNome(),
+                pa.getAditivo().getNome(), pa.getAditivo().getMarca(),
+                pa.getAditivo().getDescricao(), pa.getAditivo().getEstagio().toString(), pa.getDoseEmML()));
         return ResponseEntity.ok(page);
     }
 
@@ -74,7 +67,8 @@ public class PlantaAditivoController {
 
         var pa = plantaAditivo.get();
         var resposta = new DadosDetalhePlantaAditivo(pa.getId(), pa.getPlanta().getNome(),
-                pa.getAditivo().getNome(), pa.getDoseEmML());
+                pa.getAditivo().getNome(), pa.getAditivo().getMarca(),
+                pa.getAditivo().getDescricao(), pa.getAditivo().getEstagio().toString(), pa.getDoseEmML());
         return ResponseEntity.ok(resposta);
     }
 

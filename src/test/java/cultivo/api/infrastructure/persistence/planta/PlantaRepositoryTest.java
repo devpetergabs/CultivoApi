@@ -3,6 +3,7 @@ package cultivo.api.infrastructure.persistence.planta;
 import cultivo.api.domain.cultivador.Cultivador;
 import cultivo.api.domain.planta.Planta;
 import cultivo.api.domain.planta.TamanhVaso;
+import cultivo.api.domain.planta.EstagioPlanta;
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import cultivo.api.infrastructure.persistence.usuario.UsuarioRepository;
@@ -28,7 +29,7 @@ class PlantaRepositoryTest {
 
     @Test
     void shouldPersistPlantaWithProvidedData() {
-        Usuario usuario = usuarioRepository.save(new Usuario(null, "cultivador1", "senha"));
+        Usuario usuario = usuarioRepository.save(new Usuario("Cultivador 1", "cultivador1", "senha"));
         Cultivador cultivador = cultivadorRepository.save(new Cultivador(usuario));
 
         Planta planta = new Planta(
@@ -39,6 +40,7 @@ class PlantaRepositoryTest {
             90.0,
             9.5,
             TamanhVaso.VINTE_E_UM_L,
+            EstagioPlanta.VEGETATIVO,
             cultivador
         );
 

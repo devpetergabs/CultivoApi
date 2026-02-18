@@ -1,0 +1,1 @@
+ALTER TABLE plantas ADD COLUMN estagio VARCHAR(50);

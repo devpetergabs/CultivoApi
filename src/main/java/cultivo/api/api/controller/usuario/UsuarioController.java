@@ -30,10 +30,10 @@ public class UsuarioController {
         }
 
         var senhaCriptografada = passwordEncoder.encode(dados.senha());
-        var usuario = new Usuario(dados.login(), senhaCriptografada);
+        var usuario = new Usuario(dados.nome(), dados.login(), senhaCriptografada);
         repository.save(usuario);
 
-        var resposta = new DadosDetalheUsuario(usuario.getId(), usuario.getLogin());
+        var resposta = new DadosDetalheUsuario(usuario.getId(), usuario.getNome(), usuario.getLogin());
         var uriBuilder = uri.path("/usuarios/{id}").buildAndExpand(usuario.getId()).toUri();
         return ResponseEntity.created(uriBuilder).body(resposta);
     }
@@ -41,14 +41,14 @@ public class UsuarioController {
     @GetMapping
     public ResponseEntity<Page<DadosDetalheUsuario>> listar(Pageable paginacao) {
         var page = repository.findAll(paginacao)
-                .map(u -> new DadosDetalheUsuario(u.getId(), u.getLogin()));
+                .map(u -> new DadosDetalheUsuario(u.getId(), u.getNome(), u.getLogin()));
         return ResponseEntity.ok(page);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<DadosDetalheUsuario> detalhar(@PathVariable Long id) {
         var usuario = repository.findById(id);
-        return usuario.map(u -> ResponseEntity.ok(new DadosDetalheUsuario(u.getId(), u.getLogin())))
+        return usuario.map(u -> ResponseEntity.ok(new DadosDetalheUsuario(u.getId(), u.getNome(), u.getLogin())))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 

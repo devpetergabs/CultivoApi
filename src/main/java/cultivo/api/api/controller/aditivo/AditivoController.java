@@ -19,7 +19,7 @@ public class AditivoController {
 
     @PostMapping
     public ResponseEntity<Aditivo> cadastrar(@Valid @RequestBody DadosCadastroAditivo dados, UriComponentsBuilder uri) {
-        var aditivo = new Aditivo(dados.nome(), dados.marca(), dados.descricao(), dados.dosePadraoEmML());
+        var aditivo = new Aditivo(dados.nome(), dados.marca(), dados.descricao(), dados.estagio(), dados.dosePadraoEmML());
         repository.save(aditivo);
         var uriBuilder = uri.path("/aditivos/{id}").buildAndExpand(aditivo.getId()).toUri();
         return ResponseEntity.created(uriBuilder).body(aditivo);
@@ -50,6 +50,7 @@ public class AditivoController {
             aditivoExistente = new Aditivo(id, dados.nome(), 
                     dados.marca() != null ? dados.marca() : aditivoExistente.getMarca(),
                     dados.descricao() != null ? dados.descricao() : "",
+                    dados.estagio() != null ? dados.estagio() : aditivoExistente.getEstagio(),
                     dados.dosePadraoEmML() != null ? dados.dosePadraoEmML() : aditivoExistente.getDosePadraoEmML(),
                     aditivoExistente.getAtivo());
             repository.save(aditivoExistente);

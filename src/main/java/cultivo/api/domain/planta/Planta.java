@@ -40,13 +40,26 @@ public class Planta {
     @Column(name = "tamanho_vaso")
     private TamanhVaso tamanhoVaso;
 
+    @Enumerated(EnumType.STRING)
+    private EstagioPlanta estagio;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sexo_planta")
+    private SexoPlanta sexo;
+
+    @Column(name = "data_sexagem")
+    private LocalDate dataSexagem;
+
+    @Column(name = "data_floracao")
+    private LocalDate dataFloracao;
+
     private Boolean ativo;
 
     @Column(name = "data_criacao")
     private LocalDate dataCriacao;
 
     public Planta(String nome, String strain, LocalDate dataGerminacao, Double altura,
-                  Double largura, Double larguraCaule, TamanhVaso tamanhoVaso, Cultivador cultivador) {
+                  Double largura, Double larguraCaule, TamanhVaso tamanhoVaso, EstagioPlanta estagio, Cultivador cultivador) {
         this.nome = nome;
         this.strain = strain;
         this.dataGerminacao = dataGerminacao;
@@ -54,12 +67,13 @@ public class Planta {
         this.largura = largura;
         this.larguraCaule = larguraCaule;
         this.tamanhoVaso = tamanhoVaso;
+        this.estagio = estagio;
         this.cultivador = cultivador;
         this.ativo = true;
         this.dataCriacao = LocalDate.now();
     }
 
-    public void atualizarDados(String nome, Double altura, Double largura, Double larguraCaule, TamanhVaso tamanhoVaso) {
+    public void atualizarDados(String nome, Double altura, Double largura, Double larguraCaule, TamanhVaso tamanhoVaso, EstagioPlanta estagio, SexoPlanta sexo, LocalDate dataSexagem, LocalDate dataFloracao) {
         if (nome != null && !nome.isBlank()) {
             this.nome = nome;
         }
@@ -74,6 +88,18 @@ public class Planta {
         }
         if (tamanhoVaso != null) {
             this.tamanhoVaso = tamanhoVaso;
+        }
+        if (estagio != null) {
+            this.estagio = estagio;
+        }
+        if (sexo != null) {
+            this.sexo = sexo;
+        }
+        if (dataSexagem != null) {
+            this.dataSexagem = dataSexagem;
+        }
+        if (dataFloracao != null) {
+            this.dataFloracao = dataFloracao;
         }
     }
 

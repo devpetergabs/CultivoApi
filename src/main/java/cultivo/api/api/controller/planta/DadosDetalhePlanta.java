@@ -10,6 +10,10 @@ public record DadosDetalhePlanta(
         Double largura,
         Double larguraCaule,
         String tamanhoVaso,
+        String estagio,
+        String sexo,
+        LocalDate dataSexagem,
+        LocalDate dataFloracao,
         Boolean ativo,
         LocalDate dataGerminacao,
         LocalDate dataCriacao

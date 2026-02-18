@@ -32,7 +32,8 @@ public class CultivadorController {
         var cultivador = new Cultivador(usuario.get(), dados.telefone());
         repository.save(cultivador);
         
-        var resposta = new DadosDetalheCultivador(cultivador.getId(), cultivador.getUsuario().getLogin(), 
+        var resposta = new DadosDetalheCultivador(cultivador.getId(), cultivador.getUsuario().getNome(),
+            cultivador.getUsuario().getLogin(),
                 cultivador.getTelefone(), cultivador.getAtivo());
         var uriBuilder = uri.path("/cultivadores/{id}").buildAndExpand(cultivador.getId()).toUri();
         return ResponseEntity.created(uriBuilder).body(resposta);
@@ -41,7 +42,8 @@ public class CultivadorController {
     @GetMapping
     public ResponseEntity<Page<DadosDetalheCultivador>> listar(Pageable paginacao) {
         var page = repository.findAll(paginacao)
-                .map(c -> new DadosDetalheCultivador(c.getId(), c.getUsuario().getLogin(), c.getTelefone(), c.getAtivo()));
+            .map(c -> new DadosDetalheCultivador(c.getId(), c.getUsuario().getNome(), c.getUsuario().getLogin(),
+                c.getTelefone(), c.getAtivo()));
         return ResponseEntity.ok(page);
     }
 
@@ -53,7 +55,8 @@ public class CultivadorController {
         }
 
         var c = cultivador.get();
-        var resposta = new DadosDetalheCultivador(c.getId(), c.getUsuario().getLogin(), c.getTelefone(), c.getAtivo());
+        var resposta = new DadosDetalheCultivador(c.getId(), c.getUsuario().getNome(), c.getUsuario().getLogin(),
+            c.getTelefone(), c.getAtivo());
         return ResponseEntity.ok(resposta);
     }
 
@@ -70,7 +73,8 @@ public class CultivadorController {
         }
         repository.save(c);
 
-        var resposta = new DadosDetalheCultivador(c.getId(), c.getUsuario().getLogin(), c.getTelefone(), c.getAtivo());
+        var resposta = new DadosDetalheCultivador(c.getId(), c.getUsuario().getNome(), c.getUsuario().getLogin(),
+            c.getTelefone(), c.getAtivo());
         return ResponseEntity.ok(resposta);
     }
 

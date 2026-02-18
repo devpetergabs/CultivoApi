@@ -7,6 +7,9 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -61,6 +64,21 @@ public class PlantaFotoController {
         var resposta = new DadosDetalhePlantaFoto(f.getId(), f.getPlanta().getNome(),
                 f.getContentType(), f.getDescricao(), f.getDataUpload());
         return ResponseEntity.ok(resposta);
+    }
+
+    @GetMapping("/{id}/imagem")
+    public ResponseEntity<byte[]> visualizarImagem(@PathVariable Long plantaId, @PathVariable Long id) {
+        var foto = repository.findById(id);
+        if (foto.isEmpty() || !foto.get().getPlanta().getId().equals(plantaId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var f = foto.get();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(f.getContentType()));
+        headers.setContentLength(f.getImagem().length);
+
+        return new ResponseEntity<>(f.getImagem(), headers, HttpStatus.OK);
     }
 
     @DeleteMapping("/{id}")

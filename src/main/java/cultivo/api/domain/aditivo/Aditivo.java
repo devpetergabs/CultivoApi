@@ -21,15 +21,19 @@ public class Aditivo {
     private String marca;
     private String descricao;
 
+    @Enumerated(EnumType.STRING)
+    private EstagioAditivo estagio;
+
     @Column(name = "dose_padrao_em_ml")
     private Double dosePadraoEmML;
 
     private Boolean ativo;
 
-    public Aditivo(String nome, String marca, String descricao, Double dosePadraoEmML) {
+    public Aditivo(String nome, String marca, String descricao, EstagioAditivo estagio, Double dosePadraoEmML) {
         this.nome = nome;
         this.marca = marca;
         this.descricao = descricao;
+        this.estagio = estagio;
         this.dosePadraoEmML = dosePadraoEmML;
         this.ativo = true;
     }

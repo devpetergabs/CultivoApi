@@ -28,17 +28,36 @@ public class Usuario implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    private String nome;
     private String login;
     private String senha;
+    private String role;
 
-    public Usuario(String login, String senha) {
+    public Usuario(String nome, String login, String senha, String role) {
+        this.nome = nome;
         this.login = login;
         this.senha = senha;
+        this.role = role;
+    }
+
+    public Usuario(String nome, String login, String senha) {
+        this.nome = nome;
+        this.login = login;
+        this.senha = senha;
+        this.role = "ROLE_USER";
+    }
+
+    public Usuario(String login, String senha) {
+        this.nome = login;
+        this.login = login;
+        this.senha = senha;
+        this.role = "ROLE_USER";
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        String resolvedRole = (role == null || role.isBlank()) ? "ROLE_USER" : role;
+        return List.of(new SimpleGrantedAuthority(resolvedRole));
     }
 
     @Override
