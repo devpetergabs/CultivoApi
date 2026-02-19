@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Aditivo } from '../types';
 import { apiService } from '../services/api';
+import { AditivoDetailsModal } from './AditivoDetailsModal';
+import {
+  ADITIVO_STOCK_UPDATED_EVENT,
+  getAditivoIcon,
+  getAditivoStock,
+  getDerivedStock,
+  isAditivoOutOfStock,
+} from '../utils/aditivoStorage';
 
 type InventarioViewProps = {
   onCountChange?: (count: number) => void;
@@ -40,12 +48,29 @@ function estagioLabel(value: string): string {
   }
 }
 
+function formatMl(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  const normalized = Math.max(0, value);
+  // Keep decimals only when needed.
+  return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(1);
+}
+
 export function InventarioView({ onCountChange }: InventarioViewProps) {
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedAditivo, setSelectedAditivo] = useState<Aditivo | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const [mostrarColecionaveis, setMostrarColecionaveis] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => setRefreshKey((x) => x + 1);
+    window.addEventListener(ADITIVO_STOCK_UPDATED_EVENT, handler as any);
+    return () => window.removeEventListener(ADITIVO_STOCK_UPDATED_EVENT, handler as any);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -72,9 +97,38 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
   }, []);
 
   const visible = useMemo(() => {
-    if (mostrarColecionaveis) return aditivos;
-    return aditivos.filter((a) => a.ativo);
-  }, [aditivos, mostrarColecionaveis]);
+    let base: Aditivo[];
+    if (mostrarColecionaveis) {
+      base = aditivos;
+    } else {
+      // Só mostra ativos e com estoque (ou marcados como tenho em estoque)
+      base = aditivos.filter((a) => {
+        if (!a.ativo) return false;
+        const stock = getAditivoStock(a.id);
+        const derived = getDerivedStock(stock);
+        return !derived.isEmpty;
+      });
+    }
+
+    // Stable sort: in-stock first, out-of-stock last. Collectibles always last.
+    return base
+      .map((item, index) => ({ item, index }))
+      .sort((x, y) => {
+        const ax = x.item;
+        const ay = y.item;
+
+        const xCollectible = !ax.ativo;
+        const yCollectible = !ay.ativo;
+        if (xCollectible !== yCollectible) return xCollectible ? 1 : -1;
+
+        const xOut = isAditivoOutOfStock(ax.id);
+        const yOut = isAditivoOutOfStock(ay.id);
+        if (xOut !== yOut) return xOut ? 1 : -1;
+
+        return x.index - y.index;
+      })
+      .map((x) => x.item);
+  }, [aditivos, mostrarColecionaveis, refreshKey]);
 
   useEffect(() => {
     onCountChange?.(visible.length);
@@ -118,15 +172,60 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {visible.map((a) => {
               const isCollectible = !a.ativo;
+              const customIcon = getAditivoIcon(a.id);
+              const stock = getAditivoStock(a.id);
+              const derived = getDerivedStock(stock);
+              const isOutOfStock = derived.isEmpty;
+              const isLowStock = derived.isLow;
+
+              const estoqueMl = derived.hasData ? derived.estoqueMl : 0;
+              const capacityMl = derived.capacidadeMl;
+
+              const percent =
+                derived.hasData && capacityMl > 0
+                  ? Math.max(0, Math.min(100, (estoqueMl / capacityMl) * 100))
+                  : null;
+
+              const isEmptyStock = isOutOfStock;
+
+              const stockPillClass = isEmptyStock
+                ? 'border-white/10 bg-white/5 text-slate-300/80'
+                : isLowStock
+                ? 'border-[#e7c35a]/30 bg-[#e7c35a]/10 text-[#f2dd9b]'
+                : 'border-[#6fbf86]/30 bg-[#6fbf86]/10 text-[#A7E5B2]';
+
+              const stockBarClass = isEmptyStock
+                ? 'bg-white/15'
+                : isLowStock
+                ? 'bg-[#e7c35a]/70'
+                : 'bg-[#6fbf86]/60';
+
+              const lowGlowClass = isLowStock && !isEmptyStock
+                ? 'opacity-80 shadow-[0_0_10px_rgba(231,195,90,0.16)]'
+                : '';
               return (
                 <div
                   key={a.id}
-                  className={`relative group h-full rounded-xl overflow-hidden transition-all duration-200 text-left border-2
+                  onClick={() => setSelectedAditivo(a)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedAditivo(a);
+                    }
+                  }}
+                  aria-label={`Detalhes do aditivo: ${a.nome}`}
+                  className={`relative group h-full rounded-xl overflow-hidden transition-all duration-200 text-left border-2 cursor-pointer
                     ${
                       isCollectible
                         ? 'border-[rgba(255,255,255,0.12)] bg-gradient-to-br from-[#111A2E]/70 to-[#0B1220]/70'
+                        : isOutOfStock
+                        ? 'border-[rgba(255,255,255,0.10)] bg-gradient-to-br from-[#111A2E]/70 to-[#0B1220]/70'
                         : 'border-[rgba(255,255,255,0.12)] hover:border-[#6fbf86]/70 hover:shadow-[0_0_10px_rgba(111,191,134,0.18)] bg-gradient-to-br from-[#111A2E]/80 to-[#0B1220]/80'
                     }
+                    ${isOutOfStock ? 'opacity-50 grayscale-[0.2] hover:opacity-80' : ''}
+                    ${lowGlowClass}
                   `}
                 >
                   <div className="p-4 h-full flex flex-col pb-6">
@@ -141,7 +240,15 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                     )}
 
                     <div className="flex items-center justify-center h-32 mb-3 bg-gradient-to-b from-[#172232] to-[#0B1220] rounded-lg border border-[#6fbf86]/15 group-hover:border-[#6fbf86]/30 transition-colors">
-                      <span className="text-5xl drop-shadow-lg">🧪</span>
+                      {customIcon ? (
+                        <img
+                          src={customIcon}
+                          alt={a.nome}
+                          className="h-20 w-20 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
+                        />
+                      ) : (
+                        <span className="text-5xl drop-shadow-lg">🧪</span>
+                      )}
                     </div>
 
                     <h3 className="font-semibold text-slate-100 mb-0.5 text-base line-clamp-2 group-hover:text-[#A7E5B2] transition-colors">
@@ -165,10 +272,40 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                       <div className="text-[11px] text-slate-300/80">
                         {typeof a.dosePadraoEmML === 'number' ? (
                           <span>
-                            Dose padrão: <span className="font-semibold text-slate-100">{a.dosePadraoEmML} ml</span>
+                            Dose padrão: <span className="font-semibold text-slate-100">{a.dosePadraoEmML} ml/L</span>
                           </span>
                         ) : (
                           <span>Dose padrão: <span className="font-semibold text-slate-100">—</span></span>
+                        )}
+                      </div>
+
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${stockPillClass}`}
+                          >
+                              <span aria-hidden="true">{isEmptyStock ? '⛔' : '🧪'}</span>
+                              <span>
+                                Estoque:{' '}
+                                {derived.hasData ? (
+                                  <>{formatMl(estoqueMl)} ml</>
+                                ) : (
+                                  <span className="opacity-80">—</span>
+                                )}
+                              </span>
+                            {isLowStock && <span className="opacity-80">(baixo)</span>}
+                          </span>
+                            {derived.hasData && capacityMl > 0 ? (
+                              <span className="text-[10px] text-slate-300/70 font-mono">{formatMl(estoqueMl)}/{formatMl(capacityMl)} ml</span>
+                          ) : (
+                            <span className="text-[10px] text-slate-300/60">&nbsp;</span>
+                          )}
+                        </div>
+
+                        {percent !== null && (
+                          <div className="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                            <div className={`h-full rounded-full ${stockBarClass}`} style={{ width: `${percent}%` }} />
+                          </div>
                         )}
                       </div>
                     </div>
@@ -186,6 +323,13 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
           </div>
         )}
       </div>
+
+      <AditivoDetailsModal
+        open={!!selectedAditivo}
+        aditivo={selectedAditivo}
+        onClose={() => setSelectedAditivo(null)}
+        onUpdated={() => setRefreshKey((x) => x + 1)}
+      />
     </div>
   );
 }

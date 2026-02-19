@@ -3,6 +3,8 @@ import type { Aditivo } from '../types';
 import type { PlantType } from '../types/pokedex';
 import { apiService } from '../services/api';
 import type { StoredWateringMixItem } from '../utils/wateringMixStorage';
+import { getAditivoStock, ADITIVO_STOCK_UPDATED_EVENT } from '../utils/aditivoStorage';
+import { EstoqueBox } from './EstoqueBox';
 
 type ToolboxProps = {
   open: boolean;
@@ -168,6 +170,7 @@ export function AditivosToolbox({
     };
   }, [open, initialSelected, plantId]);
 
+  // Only show aditivos with enough stock for the desired dose (volume)
   const filtered = useMemo(() => {
     const q = normalizeText(query);
     const base = q
@@ -177,9 +180,32 @@ export function AditivosToolbox({
         })
       : allAditivos;
 
+    // Get the current desired volume in mL from localStorage (same as WateringModal)
+    let desiredVolumeMl = 1000;
+    if (typeof window !== 'undefined') {
+      try {
+        const key = `plant:${plantId}:watering-volume-ml`;
+        const stored = localStorage.getItem(key);
+        const parsed = stored ? Number(stored) : NaN;
+        if (Number.isFinite(parsed) && parsed > 0) desiredVolumeMl = Math.round(parsed);
+      } catch {}
+    }
+
+    // Only show aditivos with enough stock for the desired dose (dosePadraoEmML * desiredVolumeMl/1000)
+    const filteredByStock = base.filter((a) => {
+      // Always show if already selected (to allow user to remove)
+      if (draft[a.id]) return true;
+      const stock = getAditivoStock(a.id);
+      const estoque = stock.estoqueMl;
+      const dose = typeof a.dosePadraoEmML === 'number' && a.dosePadraoEmML > 0 ? a.dosePadraoEmML : 1;
+      // Dose is per L, so multiply by desired volume in L
+      const totalDose = dose * (desiredVolumeMl / 1000);
+      return estoque >= totalDose;
+    });
+
     const relRank = (r: Relevance) => (r === 'match' ? 0 : r === 'neutral' ? 1 : 2);
 
-    return [...base].sort((a, b) => {
+    return [...filteredByStock].sort((a, b) => {
       const ra = getRelevance(a, plantPhase);
       const rb = getRelevance(b, plantPhase);
       if (relRank(ra) !== relRank(rb)) return relRank(ra) - relRank(rb);
@@ -192,7 +218,7 @@ export function AditivosToolbox({
       const nb = String(b.nome ?? '').toLocaleLowerCase('pt-BR');
       return na.localeCompare(nb, 'pt-BR');
     });
-  }, [allAditivos, query, plantPhase]);
+  }, [allAditivos, query, plantPhase, draft, plantId]);
 
   if (!open) return null;
 
@@ -299,6 +325,7 @@ export function AditivosToolbox({
                       : '—';
                   const desc = briefDescription(a.descricao);
 
+                  const stockML = getAditivoStock(a.id).estoqueMl;
                   return (
                     <div
                       key={a.id}
@@ -336,6 +363,9 @@ export function AditivosToolbox({
                           </div>
                         </div>
                       </label>
+
+                      {/* EstoqueBox visual */}
+                      <EstoqueBox stockML={stockML} />
 
                       <div className="relative shrink-0 group">
                         <button

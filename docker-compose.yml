@@ -6,8 +6,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: cultivo_inteligente
-    ports:
-      - "3306:3306"
+    ports: # Expondo a porta 3307 do container para a porta 3306 do host
+      - "3307:3306" 
     volumes:
       - mysql_data:/var/lib/mysql
     command: >

@@ -13,6 +13,12 @@ import {
   type LegacyWateringMixItem,
   type StoredWateringMixItem,
 } from '../utils/wateringMixStorage';
+import {
+  ADITIVO_STOCK_UPDATED_EVENT,
+  deductAditivoStockMl,
+  getAditivoStock,
+  getDerivedStock,
+} from '../utils/aditivoStorage';
 
 interface PlantCardPreviewProps {
   plant: Plant;
@@ -51,6 +57,8 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
 
   const [nextWaterType, setNextWaterType] = useState<'A' | 'B'>('A');
 
+  const [stockVersion, setStockVersion] = useState(0);
+
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' | 'warning' } | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
@@ -60,6 +68,13 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
         window.clearTimeout(toastTimeoutRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => setStockVersion((v) => v + 1);
+    window.addEventListener(ADITIVO_STOCK_UPDATED_EVENT, handler as EventListener);
+    return () => window.removeEventListener(ADITIVO_STOCK_UPDATED_EVENT, handler as EventListener);
   }, []);
 
   useEffect(() => {
@@ -94,7 +109,9 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
   const getStoredVolumeMl = () => {
     if (typeof window === 'undefined') return 1000;
     try {
-      const stored = localStorage.getItem('pokedex:water-ml');
+      // Buscar volume salvo por planta, igual ao WateringModal
+      const key = `plant:${plant.id}:watering-volume-ml`;
+      const stored = localStorage.getItem(key);
       const parsed = stored ? Number(stored) : NaN;
       if (!Number.isFinite(parsed) || parsed <= 0) return 1000;
       return Math.round(parsed);
@@ -110,7 +127,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
     const v2 = loadWateringMix(plant.id).filter((x) => x.doseMl > 0);
     if (v2.length > 0) return { kind: 'v2', items: v2 };
 
-    const legacy = loadLegacyWateringMix(plant.id);
+    const legacy = loadLegacyWateringMix(plant.id).filter((x) => x.doseMl > 0);
     if (legacy.length > 0) return { kind: 'legacy', items: legacy };
 
     return { kind: 'empty' };
@@ -135,10 +152,18 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
           : mix.items.map((item) => `Aditivo ${item.id} ${item.doseMl}ml`).join(', ');
 
       await apiService.createPlantaEvento(plant.id, {
-        tipo: 'REGA',
+        tipo: 'REGA_ADITIVADA',
         descricao: `Rega (água aditivada): ${ml}mL + ${mixDescription}`,
         doseEmML: ml,
       });
+
+      // Deduct stock after successful aditivada watering.
+      const itemsToDeduct = mix.items as Array<{ id: number; doseMl: number }>;
+      for (const item of itemsToDeduct) {
+        if (Number.isFinite(item.doseMl) && item.doseMl > 0) {
+          deductAditivoStockMl(item.id, item.doseMl);
+        }
+      }
       showToast('Rega aditivada registrada', 'success');
       setNextWaterType('A');
       persistNextWaterType('A');
@@ -146,7 +171,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
     }
 
     await apiService.createPlantaEvento(plant.id, {
-      tipo: 'REGA',
+      tipo: 'REGA_NORMAL',
       descricao: `Rega (água pura): ${ml}mL`,
       doseEmML: ml,
     });
@@ -154,6 +179,29 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
     setNextWaterType('B');
     persistNextWaterType('B');
   };
+
+  const mixStockFlags = (() => {
+    // Recompute when local stock changes.
+    void stockVersion;
+    if (typeof window === 'undefined') return { hasLow: false, hasEmpty: false };
+
+    const v2 = loadWateringMix(plant.id).filter((x) => x.doseMl > 0);
+    const legacy = loadLegacyWateringMix(plant.id).filter((x) => x.doseMl > 0);
+    const ids = (v2.length > 0 ? v2 : legacy).map((x) => x.id);
+
+    let hasLow = false;
+    let hasEmpty = false;
+    for (const id of ids) {
+      const derived = getDerivedStock(getAditivoStock(id));
+      if (derived.isEmpty) {
+        hasEmpty = true;
+        break;
+      }
+      if (derived.isLow) hasLow = true;
+    }
+
+    return { hasLow, hasEmpty };
+  })();
   
   return (
     <motion.button
@@ -304,14 +352,19 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                 type="button"
                 aria-label="Regar B: água aditivada"
                 title="Regar B (água aditivada)"
-                className={`w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 ${
+                className={`w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 ${
                   nextWaterType === 'B'
-                    ? 'ring-2 ring-purple-400 bg-purple-500/10 shadow-[0_0_12px_rgba(168,85,247,.35)] animate-[pulse_3s_ease-in-out_infinite]'
+                    ? mixStockFlags.hasEmpty
+                      ? 'ring-2 ring-red-400 bg-red-500/10 shadow-[0_0_12px_rgba(248,113,113,.28)] animate-[pulse_3s_ease-in-out_infinite] opacity-60 cursor-not-allowed'
+                      : mixStockFlags.hasLow
+                      ? 'ring-2 ring-amber-300 bg-amber-500/10 shadow-[0_0_12px_rgba(251,191,36,.22)] animate-[pulse_3s_ease-in-out_infinite]'
+                      : 'ring-2 ring-purple-400 bg-purple-500/10 shadow-[0_0_12px_rgba(168,85,247,.35)] animate-[pulse_3s_ease-in-out_infinite]'
                     : 'opacity-50 grayscale-[0.2] hover:opacity-80'
                 }`}
                 onClick={async (event) => {
                   event.preventDefault();
                   event.stopPropagation();
+                  if (mixStockFlags.hasEmpty) return;
                   try {
                     await registerWateringEvent('B');
                   } catch {
@@ -323,6 +376,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                   event.preventDefault();
                   event.stopPropagation();
                 }}
+                disabled={mixStockFlags.hasEmpty}
               >
                 <img src={baldeMistico} alt="" className="h-8 w-8 object-contain" />
               </button>

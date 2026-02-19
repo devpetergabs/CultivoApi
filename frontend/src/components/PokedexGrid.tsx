@@ -35,6 +35,11 @@ export function PokedexGrid({
   sortBy,
   onSortChange,
 }: PokedexGridProps) {
+  const dispatchNewPlant = () => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('pokedex:new-plant'));
+  };
+
   return (
     <div className="flex flex-col h-full gap-4 p-6 overflow-y-auto">
       {/* ═══════════════════════════════════════════════════════════════════════════
@@ -139,6 +144,19 @@ export function PokedexGrid({
           <div className="text-6xl">🌱</div>
           <p className="text-[#8FD6A4] font-semibold text-lg">NENHUMA PLANTA ENCONTRADA</p>
           <p className="text-[#9fb0c0] text-sm font-normal">Tente ajustar seus filtros</p>
+
+          <button
+            type="button"
+            onClick={dispatchNewPlant}
+            className="mt-2 w-full max-w-[280px] min-h-[160px] rounded-xl border-2 border-dashed border-slate-700/80 bg-[#0B1220]/60 flex flex-col items-center justify-center text-slate-300 hover:border-[#6fbf86] hover:text-[#6fbf86] transition-all duration-200"
+          >
+            <div className="flex items-center justify-center h-16 w-16 rounded-full border-2 border-current text-4xl">
+              +
+            </div>
+            <span className="mt-4 text-xs font-medium uppercase tracking-[0.06em]">
+              Nova planta
+            </span>
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
@@ -154,11 +172,7 @@ export function PokedexGrid({
           {/* Botão de nova planta ao lado da última carta */}
           <button
             type="button"
-            onClick={() => {
-              // O PokedexLayout irá lidar com a abertura do modal de criação
-              const event = new CustomEvent('pokedex:new-plant');
-              window.dispatchEvent(event);
-            }}
+            onClick={dispatchNewPlant}
             className="h-full min-h-[180px] rounded-xl border-2 border-dashed border-slate-700/80 bg-[#0B1220]/60 flex flex-col items-center justify-center text-slate-300 hover:border-[#6fbf86] hover:text-[#6fbf86] transition-all duration-200"
           >
             <div className="flex items-center justify-center h-16 w-16 rounded-full border-2 border-current text-4xl">

@@ -9,6 +9,7 @@ import {
   saveWateringMix,
   type StoredWateringMixItem,
 } from '../utils/wateringMixStorage';
+import { deductAditivoStockMl } from '../utils/aditivoStorage';
 
 interface WateringModalProps {
   open: boolean;
@@ -28,7 +29,7 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
   const [toolboxOpen, setToolboxOpen] = useState(false);
   const [mix, setMix] = useState<StoredWateringMixItem[]>([]);
 
-  const volumeKey = useMemo(() => 'watering-volume-ml', []);
+  const volumeKey = useMemo(() => `plant:${plantId}:watering-volume-ml`, [plantId]);
 
   useEffect(() => {
     if (!open) return;
@@ -66,7 +67,7 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
     if (!open) return;
     const stored = loadWateringMix(plantId);
     setMix(stored);
-    setWateringType(stored.length > 0 ? 'ADITIVADA' : 'NORMAL');
+    setWateringType(stored.some((x) => x.doseMl > 0) ? 'ADITIVADA' : 'NORMAL');
   }, [open, plantId]);
 
   if (!open || typeof document === 'undefined') return null;
@@ -106,12 +107,14 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
       }
 
       await apiService.createPlantaEvento(plantId, {
-        tipo: wateringType === 'ADITIVADA' ? 'REGA_ADITIVADA' : 'REGA_NORMAL',
+        tipo: wateringType === 'ADITIVADA' ? 'MODELO_ADITIVADO' : 'MODELO_NORMAL',
         descricao: description,
         doseEmML: Math.round(safeVolume * 1000),
       });
 
+
       if (wateringType === 'ADITIVADA') {
+        // Apenas salva o mix, não deduz estoque aqui.
         saveWateringMix(plantId, mix);
       }
 
@@ -139,7 +142,7 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-3">
-          <h3 className="text-sm font-semibold text-white tracking-tight">Registrar rega</h3>
+          <h3 className="text-sm font-semibold text-white tracking-tight">Programar modelo de rega</h3>
           <p className="text-xs text-[#9fb0c0] font-normal">Planta: {plantName}</p>
         </div>
 
