@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import WeatherBox from './WeatherBox';
 import { useAuth } from '../hooks/useAuth';
 import { usePokedexStore } from '../store/pokedexStore';
 import { PokedexGrid } from './PokedexGrid';
@@ -206,6 +207,7 @@ export function PokedexLayout() {
 
         <div className="flex justify-between items-center gap-4">
           <div className="flex items-center gap-3">
+            <WeatherBox />
             <div className="text-3xl animate-float">🌱</div>
             <div>
               <div className="flex items-center gap-2">
