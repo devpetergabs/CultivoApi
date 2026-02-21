@@ -57,6 +57,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers(HttpMethod.POST, "/usuarios/registrar").permitAll()
+                .requestMatchers(HttpMethod.GET, "/weather").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/weather/location").permitAll()
                 .anyRequest().authenticated()
             )
             .httpBasic();
