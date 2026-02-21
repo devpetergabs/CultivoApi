@@ -47,15 +47,15 @@ export default function WeatherBox() {
   return (
     <div className="flex items-center bg-gray-800 rounded-xl p-2 gap-3">
       <div className="flex items-center gap-1 text-sm">
-        <FaThermometerHalf className="text-red-400" />
+        <FaThermometerHalf color="#f87171" />
         <span>{weather.temperature?.toFixed(1)}°C</span>
       </div>
       <div className="flex items-center gap-1 text-sm">
-        <FaTint className="text-blue-400" />
+        <FaTint color="#60a5fa" />
         <span>{weather.humidity}%</span>
       </div>
       <div className="flex items-center gap-1 text-sm">
-        <FaCloudRain className="text-cyan-300" />
+        <FaCloudRain color="#67e8f9" />
         <span>{weather.precipitation}mm</span>
       </div>
       <span className="ml-2 text-xs text-gray-300 font-semibold">- {weather.location}</span>

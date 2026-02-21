@@ -422,6 +422,20 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               <span className="block text-right">{plant.heightCm}cm</span>
             </div>
           </div>
+
+          {/* CAULE */}
+          <div className="flex items-center text-[11px]">
+            <span className="w-10 text-slate-400 font-medium tracking-[0.06em]">CAULE</span>
+            <div className="flex-1 mx-2 max-w-[225px] h-1.5 bg-[#0F172A]/80 rounded-full overflow-hidden border border-slate-700/60">
+              <div
+                className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] transition-all duration-300"
+                style={{ width: `${Math.min((plant.stemWidthCm ?? 0) / 20 * 100, 100) * 0.75}%` }}
+              />
+            </div>
+            <div className="w-16 text-right text-[#6fbf86] font-semibold">
+              {plant.stemWidthCm ? `${plant.stemWidthCm}cm` : '--'}
+            </div>
+          </div>
         </div>
       </div>
 
