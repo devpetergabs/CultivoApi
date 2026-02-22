@@ -16,6 +16,7 @@ export interface Plant {
   sexo?: string | null;   // sexo da planta (FEMEA, MACHO, HERMAFRODITA)
   dataSexagem?: string | null; // data da sexagem (dd/mm/yyyy)
   dataFloracao?: string | null; // data de início da floração (dd/mm/yyyy)
+  level: number; // nível de crescimento
 }
 
 export interface PokedexStore {

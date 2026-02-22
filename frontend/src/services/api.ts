@@ -129,6 +129,24 @@ class ApiService {
     });
     return response.data;
   }
+
+  async patchPlantaCrescimento(id: number, data: {
+    newHeightCm: number;
+    newWidthCm: number;
+    newStemWidthCm: number;
+    notes?: string;
+  }): Promise<void> {
+    await this.axiosInstance.patch(`/plantas/${id}/crescimento`, data);
+  }
+
+  async patchPlantaCrescer(id: number, data: {
+    newHeightCm: number;
+    newWidthCm: number;
+    newStemWidthCm: number;
+    notes?: string;
+  }): Promise<void> {
+    await this.axiosInstance.patch(`/plantas/${id}/crescer`, data);
+  }
 }
 
 export const apiService = new ApiService();

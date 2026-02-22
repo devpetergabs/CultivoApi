@@ -4,6 +4,8 @@ import type { Plant } from '../types/pokedex';
 import type { PlantType } from '../types/pokedex';
 import { TypeBadge } from './TypeBadge';
 import { PlantQuickActions } from './PlantQuickActions';
+import { GrowthBadge } from './GrowthBadge';
+import { GrowthModal, GrowthData } from './GrowthModal';
 import { apiService } from '../services/api';
 import baldeAgua from '../assets/balde-agua.png';
 import baldeMistico from '../assets/balde-mistico.png';
@@ -51,6 +53,7 @@ function getNextStage(stage: PlantType): PlantType | null {
 }
 
 export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPreviewProps) {
+    const [growthModalOpen, setGrowthModalOpen] = useState(false);
   const age = calculateAge(plant.germinationDate);
   const isEpic = plant.heightCm > 180;
   const nextStage = getNextStage(plant.type);
@@ -224,10 +227,10 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
   
   return (
     <motion.button
-      onClick={onClick}
-      whileHover={{ y: -8 }}
-      whileTap={{ scale: 0.98 }}
-      className={`relative group h-full rounded-xl overflow-hidden transition-all duration-200 cursor-pointer text-left border-2
+      onClick={growthModalOpen ? undefined : onClick}
+      whileHover={growthModalOpen ? {} : { y: -8 }}
+      whileTap={growthModalOpen ? {} : { scale: 0.98 }}
+      className={`relative group h-full rounded-xl overflow-hidden transition-all duration-200 text-left border-2
         ${
           isEpic
             ? 'border-[#e7c35a] shadow-epic-halo ring-1 ring-[#e7c35a]/25 bg-gradient-to-br from-[#1b180f] to-[#0B1220]'
@@ -235,7 +238,9 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
             ? 'border-[#6fbf86] shadow-[0_0_14px_rgba(111,191,134,0.22)] ring-1 ring-[#6fbf86]/28 bg-gradient-to-br from-[#111A2E] to-[#0B1220]'
             : 'border-[rgba(255,255,255,0.12)] hover:border-[#6fbf86]/70 hover:shadow-[0_0_10px_rgba(111,191,134,0.18)] bg-gradient-to-br from-[#111A2E]/80 to-[#0B1220]/80'
         }
+        ${growthModalOpen ? 'cursor-default' : 'cursor-pointer'}
       `}
+      disabled={growthModalOpen}
     >
       <div className="p-4 h-full flex flex-col pb-6">
         {/* ID Badge - Top Left */}
@@ -273,14 +278,28 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
         </div>
 
         {/* Plant Name */}
-        <h3 className="font-semibold text-slate-100 mb-0.5 text-base line-clamp-2 group-hover:text-[#A7E5B2] transition-colors">
-          {plant.name}
-        </h3>
-
-        {/* Variant */}
-        <p className="text-[11px] text-slate-300/80 mb-3 font-normal group-hover:text-[#A7E5B2]/80 transition-colors">
-          {plant.variant}
-        </p>
+        <div className="flex items-center gap-2 mb-0.5">
+          <h3 className="font-semibold text-slate-100 text-base line-clamp-2 group-hover:text-[#A7E5B2] transition-colors">
+            {plant.name}
+          </h3>
+          <GrowthBadge
+            level={plant.level}
+            onClick={e => {
+              e.stopPropagation();
+              setGrowthModalOpen(true);
+            }}
+          />
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-[11px] text-slate-300/80 font-normal group-hover:text-[#A7E5B2]/80 transition-colors">
+            {plant.variant}
+          </p>
+        </div>
+        <GrowthModal
+          open={growthModalOpen}
+          onClose={() => setGrowthModalOpen(false)}
+          plantId={plant.id}
+        />
 
         {/* Type Badge */}
         <div className="mb-4 flex items-center justify-between gap-3">
