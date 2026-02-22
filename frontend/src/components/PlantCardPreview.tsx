@@ -147,26 +147,45 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
       const mixDescription =
         mix.kind === 'v2'
           ? mix.items
-              .map((item) => `${item.nome} ${item.doseMl}ml`)
+              .map((item) => {
+                const volumeLiters = ml / 1000;
+                const totalMl = Math.round(item.doseMl * volumeLiters);
+                return `${item.nome} ${totalMl}ml`;
+              })
               .join(', ')
-          : mix.items.map((item) => `Aditivo ${item.id} ${item.doseMl}ml`).join(', ');
+          : mix.items.map((item) => {
+                const volumeLiters = ml / 1000;
+                const totalMl = Math.round(item.doseMl * volumeLiters);
+                return `Aditivo ${item.id} ${totalMl}ml`;
+              }).join(', ');
 
-      await apiService.createPlantaEvento(plant.id, {
-        tipo: 'REGA_ADITIVADA',
-        descricao: `Rega (água aditivada): ${ml}mL + ${mixDescription}`,
-        doseEmML: ml,
-      });
+      try {
+        const volumeLiters = ml / 1000;
+        console.log('[REGISTRO REGA] ml:', ml, 'volumeLiters:', volumeLiters, 'mix:', mix.items);
+        await apiService.createPlantaEvento(plant.id, {
+          tipo: 'REGA_ADITIVADA',
+          descricao: `Rega (água aditivada): ${ml}mL + ${mixDescription}`,
+          doseEmML: ml,
+        });
 
-      // Deduct stock after successful aditivada watering.
-      const itemsToDeduct = mix.items as Array<{ id: number; doseMl: number }>;
-      for (const item of itemsToDeduct) {
-        if (Number.isFinite(item.doseMl) && item.doseMl > 0) {
-          deductAditivoStockMl(item.id, item.doseMl);
+        // Deduct stock after successful aditivada watering.
+        const itemsToDeduct = mix.items as Array<{ id: number; doseMl: number }>;
+        for (const item of itemsToDeduct) {
+          if (Number.isFinite(item.doseMl) && item.doseMl > 0) {
+            // volumeLiters não existe, usar ml/1000 para obter litros
+            const volumeLiters = ml / 1000;
+            const totalMl = Math.round(item.doseMl * volumeLiters);
+            console.log('[DEDUCAO ADITIVO]', item.id, 'dose por litro:', item.doseMl, 'volume:', volumeLiters, 'total deduzido:', totalMl);
+            deductAditivoStockMl(item.id, totalMl);
+          }
         }
+        showToast('Rega aditivada registrada', 'success');
+        setNextWaterType('A');
+        persistNextWaterType('A');
+      } catch (err) {
+        console.error('[ERRO REGISTRO REGA]', err);
+        showToast('Falha ao registrar rega', 'error');
       }
-      showToast('Rega aditivada registrada', 'success');
-      setNextWaterType('A');
-      persistNextWaterType('A');
       return;
     }
 

@@ -99,7 +99,9 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
           .filter((item) => item.doseMl > 0)
           .map((item) => {
             const label = item.marca ? `${item.nome} (${item.marca})` : item.nome;
-            return `${label} ${item.doseMl}ml`;
+            // Corrige o cálculo: dose total = dose por litro * volume
+            const totalMl = Math.round(item.doseMl * safeVolume);
+            return `${label} ${totalMl}ml`;
           });
         if (selectedEntries.length > 0) {
           description = `${baseDescription} + ${selectedEntries.join(', ')}`;
@@ -201,13 +203,15 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
               <div className="mt-2 flex flex-wrap gap-2">
                 {mix.map((item) => {
                   const label = item.marca ? `${item.nome} (${item.marca})` : item.nome;
+                  // Corrige o cálculo: dose total = dose por litro * volume
+                  const totalMl = Math.round(item.doseMl * volumeLiters);
                   return (
                     <span
                       key={item.id}
                       className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-100"
                     >
                       <span className="max-w-[220px] truncate">{label}</span>
-                      <span className="text-slate-300/80 font-mono">{item.doseMl}ml</span>
+                      <span className="text-slate-300/80 font-mono">{totalMl}ml</span>
                       <button
                         type="button"
                         onClick={() => {

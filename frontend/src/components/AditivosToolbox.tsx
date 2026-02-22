@@ -148,7 +148,7 @@ export function AditivosToolbox({
         const list = (response as any)?.content ?? response;
         const items = Array.isArray(list) ? (list as Aditivo[]) : [];
         if (!active) return;
-        setAllAditivos(items.filter((a) => a.ativo));
+        setAllAditivos(items);
       })
       .catch((e: any) => {
         if (!active) return;

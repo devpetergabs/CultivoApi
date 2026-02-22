@@ -48,6 +48,7 @@ export const usePokedexStore = create<PokedexStore>((set, get) => ({
       if (sortBy === 'id') return a.id - b.id;
       if (sortBy === 'widthCm') return b.widthCm - a.widthCm;
       if (sortBy === 'heightCm') return b.heightCm - a.heightCm;
+      if (sortBy === 'stemWidthCm') return b.stemWidthCm - a.stemWidthCm;
       return 0;
     });
 

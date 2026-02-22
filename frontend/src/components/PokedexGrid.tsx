@@ -1,5 +1,6 @@
 import type { Plant, PlantType } from '../types/pokedex';
 import { PlantCardPreview } from './PlantCardPreview';
+import cauleImg from '../assets/caule.jfif';
 
 interface PokedexGridProps {
   plants: Plant[];
@@ -15,7 +16,7 @@ interface PokedexGridProps {
 
 const STAGES: PlantType[] = ['GERMINACAO', 'VEGETATIVO', 'FLORACAO_INICIAL', 'FLORACAO_MEDIA', 'FLORACAO_AVANCADA', 'FINALIZACAO'];
 
-const STAGE_CONFIG: Record<PlantType, { emoji: string; label: string; selectedClasses: string }> = {
+const STAGE_CONFIG: Record<string, { emoji?: string; label: string; selectedClasses: string; img?: string }> = {
   'GERMINACAO': { emoji: '🌱', label: 'Germinação', selectedClasses: 'bg-blue-500/15 border-blue-300/40 text-blue-100' },
   'VEGETATIVO': { emoji: '🍃', label: 'Vegetativo', selectedClasses: 'bg-emerald-500/15 border-emerald-300/40 text-emerald-100' },
   'FLORACAO_INICIAL': { emoji: '🌸', label: 'Floração Inicial', selectedClasses: 'bg-rose-500/15 border-rose-300/40 text-rose-100' },
@@ -96,7 +97,11 @@ export function PokedexGrid({
                       : 'bg-panel-navy text-slate-200 border-slate-700 hover:border-slate-500'
                   }`}
                 >
-                  <span className="text-base" aria-hidden="true">{config.emoji}</span>
+                  {config.img ? (
+                    <img src={config.img} alt="Caule" className="w-5 h-5 rounded-full object-cover" />
+                  ) : (
+                    <span className="text-base" aria-hidden="true">{config.emoji}</span>
+                  )}
                   <span className="hidden sm:inline text-xs whitespace-nowrap">{config.label}</span>
                 </button>
               );
@@ -109,22 +114,59 @@ export function PokedexGrid({
           <label className="text-xs font-medium text-[#8FD6A4] uppercase tracking-[0.06em]">
             📊 Ordenar por
           </label>
-          <div className="flex gap-2">
-            {(['id', 'widthCm', 'heightCm'] as const).map((sort) => (
-              <button
-                key={sort}
-                onClick={() => onSortChange(sort)}
-                className={`flex-1 py-2 rounded-lg font-medium text-xs uppercase tracking-[0.06em] transition-all duration-200 border-2 ${
-                  sortBy === sort
-                    ? 'bg-[#6fbf86] text-[#0B1220] border-[#6fbf86] shadow-[0_6px_18px_rgba(10,16,28,0.3)]'
-                    : 'bg-panel-navy text-slate-300 border-slate-700 hover:border-[#6fbf86]/40'
-                }`}
-              >
-                {sort === 'id' && '#ID'}
-                {sort === 'widthCm' && 'LARG'}
-                {sort === 'heightCm' && 'ALT'}
-              </button>
-            ))}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => onSortChange('id')}
+              aria-pressed={sortBy === 'id'}
+              className={`inline-flex items-center gap-2 rounded-full border text-xs font-semibold uppercase tracking-[0.06em] transition-colors duration-200 px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-green/60 focus-visible:ring-offset-2 focus-visible:ring-offset-deep-navy ${
+                sortBy === 'id'
+                  ? 'bg-neon-green/20 text-neon-green border-neon-green/50 shadow-neon'
+                  : 'bg-panel-navy text-slate-200 border-slate-700 hover:border-neon-green/40'
+              }`}
+            >
+              <span aria-hidden="true">🆔</span>
+              <span className="hidden sm:inline">ID</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSortChange('widthCm')}
+              aria-pressed={sortBy === 'widthCm'}
+              className={`inline-flex items-center gap-2 rounded-full border text-xs font-semibold uppercase tracking-[0.06em] transition-colors duration-200 px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-green/60 focus-visible:ring-offset-2 focus-visible:ring-offset-deep-navy ${
+                sortBy === 'widthCm'
+                  ? 'bg-neon-green/20 text-neon-green border-neon-green/50 shadow-neon'
+                  : 'bg-panel-navy text-slate-200 border-slate-700 hover:border-neon-green/40'
+              }`}
+            >
+              <span aria-hidden="true">↔️</span>
+              <span className="hidden sm:inline">LARG</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSortChange('heightCm')}
+              aria-pressed={sortBy === 'heightCm'}
+              className={`inline-flex items-center gap-2 rounded-full border text-xs font-semibold uppercase tracking-[0.06em] transition-colors duration-200 px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-green/60 focus-visible:ring-offset-2 focus-visible:ring-offset-deep-navy ${
+                sortBy === 'heightCm'
+                  ? 'bg-neon-green/20 text-neon-green border-neon-green/50 shadow-neon'
+                  : 'bg-panel-navy text-slate-200 border-slate-700 hover:border-neon-green/40'
+              }`}
+            >
+              <span aria-hidden="true">↕️</span>
+              <span className="hidden sm:inline">ALT</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSortChange('stemWidthCm')}
+              aria-pressed={sortBy === 'stemWidthCm'}
+              className={`inline-flex items-center gap-2 rounded-full border text-xs font-semibold uppercase tracking-[0.06em] transition-colors duration-200 px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-green/60 focus-visible:ring-offset-2 focus-visible:ring-offset-deep-navy ${
+                sortBy === 'stemWidthCm'
+                  ? 'bg-yellow-900/20 text-yellow-200 border-yellow-700/50 shadow-neon'
+                  : 'bg-panel-navy text-slate-200 border-slate-700 hover:border-yellow-700/40'
+              }`}
+            >
+              <img src={cauleImg} alt="Caule" className="w-5 h-5 rounded-full object-cover" />
+              <span className="hidden sm:inline">CAULE</span>
+            </button>
           </div>
         </div>
 

@@ -101,9 +101,8 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
     if (mostrarColecionaveis) {
       base = aditivos;
     } else {
-      // Só mostra ativos e com estoque (ou marcados como tenho em estoque)
+      // Mostra todos com estoque, independente do status ativo
       base = aditivos.filter((a) => {
-        if (!a.ativo) return false;
         const stock = getAditivoStock(a.id);
         const derived = getDerivedStock(stock);
         return !derived.isEmpty;
