@@ -282,13 +282,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
           <h3 className="font-semibold text-slate-100 text-base line-clamp-2 group-hover:text-[#A7E5B2] transition-colors">
             {plant.name}
           </h3>
-          <GrowthBadge
-            level={plant.level}
-            onClick={e => {
-              e.stopPropagation();
-              setGrowthModalOpen(true);
-            }}
-          />
+          <GrowthBadge level={plant.level} onClick={event => { event.stopPropagation(); setGrowthModalOpen(true); }} />
         </div>
         <div className="flex items-center gap-2 mb-3">
           <p className="text-[11px] text-slate-300/80 font-normal group-hover:text-[#A7E5B2]/80 transition-colors">
