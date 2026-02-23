@@ -435,17 +435,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
 
           {/* Stats */}
           <div className="flex-1 space-y-2 pt-3 border-t border-white/10">
-            <div className="flex items-center text-[11px]">
-              <span className="w-10 text-slate-400 font-medium tracking-[0.08em]">LAR</span>
-              <div className="flex-1 mx-2 max-w-[225px] h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                <div
-                  className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
-                  style={{ width: `${Math.min((plant.widthCm / 120) * 100, 100) * 0.75}%` }}
-                />
-              </div>
-              <div className="w-16 text-right text-emerald-200 font-semibold">{plant.widthCm}cm</div>
-            </div>
-
+            {/* ALTURA */}
             <div className="flex items-center text-[11px]">
               <span className="w-10 text-slate-400 font-medium tracking-[0.08em]">ALT</span>
               <div className="flex-1 mx-2 max-w-[225px] h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
@@ -467,6 +457,19 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               </div>
             </div>
 
+            {/* LARGURA */}
+            <div className="flex items-center text-[11px]">
+              <span className="w-10 text-slate-400 font-medium tracking-[0.08em]">LAR</span>
+              <div className="flex-1 mx-2 max-w-[225px] h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                <div
+                  className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
+                  style={{ width: `${Math.min((plant.widthCm / 120) * 100, 100) * 0.75}%` }}
+                />
+              </div>
+              <div className="w-16 text-right text-emerald-200 font-semibold">{plant.widthCm}cm</div>
+            </div>
+
+            {/* CAULE */}
             <div className="flex items-center text-[11px]">
               <span className="w-10 text-slate-400 font-medium tracking-[0.08em]">CAULE</span>
               <div className="flex-1 mx-2 max-w-[225px] h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
