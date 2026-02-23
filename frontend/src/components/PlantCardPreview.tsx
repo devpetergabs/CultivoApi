@@ -458,7 +458,11 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                   style={{ width: `${Math.min((plant.heightCm / 180) * 100, 100) * 0.75}%` }}
                 />
               </div>
-              <div className={`w-16 text-right font-semibold ${plant.heightCm > 180 ? 'text-[#e7c35a]' : 'text-emerald-200'}`}>
+              <div
+                className={`w-16 text-right font-semibold ${
+                  plant.heightCm > 180 ? 'text-[#e7c35a]' : 'text-emerald-200'
+                }`}
+              >
                 {plant.heightCm}cm
               </div>
             </div>
@@ -497,7 +501,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
           />
         )}
 
-        {/* QuickActions (mantém leaf bottom-right etc) */}
+        {/* QuickActions */}
         <div
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
