@@ -254,7 +254,11 @@ export function PokedexLayout() {
             onSearchChange={setSearchQuery}
             selectedType={selectedType}
             onTypeChange={setSelectedType}
-            sortBy={sortBy}
+            sortBy={
+              sortBy === "stemWidthCm"
+                ? "id"
+                : sortBy
+            }
             onSortChange={setSortBy}
           />
         ) : (
