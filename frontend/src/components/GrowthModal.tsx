@@ -80,8 +80,20 @@ export const GrowthModal: React.FC<GrowthModalProps> = ({ open, onClose, plantId
             <textarea value={notes} onChange={e => setNotes(e.target.value)} className="w-full rounded border border-[#6fbf86]/20 bg-[#111A2E] px-2 py-1 text-[#A7E5B2] text-xs font-semibold focus:border-[#6fbf86] focus:ring-1 focus:ring-[#6fbf86]/20 transition-all" rows={1} placeholder="..." />
           </div>
           <div className="flex justify-end gap-2 mt-2">
-            <button type="button" onClick={handleCancel} className="px-2 py-1 rounded bg-[#232d3a] text-[#e7c35a] text-xs font-bold border border-[#e7c35a]/30 hover:bg-[#e7c35a] hover:text-[#232d3a] transition-all">Cancelar</button>
-            <button type="submit" className="px-2 py-1 rounded bg-gradient-to-r from-[#6fbf86] to-[#A7E5B2] text-[#172232] text-xs font-bold border border-[#6fbf86]/30 shadow-sm hover:bg-[#A7E5B2] hover:text-[#172232] transition-all" disabled={loading}>Salvar</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-2 py-1 rounded bg-[#232d3a] text-[#e7c35a] text-xs font-bold border border-[#e7c35a]/30 hover:bg-[#e7c35a] hover:text-[#232d3a] transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-2 py-1 rounded bg-gradient-to-r from-[#6fbf86] to-[#A7E5B2] text-[#172232] text-xs font-bold border border-[#6fbf86]/30 shadow-sm hover:bg-[#A7E5B2] hover:text-[#172232] transition-all"
+              disabled={loading}
+            >
+              Salvar
+            </button>
           </div>
         </form>
       </div>

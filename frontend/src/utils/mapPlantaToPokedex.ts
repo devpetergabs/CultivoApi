@@ -42,5 +42,6 @@ export function mapPlantaToPokedexPlant(
     sexo: planta.sexo ?? null,
     dataSexagem: formatIsoDateToBr((planta as any).dataSexagem),
     dataFloracao: formatIsoDateToBr((planta as any).dataFloracao),
+    level: planta.level ?? 0,
   };
 }

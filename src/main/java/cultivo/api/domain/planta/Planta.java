@@ -58,6 +58,8 @@ public class Planta {
     @Column(name = "data_criacao")
     private LocalDate dataCriacao;
 
+    private Integer level = 0;
+
     public Planta(String nome, String strain, LocalDate dataGerminacao, Double altura,
                   Double largura, Double larguraCaule, TamanhVaso tamanhoVaso, EstagioPlanta estagio, Cultivador cultivador) {
         this.nome = nome;
@@ -69,6 +71,7 @@ public class Planta {
         this.tamanhoVaso = tamanhoVaso;
         this.estagio = estagio;
         this.cultivador = cultivador;
+        this.level = 0;
         this.ativo = true;
         this.dataCriacao = LocalDate.now();
     }
@@ -122,5 +125,9 @@ public class Planta {
 
     public void desativar() {
         this.ativo = false;
+    }
+
+    public void subirNivel() {
+        this.level++;
     }
 }

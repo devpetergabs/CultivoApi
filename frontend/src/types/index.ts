@@ -13,6 +13,7 @@ export interface Planta {
   ativo: boolean;
   dataGerminacao: string | null;
   dataCriacao: string;
+  level?: number;
 }
 
 export interface PlantaCompleta extends Planta {
