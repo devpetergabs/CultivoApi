@@ -10,6 +10,7 @@
 
 -- pH Perfect Bloom
 UPDATE aditivos
+
 SET marca = 'Advanced Nutrients',
     descricao = 'Base completa de floração',
     estagio = 'FLORACAO',
@@ -33,6 +34,7 @@ SET marca = 'Advanced Nutrients',
 WHERE nome = 'VEG Coco';
 
 INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, ativo)
+
 SELECT 'VEG Coco', 'Advanced Nutrients', 'Base nutricional vegetativa', 'VEGETATIVA', 'BASE_NUTRICIONAL', 1.0, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'VEG Coco');
 
@@ -63,20 +65,6 @@ WHERE nome = 'Sensi Grow Part B';
 INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, ativo)
 SELECT 'Sensi Grow Part B', 'Advanced Nutrients', 'Base B do vegetativo', 'VEGETATIVA', 'BASE_NUTRICIONAL', 2.0, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Sensi Grow Part B');
-
--- FLOWER Coco
-UPDATE aditivos
-SET marca = 'Advanced Nutrients',
-    descricao = 'Base nutricional de floração',
-    estagio = 'FLORACAO',
-    classe = 'BASE_NUTRICIONAL',
-    ativo = TRUE,
-    dose_padrao_em_ml = COALESCE(dose_padrao_em_ml, 1.5)
-WHERE nome = 'FLOWER Coco';
-
-INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, ativo)
-SELECT 'FLOWER Coco', 'Advanced Nutrients', 'Base nutricional de floração', 'FLORACAO', 'BASE_NUTRICIONAL', 1.5, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'FLOWER Coco');
 
 -- Sensi Bloom Part A
 UPDATE aditivos
@@ -303,31 +291,66 @@ WHERE pa.aditivo_id <> k.keep_id
   );
 
 -- Deactivate duplicates (keep the smallest id active as-is; deactivate the rest)
-UPDATE aditivos a
-JOIN (
-    SELECT nome, MIN(id) AS keep_id
-    FROM aditivos
-    GROUP BY nome
-) k ON k.nome = a.nome
-SET a.ativo = FALSE
-WHERE a.id <> k.keep_id
-  AND a.nome IN (
-    'pH Perfect Bloom',
-    'VEG Coco',
-    'Sensi Grow Part A',
-    'Sensi Grow Part B',
-    'FLOWER Coco',
-    'Sensi Bloom Part A',
-    'Sensi Bloom Part B',
-    'Big Bud',
-    'Bud Ignitor',
-    'Overdrive',
-    'Hammerhead',
-    'Bloom Booster',
-    'Bud Candy',
-    'Bud Factor X',
-    'Tasty Terpenes',
-    'B-52',
-    'Rhino Skin',
-    'Flawless Finish'
-  );
+
+UPDATE aditivos
+SET ativo = FALSE
+WHERE id IN (
+    SELECT * FROM (
+        SELECT a1.id
+        FROM aditivos a1
+        JOIN (
+            SELECT nome, MIN(id) AS keep_id
+            FROM aditivos
+            GROUP BY nome
+        ) k ON k.nome = a1.nome
+        WHERE a1.id <> k.keep_id
+          AND a1.nome IN (
+            'pH Perfect Bloom',
+            'VEG Coco',
+            'Sensi Grow Part A',
+            'Sensi Grow Part B',
+            'FLOWER Coco',
+            'Sensi Bloom Part A',
+            'Sensi Bloom Part B',
+            'Big Bud',
+            'Bud Ignitor',
+            'Overdrive',
+            'Hammerhead',
+            'Bloom Booster',
+            'Bud Candy',
+            'Bud Factor X',
+            'Tasty Terpenes',
+            'B-52',
+            'Rhino Skin',
+            'Flawless Finish'
+          )
+    ) AS sub
+);
+
+-- Connoisseur Grow A
+INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, ativo)
+SELECT 'Connoisseur Grow A', 'Advanced Nutrients',
+  'Parte A do sistema Connoisseur Grow. Fórmula premium com micronutrientes e quelatos avançados para máximo desempenho na fase vegetativa.',
+  'VEGETATIVA', 'BASE_NUTRICIONAL', 4.0, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Connoisseur Grow A');
+
+-- Connoisseur Grow B
+INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, ativo)
+SELECT 'Connoisseur Grow B', 'Advanced Nutrients',
+  'Parte B do sistema Connoisseur Grow. Complementa a Parte A fornecendo fósforo, potássio e micronutrientes balanceados para crescimento vigoroso.',
+  'VEGETATIVA', 'BASE_NUTRICIONAL', 1.0, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Connoisseur Grow B');
+
+-- Connoisseur Bloom A
+INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, ativo)
+SELECT 'Connoisseur Bloom A', 'Advanced Nutrients',
+  'Parte A do sistema Connoisseur Bloom. Desenvolvido para suportar a fase de floração com base mineral e micronutrientes de alta disponibilidade.',
+  'FLORACAO', 'BASE_NUTRICIONAL', 4.0, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Connoisseur Bloom A');
+
+-- Connoisseur Bloom B
+INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, ativo)
+SELECT 'Connoisseur Bloom B', 'Advanced Nutrients',
+  'Parte B do sistema Connoisseur Bloom. Complementa a Parte A fornecendo fósforo e potássio em proporções ideais para formação de flores densas e resinosas.',
+  'FLORACAO', 'BASE_NUTRICIONAL', 1.0, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Connoisseur Bloom B');
