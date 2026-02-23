@@ -75,9 +75,15 @@ public class Planta {
         this.nome = nome;
         this.strain = strain;
         this.dataGerminacao = dataGerminacao;
-        this.altura = altura;
-        this.largura = largura;
-        this.larguraCaule = larguraCaule;
+        if (estagio == EstagioPlanta.GERMINACAO) {
+            this.altura = 0.0;
+            this.largura = 0.0;
+            this.larguraCaule = 0.0;
+        } else {
+            this.altura = altura;
+            this.largura = largura;
+            this.larguraCaule = larguraCaule;
+        }
         this.tamanhoVaso = tamanhoVaso;
         this.estagio = estagio;
         this.cultivador = cultivador;
@@ -97,14 +103,20 @@ public class Planta {
         if (dataGerminacao != null) {
             this.dataGerminacao = dataGerminacao;
         }
-        if (altura != null) {
-            this.altura = altura;
-        }
-        if (largura != null) {
-            this.largura = largura;
-        }
-        if (larguraCaule != null) {
-            this.larguraCaule = larguraCaule;
+        if (estagio != null && estagio == EstagioPlanta.GERMINACAO) {
+            this.altura = 0.0;
+            this.largura = 0.0;
+            this.larguraCaule = 0.0;
+        } else {
+            if (altura != null) {
+                this.altura = altura;
+            }
+            if (largura != null) {
+                this.largura = largura;
+            }
+            if (larguraCaule != null) {
+                this.larguraCaule = larguraCaule;
+            }
         }
         if (tamanhoVaso != null) {
             this.tamanhoVaso = tamanhoVaso;

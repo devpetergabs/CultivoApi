@@ -18,15 +18,15 @@ public record DadosCadastroPlanta(
         LocalDate dataGerminacao,
 
         @NotNull(message = "Altura é obrigatória")
-        @Positive(message = "Altura deve ser maior que zero")
+        @Min(value = 0, message = "Altura deve ser zero ou maior")
         Double altura,
 
         @NotNull(message = "Largura é obrigatória")
-        @Positive(message = "Largura deve ser maior que zero")
+        @Min(value = 0, message = "Largura deve ser zero ou maior")
         Double largura,
 
         @NotNull(message = "Largura do caule é obrigatória")
-        @Positive(message = "Largura do caule deve ser maior que zero")
+        @Min(value = 0, message = "Largura do caule deve ser zero ou maior")
         Double larguraCaule,
 
         @NotBlank(message = "Tamanho do vaso é obrigatório")

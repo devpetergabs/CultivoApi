@@ -136,13 +136,18 @@ export function PlantFormModal({
     setIsSaving(true);
     setError(null);
     try {
+      // Se estágio for germinação, força altura/largura/caule para 0
+      const alturaPayload = stage === 'GERMINACAO' ? 0 : height;
+      const larguraPayload = stage === 'GERMINACAO' ? 0 : width;
+      const caulePayload = stage === 'GERMINACAO' ? 0 : stemWidth;
+
       if (mode === 'create') {
         const payload = {
           nome: trimmedName,
           strain: normalizedStrain,
-          altura: height,
-          largura: width,
-          larguraCaule: stemWidth,
+          altura: alturaPayload,
+          largura: larguraPayload,
+          larguraCaule: caulePayload,
           tamanhoVaso: pot,
           estagio: stage,
           dataGerminacao: null,
@@ -170,9 +175,9 @@ export function PlantFormModal({
         nome: trimmedName,
         strain: normalizedStrain,
         dataGerminacao: germinacaoIso ? germinacaoIso : null,
-        altura: height,
-        largura: width,
-        larguraCaule: stemWidth,
+        altura: alturaPayload,
+        largura: larguraPayload,
+        larguraCaule: caulePayload,
         tamanhoVaso: pot,
         estagio: stage,
         sexo: sexo || null,
@@ -308,27 +313,30 @@ export function PlantFormModal({
             <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Altura (cm)</label>
             <input
               type="number"
-              value={height}
+              value={stage === 'GERMINACAO' ? 0 : height}
               onChange={(event) => setHeight(Number(event.target.value))}
               className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-2 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+              disabled={stage === 'GERMINACAO'}
             />
           </div>
           <div>
             <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Largura (cm)</label>
             <input
               type="number"
-              value={width}
+              value={stage === 'GERMINACAO' ? 0 : width}
               onChange={(event) => setWidth(Number(event.target.value))}
               className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-2 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+              disabled={stage === 'GERMINACAO'}
             />
           </div>
           <div>
             <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Caule (cm)</label>
             <input
               type="number"
-              value={stemWidth}
+              value={stage === 'GERMINACAO' ? 0 : stemWidth}
               onChange={(event) => setStemWidth(Number(event.target.value))}
               className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-2 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+              disabled={stage === 'GERMINACAO'}
             />
           </div>
         </div>
