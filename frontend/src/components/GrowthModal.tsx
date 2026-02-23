@@ -65,6 +65,8 @@ export const GrowthModal: React.FC<GrowthModalProps> = ({ open, onClose, plantId
       setLoading(false);
       onClose();
       onSubmit?.({ newHeightCm, newWidthCm, newStemWidthCm, notes });
+      // Garante refresh dos dados na página
+      window.location.reload();
     } catch (err) {
       setLoading(false);
       setErrorMsg('Falha ao salvar. Tente novamente.');
