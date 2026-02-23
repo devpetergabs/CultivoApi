@@ -232,6 +232,15 @@ public class PlantaController {
         // Gamificação: subir nível
         planta.subirNivel();
 
+        // Evento de evolução
+        var eventoEvolucao = new cultivo.api.domain.planta.PlantaEvento(
+            planta,
+            cultivo.api.domain.planta.TipoEvento.EVOLUCAO,
+            "Planta evoluiu para o nível " + planta.getLevel(),
+            null
+        );
+        plantaEventoRepository.save(eventoEvolucao);
+
         repository.save(planta);
 
         // Evento de crescimento

@@ -157,7 +157,7 @@ export function PokedexLayout() {
       const fromLabel = getPlantStageLabel(levelUpCurrentStage);
       const toLabel = getPlantStageLabel(levelUpNextStage);
       await apiService.createPlantaEvento(levelUpPlant.id, {
-        tipo: 'OUTRO',
+        tipo: 'EVOLUCAO',
         descricao: `Evolução: ${fromLabel} → ${toLabel}`,
       });
 
