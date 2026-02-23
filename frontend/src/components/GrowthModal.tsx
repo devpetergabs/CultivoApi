@@ -56,10 +56,10 @@ export const GrowthModal: React.FC<GrowthModalProps> = ({ open, onClose, plantId
 
     try {
       await apiService.patchPlantaCrescer(plantId, {
-        newHeightCm,
-        newWidthCm,
-        newStemWidthCm,
-        notes,
+        altura: newHeightCm,
+        largura: newWidthCm,
+        larguraCaule: newStemWidthCm,
+        descricao: notes,
       });
 
       setLoading(false);

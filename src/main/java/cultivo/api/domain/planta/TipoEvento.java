@@ -12,5 +12,6 @@ public enum TipoEvento {
     INSETICIDA,
     OBSERVACAO,
     COLHEITA,
-    OUTRO
+    OUTRO, 
+    CRESCIMENTO
 }

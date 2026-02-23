@@ -1,3 +1,4 @@
+    // ...existing code...
 package cultivo.api.domain.planta;
 
 import jakarta.persistence.*;
@@ -16,6 +17,15 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @EqualsAndHashCode(of = "id")
 public class Planta {
+    public void setAltura(Double altura) {
+        this.altura = altura;
+    }
+    public void setLargura(Double largura) {
+        this.largura = largura;
+    }
+    public void setLarguraCaule(Double larguraCaule) {
+        this.larguraCaule = larguraCaule;
+    }
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDateTime;
-import java.time.LocalDate;
+import java.time.LocalDate; 
 
 @RestController
 @RequestMapping("/plantas")
@@ -210,5 +210,40 @@ public class PlantaController {
                 p.getDataSexagem(), p.getDataFloracao(),
                 p.getAtivo(), p.getDataGerminacao(), p.getDataCriacao()));
         return ResponseEntity.ok(page);
+    }
+
+    @Autowired
+    private cultivo.api.infrastructure.persistence.planta.PlantaEventoRepository plantaEventoRepository;
+
+    @PatchMapping("/{id}/crescer")
+    public ResponseEntity<?> crescer(@PathVariable Long id, @RequestBody DadosCrescimentoPlanta dados) {
+        var plantaOpt = repository.findById(id);
+        if (plantaOpt.isEmpty()) return ResponseEntity.notFound().build();
+
+        System.out.println("PATCH crescer - dados recebidos: altura=" + dados.altura() + ", largura=" + dados.largura() + ", larguraCaule=" + dados.larguraCaule() + ", descricao=" + dados.descricao() + ", obs=" + dados.obs());
+
+        var planta = plantaOpt.get();
+
+        // Atualiza diretamente as métricas de crescimento
+        planta.setAltura(dados.altura());
+        planta.setLargura(dados.largura());
+        planta.setLarguraCaule(dados.larguraCaule());
+
+        // Gamificação: subir nível
+        planta.subirNivel();
+
+        repository.save(planta);
+
+        // Evento de crescimento
+        var eventoDescricao = dados.descricao() != null ? dados.descricao() : dados.obs();
+        var evento = new cultivo.api.domain.planta.PlantaEvento(
+            planta,
+            cultivo.api.domain.planta.TipoEvento.CRESCIMENTO,
+            eventoDescricao + " : " + dados.altura() + "cm, " + dados.largura() + "cm, " + dados.larguraCaule() + "cm",
+            null
+        );
+        plantaEventoRepository.save(evento);
+
+        return ResponseEntity.ok().build();
     }
 }

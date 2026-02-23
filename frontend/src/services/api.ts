@@ -140,10 +140,10 @@ class ApiService {
   }
 
   async patchPlantaCrescer(id: number, data: {
-    newHeightCm: number;
-    newWidthCm: number;
-    newStemWidthCm: number;
-    notes?: string;
+    altura: number;
+    largura: number;
+    larguraCaule: number;
+    descricao?: string;
   }): Promise<void> {
     await this.axiosInstance.patch(`/plantas/${id}/crescer`, data);
   }
