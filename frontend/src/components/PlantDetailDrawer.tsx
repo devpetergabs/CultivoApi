@@ -34,29 +34,20 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
     enabled: !!plantId,
   });
 
-  // Keyboard navigation
+  // ✅ Live refresh: quando um evento é criado no card, atualiza a timeline do drawer
   useEffect(() => {
-    if (!plant) return;
+    if (!plantId) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'ArrowRight') {
-        const currentIndex = allPlants.findIndex((p) => p.id === plant.id);
-        if (currentIndex < allPlants.length - 1) {
-          setSelectedPlant(allPlants[currentIndex + 1].id);
-        }
-      } else if (e.key === 'ArrowLeft') {
-        const currentIndex = allPlants.findIndex((p) => p.id === plant.id);
-        if (currentIndex > 0) {
-          setSelectedPlant(allPlants[currentIndex - 1].id);
-        }
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<{ plantId?: number }>;
+      if (custom?.detail?.plantId === plantId) {
+        refreshEvents();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [plant, allPlants, setSelectedPlant, onClose]);
+    window.addEventListener('plant:event-created', handler as EventListener);
+    return () => window.removeEventListener('plant:event-created', handler as EventListener);
+  }, [plantId, refreshEvents]);
 
   // ✅ Agora pode retornar; os hooks já foram chamados
   if (!plant) return null;
@@ -227,7 +218,6 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
                 </div>
               </div>
 
-              {/* Optional Breeding Info */}
               {(plant.sexo || plant.dataSexagem || plant.dataFloracao) && (
                 <>
                   {plant.sexo && (
@@ -263,7 +253,7 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             </div>
           </div>
 
-          {/* ✅ NOVO: Estado derivado de eventos + Timeline */}
+          {/* ✅ Estado derivado de eventos + Timeline */}
           <div className="space-y-3">
             {eventsError && (
               <div className="rounded-xl p-3 border border-red-500/30 bg-red-500/10 text-red-200 text-xs">
@@ -279,15 +269,6 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
               onRefresh={refreshEvents}
               title="Registro de Eventos"
             />
-          </div>
-
-          {/* Grower Card */}
-          <div className="space-y-3 rounded-xl p-5 border-2 border-[#6fbf86]/35 bg-gradient-to-br from-[#111A2E]/80 to-[#0B1220]/50 shadow-[0_0_12px_rgba(111,191,134,0.10)]">
-            <h3 className="text-xs font-medium text-[#6fbf86] uppercase tracking-[0.06em]">👨‍🌾 CULTIVADOR</h3>
-            <div className="space-y-2">
-              <div className="font-semibold text-white text-lg">{plant.growerName}</div>
-              {plant.growerPhone && <div className="text-[#6fbf86] font-mono text-sm font-medium">📱 {plant.growerPhone}</div>}
-            </div>
           </div>
 
           {/* Navigation Buttons */}

@@ -65,6 +65,10 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
   const isEpic = plant.heightCm > 180;
   const nextStage = getNextStage(plant.type);
 
+  // ✅ STRAIN / GENÉTICA (atributo dos atributos)
+  // Se existir plant.strain no model, usa ele. Se não, cai no variant (seu caso atual).
+  const strainLabel = ((plant as any).strain ?? plant.variant ?? 'Strain') as string;
+
   const [nextWaterType, setNextWaterType] = useState<'A' | 'B'>('A');
   const [stockVersion, setStockVersion] = useState(0);
 
@@ -377,11 +381,25 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
             </div>
           )}
 
-          {/* HERO: sem watermark / sem repetir imagem — só “plantinha animada” no painel */}
+          {/* HERO */}
           <div className="relative flex items-center justify-center h-32 mb-4 rounded-lg border border-white/10 bg-gradient-to-b from-[#172232] to-[#0B1220] overflow-hidden group-hover:border-[#6fbf86]/25 transition-colors">
             {/* specular highlight */}
             <div className="pointer-events-none absolute -top-10 -left-10 h-28 w-28 rounded-full bg-white/10 blur-2xl opacity-25 group-hover:opacity-35 transition-opacity" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-25" />
+
+            {/* ✅ EXTRA: TAG “marca” da strain dentro do HERO */}
+            <div
+              className={`absolute bottom-2 left-2 z-30 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 border backdrop-blur-md max-w-[78%]
+                ${
+                  isEpic
+                    ? 'border-[#e7c35a]/35 bg-[#e7c35a]/10 text-[#f7e7b3]'
+                    : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+                }`}
+              title={`Strain: ${strainLabel}`}
+            >
+              <span className="text-[12px] leading-none">🧬</span>
+              <span className="text-[11px] font-semibold tracking-wide truncate">{strainLabel}</span>
+            </div>
 
             {/* “quadrado tipo card” + animação */}
             <motion.div
@@ -402,9 +420,6 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
             <h3 className="font-semibold text-slate-100 text-base tracking-wide line-clamp-2 group-hover:text-[#A7E5B2] transition-colors">
               {plant.name}
             </h3>
-            <p className="text-[11px] text-slate-300/70 mt-0.5 group-hover:text-[#A7E5B2]/70 transition-colors">
-              {plant.variant}
-            </p>
           </div>
 
           {/* Type + Actions */}
