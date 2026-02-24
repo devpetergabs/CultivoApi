@@ -5,6 +5,11 @@ import { TypeBadge } from './TypeBadge';
 import { StatBar } from './StatBar';
 import { usePokedexStore } from '../store/pokedexStore';
 
+// ✅ NOVO: eventos (visão de estado por timeline)
+import { usePlantEvents } from '../hooks/usePlantEvents';
+import { EventTimeline } from './EventTimeline';
+import { PlantStateSummary } from './PlantStateSummary';
+
 interface PlantDetailDrawerProps {
   plant: Plant | null;
   allPlants: Plant[];
@@ -15,6 +20,19 @@ interface PlantDetailDrawerProps {
 
 export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete }: PlantDetailDrawerProps) {
   const { setSelectedPlant } = usePokedexStore();
+
+  // ✅ Hooks precisam ser chamados SEMPRE, mesmo quando plant == null
+  const plantId = plant?.id ?? null;
+
+  const {
+    events,
+    loading: eventsLoading,
+    error: eventsError,
+    refresh: refreshEvents,
+  } = usePlantEvents(plantId, {
+    pageSize: 80,
+    enabled: !!plantId,
+  });
 
   // Keyboard navigation
   useEffect(() => {
@@ -40,6 +58,7 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [plant, allPlants, setSelectedPlant, onClose]);
 
+  // ✅ Agora pode retornar; os hooks já foram chamados
   if (!plant) return null;
 
   const currentIndex = allPlants.findIndex((p) => p.id === plant.id);
@@ -61,31 +80,30 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
   // Calculate age in days from germination date
   const calculateAge = (date: string | null) => {
     if (!date) return null;
-    
+
     const parts = date.split('/');
     if (parts.length !== 3) return null;
-    
+
     const germinationDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
     if (isNaN(germinationDate.getTime())) return null;
-    
+
     const today = new Date();
     const diffMs = today.getTime() - germinationDate.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     return diffDays;
   };
 
   // Format date - converts DD/MM/YYYY to valid Date
   const formatDate = (date: string | null) => {
     if (!date) return '⚠️ UNDEF';
-    
-    // Parse DD/MM/YYYY format
+
     const parts = date.split('/');
     if (parts.length !== 3) return '⚠️ INVÁLIDA';
-    
+
     const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
     if (isNaN(d.getTime())) return '⚠️ INVÁLIDA';
-    
+
     return d.toLocaleDateString('pt-BR');
   };
 
@@ -147,9 +165,7 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             <div className="text-xs font-medium text-[#6fbf86]/70 font-mono uppercase tracking-[0.06em]">
               #{plant.id.toString().padStart(3, '0')} — POKÉDEX
             </div>
-            <h1 className="text-4xl font-semibold text-white tracking-tight">
-              {plant.name}
-            </h1>
+            <h1 className="text-4xl font-semibold text-white tracking-tight">{plant.name}</h1>
             <TypeBadge type={plant.type} size="lg" />
           </div>
 
@@ -161,15 +177,15 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
           </div>
 
           {/* Stats Section */}
-          <div className={`space-y-4 rounded-xl p-5 border-2 backdrop-blur-sm ${
-            plant.heightCm > 180 
-              ? 'border-[#e7c35a] bg-gradient-to-br from-[#1f1a0f]/70 to-[#111A2E]/60 shadow-[0_0_12px_rgba(231,195,90,0.16)]' 
-              : 'border-[#6fbf86]/25 bg-[#111A2E]/60'
-          }`}>
+          <div
+            className={`space-y-4 rounded-xl p-5 border-2 backdrop-blur-sm ${
+              plant.heightCm > 180
+                ? 'border-[#e7c35a] bg-gradient-to-br from-[#1f1a0f]/70 to-[#111A2E]/60 shadow-[0_0_12px_rgba(231,195,90,0.16)]'
+                : 'border-[#6fbf86]/25 bg-[#111A2E]/60'
+            }`}
+          >
             <div className="flex items-center justify-between">
-              <h3 className={`text-xs font-medium uppercase tracking-[0.06em] ${
-                plant.heightCm > 180 ? 'text-[#e7c35a]' : 'text-[#6fbf86]'
-              }`}>
+              <h3 className={`text-xs font-medium uppercase tracking-[0.06em] ${plant.heightCm > 180 ? 'text-[#e7c35a]' : 'text-[#6fbf86]'}`}>
                 📏 DIMENSÕES {plant.heightCm > 180 && '⭐'}
               </h3>
               {plant.heightCm > 180 && (
@@ -188,14 +204,14 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
           {/* Details Section */}
           <div className="space-y-3 rounded-xl p-5 border-2 border-[#7BD389]/20 bg-[#111A2E]/60 backdrop-blur-sm">
             <h3 className="text-xs font-medium text-[#7BD389] uppercase tracking-wider">📋 DETALHES</h3>
-            
+
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
-                  <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">VARIANTE</div>
+                <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">VARIANTE</div>
                 <div className="font-semibold text-white mt-2">{plant.variant}</div>
               </div>
               <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
-                  <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">VASO</div>
+                <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">VASO</div>
                 <div className="font-semibold text-white mt-2">{plant.potLiters}L</div>
               </div>
               <div className="col-span-2 p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
@@ -204,7 +220,9 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
                   <div className="font-mono text-[#6fbf86] font-semibold">{formatDate(plant.germinationDate)}</div>
                   <div className="text-right">
                     <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">IDADE</div>
-                    <div className="font-semibold text-white text-lg">{calculateAge(plant.germinationDate) !== null ? `${calculateAge(plant.germinationDate)}d` : '⚠️'}</div>
+                    <div className="font-semibold text-white text-lg">
+                      {calculateAge(plant.germinationDate) !== null ? `${calculateAge(plant.germinationDate)}d` : '⚠️'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -215,7 +233,15 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
                   {plant.sexo && (
                     <div className="p-3 bg-[#0B1220]/80 rounded-lg border border-[rgba(123,211,137,0.2)]">
                       <div className="text-xs text-[#6fbf86]/60 font-medium uppercase tracking-[0.06em]">SEXO</div>
-                      <div className={`font-semibold mt-2 ${plant.sexo === 'FEMEA' ? 'text-pink-400' : plant.sexo === 'MACHO' ? 'text-blue-400' : 'text-yellow-400'}`}>
+                      <div
+                        className={`font-semibold mt-2 ${
+                          plant.sexo === 'FEMEA'
+                            ? 'text-pink-400'
+                            : plant.sexo === 'MACHO'
+                              ? 'text-blue-400'
+                              : 'text-yellow-400'
+                        }`}
+                      >
                         {plant.sexo === 'FEMEA' ? '♀ Fêmea' : plant.sexo === 'MACHO' ? '♂ Macho' : '⚥ Hermafrodita'}
                       </div>
                     </div>
@@ -237,14 +263,30 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             </div>
           </div>
 
+          {/* ✅ NOVO: Estado derivado de eventos + Timeline */}
+          <div className="space-y-3">
+            {eventsError && (
+              <div className="rounded-xl p-3 border border-red-500/30 bg-red-500/10 text-red-200 text-xs">
+                Falha ao carregar eventos: {eventsError}
+              </div>
+            )}
+
+            <PlantStateSummary events={events as any} />
+
+            <EventTimeline
+              events={events as any}
+              loading={eventsLoading}
+              onRefresh={refreshEvents}
+              title="Registro de Eventos"
+            />
+          </div>
+
           {/* Grower Card */}
           <div className="space-y-3 rounded-xl p-5 border-2 border-[#6fbf86]/35 bg-gradient-to-br from-[#111A2E]/80 to-[#0B1220]/50 shadow-[0_0_12px_rgba(111,191,134,0.10)]">
             <h3 className="text-xs font-medium text-[#6fbf86] uppercase tracking-[0.06em]">👨‍🌾 CULTIVADOR</h3>
             <div className="space-y-2">
               <div className="font-semibold text-white text-lg">{plant.growerName}</div>
-              {plant.growerPhone && (
-                <div className="text-[#6fbf86] font-mono text-sm font-medium">📱 {plant.growerPhone}</div>
-              )}
+              {plant.growerPhone && <div className="text-[#6fbf86] font-mono text-sm font-medium">📱 {plant.growerPhone}</div>}
             </div>
           </div>
 
@@ -286,4 +328,3 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
     </AnimatePresence>
   );
 }
-

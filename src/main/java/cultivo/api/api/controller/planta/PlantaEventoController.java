@@ -12,8 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.time.LocalDateTime;
-
 @RestController
 @RequestMapping("/plantas/{plantaId}/eventos")
 public class PlantaEventoController {
@@ -25,53 +23,111 @@ public class PlantaEventoController {
     private PlantaRepository plantaRepository;
 
     @PostMapping
-    public ResponseEntity<DadosDetalheEvento> cadastrar(@PathVariable Long plantaId,
-                                                         @Valid @RequestBody DadosCadastroEvento dados,
-                                                         UriComponentsBuilder uri) {
+    public ResponseEntity<DadosDetalheEvento> cadastrar(
+            @PathVariable Long plantaId,
+            @Valid @RequestBody DadosCadastroEvento dados,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            UriComponentsBuilder uri
+    ) {
         var planta = plantaRepository.findById(plantaId);
         if (planta.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
 
-        var evento = new PlantaEvento(planta.get(), TipoEvento.valueOf(dados.tipo()),
-                dados.descricao(), dados.doseEmML());
+        // Evita duplicação por double click/retry no front
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            var existing = repository.findByPlantaIdAndIdempotencyKey(plantaId, idempotencyKey);
+            if (existing.isPresent()) {
+                var e = existing.get();
+                var resposta = new DadosDetalheEvento(
+                        e.getId(),
+                        e.getPlanta().getNome(),
+                        e.getTipo().toString(),
+                        e.getDataEvento(),
+                        e.getDescricao(),
+                        e.getDoseEmML()
+                );
+                return ResponseEntity.ok(resposta);
+            }
+        }
+
+        var evento = new PlantaEvento(
+                planta.get(),
+                TipoEvento.valueOf(dados.tipo()),
+                dados.descricao(),
+                dados.doseEmML()
+        );
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            evento.setIdempotencyKey(idempotencyKey);
+        }
+
         repository.save(evento);
 
-        var resposta = new DadosDetalheEvento(evento.getId(), evento.getPlanta().getNome(),
-                evento.getTipo().toString(), evento.getDataEvento(), evento.getDescricao(), evento.getDoseEmML());
-        var uriBuilder = uri.path("/plantas/{plantaId}/eventos/{id}").buildAndExpand(plantaId, evento.getId()).toUri();
+        var resposta = new DadosDetalheEvento(
+                evento.getId(),
+                evento.getPlanta().getNome(),
+                evento.getTipo().toString(),
+                evento.getDataEvento(),
+                evento.getDescricao(),
+                evento.getDoseEmML()
+        );
+
+        var uriBuilder = uri.path("/plantas/{plantaId}/eventos/{id}")
+                .buildAndExpand(plantaId, evento.getId())
+                .toUri();
+
         return ResponseEntity.created(uriBuilder).body(resposta);
     }
 
     @GetMapping
     public ResponseEntity<Page<DadosDetalheEvento>> listar(@PathVariable Long plantaId, Pageable paginacao) {
-        var page = repository.findByPlantaIdOrderByDataEventoDesc(plantaId, paginacao)
-                .map(e -> new DadosDetalheEvento(e.getId(), e.getPlanta().getNome(),
-                        e.getTipo().toString(), e.getDataEvento(), e.getDescricao(), e.getDoseEmML()));
+        var page = repository.findByPlantaIdAndDeletedAtIsNullOrderByDataEventoDesc(plantaId, paginacao)
+                .map(e -> new DadosDetalheEvento(
+                        e.getId(),
+                        e.getPlanta().getNome(),
+                        e.getTipo().toString(),
+                        e.getDataEvento(),
+                        e.getDescricao(),
+                        e.getDoseEmML()
+                ));
         return ResponseEntity.ok(page);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<DadosDetalheEvento> detalhar(@PathVariable Long plantaId, @PathVariable Long id) {
         var evento = repository.findById(id);
-        if (evento.isEmpty() || !evento.get().getPlanta().getId().equals(plantaId)) {
+        if (evento.isEmpty()
+                || !evento.get().getPlanta().getId().equals(plantaId)
+                || evento.get().isDeleted()) {
             return ResponseEntity.notFound().build();
         }
 
         var e = evento.get();
-        var resposta = new DadosDetalheEvento(e.getId(), e.getPlanta().getNome(),
-                e.getTipo().toString(), e.getDataEvento(), e.getDescricao(), e.getDoseEmML());
+        var resposta = new DadosDetalheEvento(
+                e.getId(),
+                e.getPlanta().getNome(),
+                e.getTipo().toString(),
+                e.getDataEvento(),
+                e.getDescricao(),
+                e.getDoseEmML()
+        );
         return ResponseEntity.ok(resposta);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long plantaId, @PathVariable Long id) {
         var evento = repository.findById(id);
-        if (evento.isEmpty() || !evento.get().getPlanta().getId().equals(plantaId)) {
+        if (evento.isEmpty()
+                || !evento.get().getPlanta().getId().equals(plantaId)
+                || evento.get().isDeleted()) {
             return ResponseEntity.notFound().build();
         }
 
-        repository.deleteById(id);
+        var e = evento.get();
+        e.softDelete("User removed");
+        repository.save(e);
+
         return ResponseEntity.noContent().build();
     }
 }

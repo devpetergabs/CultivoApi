@@ -143,13 +143,104 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
 
   const isActivationKey = (key: string) => key === 'Enter' || key === ' ';
 
+  // ✅ Guard: evita registrar rega duas vezes por clique acidental (double-click)
+  const WATERING_GUARD_WINDOW_MS = 2000;
+  const lastWateringAtRef = useRef<{ A: number; B: number }>({ A: 0, B: 0 });
+
+  const [wateringConfirmOpen, setWateringConfirmOpen] = useState(false);
+  const [wateringConfirmInfo, setWateringConfirmInfo] = useState<{
+    variant: 'A' | 'B';
+    ml: number;
+    title: string;
+    subtitle?: string;
+  } | null>(null);
+
+  const pendingWateringActionRef = useRef<null | (() => Promise<void>)>(null);
+
+  const closeWateringConfirm = () => {
+    setWateringConfirmOpen(false);
+    setWateringConfirmInfo(null);
+    pendingWateringActionRef.current = null;
+  };
+
+  const confirmWateringProceed = async () => {
+    const action = pendingWateringActionRef.current;
+    closeWateringConfirm();
+    await action?.();
+  };
+
+  useEffect(() => {
+    if (!wateringConfirmOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeWateringConfirm();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [wateringConfirmOpen]);
+
+  const openWateringConfirm = (
+    variant: 'A' | 'B',
+    ml: number,
+    action: () => Promise<void>,
+    subtitle?: string
+  ) => {
+    pendingWateringActionRef.current = action;
+
+    setWateringConfirmInfo({
+      variant,
+      ml,
+      title: variant === 'A' ? 'Rega normal repetida' : 'Rega aditivada repetida',
+      subtitle,
+    });
+
+    setWateringConfirmOpen(true);
+  };
+
+  const canProceedWatering = (
+    variant: 'A' | 'B',
+    ml: number,
+    actionIfConfirmed: () => Promise<void>,
+    subtitle?: string
+  ) => {
+    const now = Date.now();
+    const last = lastWateringAtRef.current[variant];
+
+    // 1º clique (ou fora da janela) → segue normalmente
+    if (now - last > WATERING_GUARD_WINDOW_MS) {
+      lastWateringAtRef.current[variant] = now;
+      return true;
+    }
+
+    // clique repetido rápido → pede confirmação em modal (estilo RPG)
+    lastWateringAtRef.current[variant] = now;
+    openWateringConfirm(variant, ml, actionIfConfirmed, subtitle);
+    return false;
+  };
+
   const registerWateringEvent = async (variant: 'A' | 'B') => {
     const ml = getStoredVolumeMl();
+
+    const doWaterNormal = async () => {
+      try {
+        await apiService.createPlantaEvento(plant.id, {
+          tipo: 'REGA_NORMAL',
+          descricao: `Rega (água pura): ${ml}mL`,
+          doseEmML: ml,
+        });
+
+        showToast('Rega registrada', 'success');
+        setNextWaterType('B');
+        persistNextWaterType('B');
+      } catch (err) {
+        console.error('[ERRO REGISTRO REGA]', err);
+        showToast('Falha ao registrar rega', 'error');
+      }
+    };
 
     if (variant === 'B') {
       const mix = getStoredMix();
       if (mix.kind === 'empty') {
-        window.alert('Nenhum aditivo selecionado no inventário');
+        showToast('Nenhum aditivo selecionado no inventário', 'warning');
         return;
       }
 
@@ -170,46 +261,48 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               })
               .join(', ');
 
-      try {
-        await apiService.createPlantaEvento(plant.id, {
-          tipo: 'REGA_ADITIVADA',
-          descricao: `Rega (água aditivada): ${ml}mL + ${mixDescription}`,
-          doseEmML: ml,
-        });
+      const doWaterAditivada = async () => {
+        try {
+          await apiService.createPlantaEvento(plant.id, {
+            tipo: 'REGA_ADITIVADA',
+            descricao: `Rega (água aditivada): ${ml}mL + ${mixDescription}`,
+            doseEmML: ml,
+          });
 
-        const itemsToDeduct = mix.items as Array<{ id: number; doseMl: number }>;
-        for (const item of itemsToDeduct) {
-          if (Number.isFinite(item.doseMl) && item.doseMl > 0) {
-            const volumeLiters = ml / 1000;
-            const totalMl = Math.round(item.doseMl * volumeLiters);
-            deductAditivoStockMl(item.id, totalMl);
+          const itemsToDeduct = mix.items as Array<{ id: number; doseMl: number }>;
+          for (const item of itemsToDeduct) {
+            if (Number.isFinite(item.doseMl) && item.doseMl > 0) {
+              const volumeLiters = ml / 1000;
+              const totalMl = Math.round(item.doseMl * volumeLiters);
+              deductAditivoStockMl(item.id, totalMl);
+            }
           }
-        }
 
-        showToast('Rega aditivada registrada', 'success');
-        setNextWaterType('A');
-        persistNextWaterType('A');
-      } catch (err) {
-        console.error('[ERRO REGISTRO REGA]', err);
-        showToast('Falha ao registrar rega', 'error');
-      }
+          showToast('Rega aditivada registrada', 'success');
+          setNextWaterType('A');
+          persistNextWaterType('A');
+        } catch (err) {
+          console.error('[ERRO REGISTRO REGA]', err);
+          showToast('Falha ao registrar rega', 'error');
+        }
+      };
+
+      const proceed = canProceedWatering(
+        'B',
+        ml,
+        doWaterAditivada,
+        `Volume: ${ml}mL\nAditivos: ${mixDescription}`
+      );
+      if (!proceed) return;
+
+      await doWaterAditivada();
       return;
     }
 
-    try {
-      await apiService.createPlantaEvento(plant.id, {
-        tipo: 'REGA_NORMAL',
-        descricao: `Rega (água pura): ${ml}mL`,
-        doseEmML: ml,
-      });
+    const proceed = canProceedWatering('A', ml, doWaterNormal, `Volume: ${ml}mL`);
+    if (!proceed) return;
 
-      showToast('Rega registrada', 'success');
-      setNextWaterType('B');
-      persistNextWaterType('B');
-    } catch (err) {
-      console.error('[ERRO REGISTRO REGA]', err);
-      showToast('Falha ao registrar rega', 'error');
-    }
+    await doWaterNormal();
   };
 
   const mixStockFlags = (() => {
@@ -532,6 +625,87 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
           </div>
         )}
       </motion.div>
+
+      {/* Confirm Rega (anti-clique acidental) */}
+      {wateringConfirmOpen && wateringConfirmInfo && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <button
+            type="button"
+            aria-label="Fechar confirmação de rega"
+            onClick={closeWateringConfirm}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="relative w-[92%] max-w-[420px] rounded-xl border border-white/10 bg-gradient-to-b from-[#111A2E] to-[#0B1220] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.55)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-white tracking-tight">
+                  {wateringConfirmInfo.title}
+                </div>
+                <div className="mt-1 text-xs text-white/60">
+                  Você clicou de novo muito rápido. Isso evita registrar evento duplicado sem querer.
+                </div>
+              </div>
+
+              <div
+                className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded-md border backdrop-blur-sm ${
+                  wateringConfirmInfo.variant === 'A'
+                    ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+                    : 'border-purple-400/30 bg-purple-500/10 text-purple-200'
+                }`}
+              >
+                {wateringConfirmInfo.variant === 'A' ? 'ÁGUA' : 'ADITIVADA'}
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-[0.12em] text-white/50">Volume</div>
+                <div className="text-sm font-mono font-semibold text-white">
+                  {wateringConfirmInfo.ml}mL
+                </div>
+              </div>
+
+              {wateringConfirmInfo.subtitle && (
+                <div className="mt-2 max-h-24 overflow-auto text-xs text-white/70 whitespace-pre-wrap break-words pr-1">
+                  {wateringConfirmInfo.subtitle}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={closeWateringConfirm}
+                className="rounded-lg px-3 py-2 text-sm font-semibold border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 transition-all"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmWateringProceed}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold border transition-all ${
+                  wateringConfirmInfo.variant === 'A'
+                    ? 'border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100'
+                    : 'border-purple-400/30 bg-purple-500/15 hover:bg-purple-500/25 text-purple-100'
+                }`}
+              >
+                Confirmar
+              </button>
+            </div>
+
+            <div className="mt-2 text-[10px] text-white/40 font-mono">
+              Dica: aperte ESC para fechar
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal fora do card */}
       <GrowthModal open={growthModalOpen} onClose={() => setGrowthModalOpen(false)} plantId={plant.id} />

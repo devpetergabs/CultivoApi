@@ -37,7 +37,6 @@ class ApiService {
     delete this.axiosInstance.defaults.headers.common['Authorization'];
   }
 
-  // Auth
   async getUsuarioMe(): Promise<Usuario> {
     const response = await this.axiosInstance.get('/usuarios/me');
     return response.data;
@@ -48,11 +47,8 @@ class ApiService {
     return response.data;
   }
 
-  // Plantas
   async getPlantasListagem(page: number = 0, size: number = 20): Promise<any> {
-    const response = await this.axiosInstance.get('/plantas', {
-      params: { page, size }
-    });
+    const response = await this.axiosInstance.get('/plantas', { params: { page, size } });
     return response.data;
   }
 
@@ -85,68 +81,65 @@ class ApiService {
     await this.axiosInstance.delete(`/plantas/${id}`);
   }
 
-  // Fotos
   async getPlantaFotos(plantaId: number, page: number = 0, size: number = 100): Promise<any> {
-    const response = await this.axiosInstance.get(`/plantas/${plantaId}/fotos`, {
-      params: { page, size }
-    });
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/fotos`, { params: { page, size } });
     return response.data;
   }
 
   async getPlantaFotoImagem(plantaId: number, fotoId: number): Promise<Blob> {
-    const response = await this.axiosInstance.get(
-      `/plantas/${plantaId}/fotos/${fotoId}/imagem`,
-      { responseType: 'blob' }
-    );
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/fotos/${fotoId}/imagem`, {
+      responseType: 'blob',
+    });
     return response.data;
   }
 
   async createPlantaEvento(plantaId: number, payload: PlantaEventoPayload): Promise<PlantaEvento> {
-    const response = await this.axiosInstance.post(`/plantas/${plantaId}/eventos`, {
-      tipo: payload.tipo,
-      descricao: payload.descricao,
-      doseEmML: payload.doseEmML ?? null,
-    });
+    const headers: Record<string, string> = {};
+    if (payload.idempotencyKey) headers['Idempotency-Key'] = payload.idempotencyKey;
+
+    const response = await this.axiosInstance.post(
+      `/plantas/${plantaId}/eventos`,
+      {
+        tipo: payload.tipo,
+        descricao: payload.descricao,
+        doseEmML: payload.doseEmML ?? null,
+      },
+      { headers }
+    );
     return response.data;
   }
 
-  async createPlantaFoto(plantaId: number, data: { imagemBase64: string; contentType: string; descricao?: string }): Promise<PlantaFoto> {
+  async getPlantaEventos(plantaId: number, page = 0, size = 50) {
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/eventos`, { params: { page, size } });
+    return response.data; // Page<PlantaEvento>
+    }
+
+  async createPlantaFoto(
+    plantaId: number,
+    data: { imagemBase64: string; contentType: string; descricao?: string }
+  ): Promise<PlantaFoto> {
     const response = await this.axiosInstance.post(`/plantas/${plantaId}/fotos`, data);
     return response.data;
   }
 
-  // Aditivos
   async getAditivos(page: number = 0, size: number = 200): Promise<Page<Aditivo> | Aditivo[]> {
-    const response = await this.axiosInstance.get('/aditivos', {
-      params: { page, size }
-    });
+    const response = await this.axiosInstance.get('/aditivos', { params: { page, size } });
     return response.data;
   }
 
   async getPlantaAditivos(plantaId: number, page: number = 0, size: number = 100): Promise<any> {
-    const response = await this.axiosInstance.get(`/plantas/${plantaId}/aditivos`, {
-      params: { page, size }
-    });
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/aditivos`, { params: { page, size } });
     return response.data;
   }
 
-  async patchPlantaCrescimento(id: number, data: {
-    newHeightCm: number;
-    newWidthCm: number;
-    newStemWidthCm: number;
-    notes?: string;
-  }): Promise<void> {
-    await this.axiosInstance.patch(`/plantas/${id}/crescimento`, data);
-  }
-
-  async patchPlantaCrescer(id: number, data: {
-    altura: number;
-    largura: number;
-    larguraCaule: number;
-    descricao?: string;
-  }): Promise<void> {
+  async patchPlantaCrescer(
+    id: number,
+    data: { altura: number; largura: number; larguraCaule: number; descricao?: string; obs?: string }
+  ): Promise<void> {
     await this.axiosInstance.patch(`/plantas/${id}/crescer`, data);
   }
 }
+
+  
 
 export const apiService = new ApiService();

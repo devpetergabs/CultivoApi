@@ -14,12 +14,14 @@ export interface Planta {
   dataGerminacao: string | null;
   dataCriacao: string;
   level?: number;
+  xp?: number;
+  pontosDisponiveis?: number;
 }
 
 export interface PlantaCompleta extends Planta {
   cultivadorId: number;
   cultivadorNome: string;
-  cultivadorLogin?: string | null;
+  cultivivadorLogin?: string | null;
   cultivadorTelefone: string;
   cultivadorAtivo: boolean;
   aditivos: PlantaAditivo[];
@@ -83,12 +85,14 @@ export interface PlantaEvento {
 }
 
 export interface PlantaEventoPayload {
-  tipo: string; // matches backend TipoEvento enum
+  tipo: string;
   descricao: string;
   doseEmML?: number | null;
+
+  // opcional: evita duplicação por double click/retry
+  idempotencyKey?: string;
 }
 
-// Payload para criação de planta (DadosCadastroPlanta)
 export interface PlantaCreatePayload {
   cultivadorId: number;
   nome: string;
@@ -96,31 +100,28 @@ export interface PlantaCreatePayload {
   altura: number;
   largura: number;
   larguraCaule: number;
-  tamanhoVaso: string; // enum name, ex: CINCO_L
-  estagio: string;     // enum name, ex: GERMINACAO
+  tamanhoVaso: string;
+  estagio: string;
   dataGerminacao?: string | null;
   sexo?: string | null;
   dataSexagem?: string | null;
   dataFloracao?: string | null;
 }
 
-// Payload para criação autenticada (POST /plantas/me)
 export interface PlantaCreateMePayload {
   nome: string;
   strain?: string | null;
   altura: number;
   largura: number;
   larguraCaule: number;
-  tamanhoVaso: string; // enum name, ex: CINCO_L
-  estagio: string;     // enum name, ex: GERMINACAO
+  tamanhoVaso: string;
+  estagio: string;
   dataGerminacao?: string | null;
   sexo?: string | null;
   dataSexagem?: string | null;
   dataFloracao?: string | null;
 }
 
-// Payload para atualização de planta (PUT /plantas/{id})
-// Observação: o backend exige `nome` e `tamanhoVaso` (NotBlank).
 export interface PlantaUpdatePayload {
   nome: string;
   strain?: string | null;
