@@ -65,9 +65,11 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
   const isEpic = plant.heightCm > 180;
   const nextStage = getNextStage(plant.type);
 
-  // ✅ STRAIN / GENÉTICA (atributo dos atributos)
-  // Se existir plant.strain no model, usa ele. Se não, cai no variant (seu caso atual).
+  // ✅ STRAIN / GENÉTICA (apenas 1x — como no print)
   const strainLabel = ((plant as any).strain ?? plant.variant ?? 'Strain') as string;
+
+  // ✅ Glow só quando estiver em FLORAÇÃO (não veg/germa)
+  const isFloweringStage = String(plant.type).startsWith('FLORACAO');
 
   const [nextWaterType, setNextWaterType] = useState<'A' | 'B'>('A');
   const [stockVersion, setStockVersion] = useState(0);
@@ -387,18 +389,29 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
             <div className="pointer-events-none absolute -top-10 -left-10 h-28 w-28 rounded-full bg-white/10 blur-2xl opacity-25 group-hover:opacity-35 transition-opacity" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-25" />
 
-            {/* ✅ EXTRA: TAG “marca” da strain dentro do HERO */}
-            <div
-              className={`absolute bottom-2 left-2 z-30 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 border backdrop-blur-md max-w-[78%]
-                ${
-                  isEpic
-                    ? 'border-[#e7c35a]/35 bg-[#e7c35a]/10 text-[#f7e7b3]'
-                    : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
-                }`}
-              title={`Strain: ${strainLabel}`}
-            >
-              <span className="text-[12px] leading-none">🧬</span>
-              <span className="text-[11px] font-semibold tracking-wide truncate">{strainLabel}</span>
+            {/* ✅ STRAIN 1x (como no print): pill no HERO */}
+            <div className="absolute bottom-2 left-2 z-30 max-w-[78%]">
+              {/* brilho “dos deuses” só na floração */}
+              {isFloweringStage && !isEpic && (
+                <span className="pointer-events-none absolute -inset-[3px] rounded-full bg-gradient-to-r from-fuchsia-500/25 via-purple-500/15 to-rose-500/25 blur-[1px] opacity-80 animate-[pulse_4.5s_ease-in-out_infinite]" />
+              )}
+
+              <span
+                className={`relative inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 border backdrop-blur-md bg-black/25
+                  ${
+                    isEpic
+                      ? 'border-[#e7c35a]/40 text-[#f7e7b3] shadow-[0_0_12px_rgba(231,195,90,0.18)]'
+                      : isFloweringStage
+                      ? 'border-fuchsia-400/30 text-fuchsia-100 shadow-[0_0_12px_rgba(217,70,239,0.14)]'
+                      : 'border-emerald-400/30 text-emerald-200 shadow-[0_0_10px_rgba(16,185,129,0.12)]'
+                  }`}
+                title={`Strain: ${strainLabel}`}
+              >
+                {/* borda dupla (selo) */}
+                <span className="absolute inset-0 rounded-full ring-1 ring-white/10" />
+                <span className="text-[12px] leading-none">🧬</span>
+                <span className="text-[11px] font-semibold tracking-wide truncate">{strainLabel}</span>
+              </span>
             </div>
 
             {/* “quadrado tipo card” + animação */}
@@ -409,9 +422,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               className="relative flex items-center justify-center"
             >
               <div className="absolute inset-0 -m-4 rounded-xl bg-emerald-400/5 blur-xl opacity-50" />
-              <span className="relative text-5xl drop-shadow-lg opacity-90">
-                {plant.imageUrl}
-              </span>
+              <span className="relative text-5xl drop-shadow-lg opacity-90">{plant.imageUrl}</span>
             </motion.div>
           </div>
 
@@ -420,6 +431,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
             <h3 className="font-semibold text-slate-100 text-base tracking-wide line-clamp-2 group-hover:text-[#A7E5B2] transition-colors">
               {plant.name}
             </h3>
+            {/* ✅ sem repetir strain aqui — fica só no HERO */}
           </div>
 
           {/* Type + Actions */}
@@ -451,7 +463,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                         );
                       }}
                       onKeyDown={(event) => {
-                        if (!isActivationKey(event.key)) return;
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
                         event.preventDefault();
                         event.stopPropagation();
                         window.dispatchEvent(
@@ -659,9 +671,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-white tracking-tight">
-                  {wateringConfirmInfo.title}
-                </div>
+                <div className="text-sm font-semibold text-white tracking-tight">{wateringConfirmInfo.title}</div>
                 <div className="mt-1 text-xs text-white/60">
                   Você clicou de novo muito rápido. Isso evita registrar evento duplicado sem querer.
                 </div>
@@ -681,9 +691,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
             <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
               <div className="flex items-center justify-between">
                 <div className="text-[10px] uppercase tracking-[0.12em] text-white/50">Volume</div>
-                <div className="text-sm font-mono font-semibold text-white">
-                  {wateringConfirmInfo.ml}mL
-                </div>
+                <div className="text-sm font-mono font-semibold text-white">{wateringConfirmInfo.ml}mL</div>
               </div>
 
               {wateringConfirmInfo.subtitle && (
@@ -715,9 +723,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               </button>
             </div>
 
-            <div className="mt-2 text-[10px] text-white/40 font-mono">
-              Dica: aperte ESC para fechar
-            </div>
+            <div className="mt-2 text-[10px] text-white/40 font-mono">Dica: aperte ESC para fechar</div>
           </div>
         </div>
       )}
