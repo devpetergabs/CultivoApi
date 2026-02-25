@@ -5,19 +5,17 @@
 UPDATE aditivos
 SET marca = 'Corteva Agriscience',
     descricao = 'Inseticida (classe PROTECAO) à base de Spinosad (spinosyns A + D), derivado de fermentação de Saccharopolyspora spinosa. IRAC Group 5 (Spinosyns). Use conforme rótulo do fabricante e boas práticas de segurança.',
-    estagio = 'VEGETATIVA',
     classe = 'PROTECAO',
     ativo = TRUE,
     dose_padrao_em_ml = 3.0,
     estoque_ml = 90.0
 WHERE nome = 'Spinosad';
 
-INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, estoque_ml, ativo)
+INSERT INTO aditivos (nome, marca, descricao, classe, dose_padrao_em_ml, estoque_ml, ativo)
 SELECT
     'Spinosad',
     'Corteva Agriscience',
     'Inseticida (classe PROTECAO) à base de Spinosad (spinosyns A + D), derivado de fermentação de Saccharopolyspora spinosa. IRAC Group 5 (Spinosyns). Use conforme rótulo do fabricante e boas práticas de segurança.',
-    'VEGETATIVA',
     'PROTECAO',
     3.0,
     90.0,

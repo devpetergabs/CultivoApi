@@ -2,17 +2,22 @@ export interface Planta {
   id: number;
   nome: string;
   strain?: string | null;
+  especie?: string | null;
+
   altura: number;
   largura: number;
   larguraCaule: number;
   tamanhoVaso: string;
   estagio: string;
+
   sexo?: string | null;
   dataSexagem?: string | null;
   dataFloracao?: string | null;
+
   ativo: boolean;
   dataGerminacao: string | null;
   dataCriacao: string;
+
   level?: number;
   xp?: number;
   pontosDisponiveis?: number;
@@ -88,8 +93,6 @@ export interface PlantaEventoPayload {
   tipo: string;
   descricao: string;
   doseEmML?: number | null;
-
-  // opcional: evita duplicação por double click/retry
   idempotencyKey?: string;
 }
 
@@ -97,11 +100,14 @@ export interface PlantaCreatePayload {
   cultivadorId: number;
   nome: string;
   strain?: string | null;
+  especie?: string | null;
+
   altura: number;
   largura: number;
   larguraCaule: number;
   tamanhoVaso: string;
   estagio: string;
+
   dataGerminacao?: string | null;
   sexo?: string | null;
   dataSexagem?: string | null;
@@ -111,11 +117,14 @@ export interface PlantaCreatePayload {
 export interface PlantaCreateMePayload {
   nome: string;
   strain?: string | null;
+  especie?: string | null;
+
   altura: number;
   largura: number;
   larguraCaule: number;
   tamanhoVaso: string;
   estagio: string;
+
   dataGerminacao?: string | null;
   sexo?: string | null;
   dataSexagem?: string | null;
@@ -125,12 +134,16 @@ export interface PlantaCreateMePayload {
 export interface PlantaUpdatePayload {
   nome: string;
   strain?: string | null;
+  especie?: string | null;
+
   dataGerminacao?: string | null;
   altura?: number | null;
   largura?: number | null;
   larguraCaule?: number | null;
+
   tamanhoVaso: string;
   estagio?: string | null;
+
   sexo?: string | null;
   dataSexagem?: string | null;
   dataFloracao?: string | null;

@@ -1,9 +1,10 @@
 package cultivo.api.api.controller.planta;
 
 import cultivo.api.domain.planta.EstagioPlanta;
+import cultivo.api.domain.planta.EspeciePlanta;
 import cultivo.api.domain.planta.SexoPlanta;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Min;
 
 import java.time.LocalDate;
 
@@ -13,15 +14,17 @@ public record DadosAtualizacaoPlanta(
 
         String strain,
 
+        EspeciePlanta especie,
+
         LocalDate dataGerminacao,
 
-        @Positive(message = "Altura deve ser maior que zero")
+        @Min(value = 0, message = "Altura deve ser zero ou maior")
         Double altura,
 
-        @Positive(message = "Largura deve ser maior que zero")
+        @Min(value = 0, message = "Largura deve ser zero ou maior")
         Double largura,
 
-        @Positive(message = "Largura do caule deve ser maior que zero")
+        @Min(value = 0, message = "Largura do caule deve ser zero ou maior")
         Double larguraCaule,
 
         @NotBlank(message = "Tamanho do vaso é obrigatório")
@@ -34,5 +37,4 @@ public record DadosAtualizacaoPlanta(
         LocalDate dataSexagem,
 
         LocalDate dataFloracao
-) {
-}
+) { }

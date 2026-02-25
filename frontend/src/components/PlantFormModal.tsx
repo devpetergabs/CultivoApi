@@ -13,8 +13,8 @@ import {
 } from '../utils/plantFormUtils';
 
 type Mode = 'create' | 'edit';
-
 type SexoValue = 'FEMEA' | 'MACHO' | 'HERMAFRODITA';
+type SpeciesValue = 'CANNABIS' | 'ROSEIRA' | 'OUTRA';
 
 interface PlantFormModalProps {
   mode: Mode;
@@ -27,6 +27,13 @@ interface PlantFormModalProps {
 
 const ADD_STRAIN_VALUE = '__ADD__';
 
+function coerceSpecies(value: unknown): SpeciesValue {
+  const v = String(value ?? '').toUpperCase();
+  if (v === 'ROSEIRA') return 'ROSEIRA';
+  if (v === 'OUTRA') return 'OUTRA';
+  return 'CANNABIS';
+}
+
 export function PlantFormModal({
   mode,
   initialPlant,
@@ -36,6 +43,9 @@ export function PlantFormModal({
   onSaved,
 }: PlantFormModalProps) {
   const [name, setName] = useState('');
+  const [species, setSpecies] = useState<SpeciesValue>('CANNABIS');
+
+  // “strain” aqui vira “variedade/cultivar” para qualquer espécie
   const [strain, setStrain] = useState('');
   const [customStrainInput, setCustomStrainInput] = useState('');
   const [isAddingStrain, setIsAddingStrain] = useState(false);
@@ -57,13 +67,8 @@ export function PlantFormModal({
 
   const strains = useMemo(() => {
     const fromLocal = loadCustomStrains();
-    const merged = mergeStrains(
-      Array.from(DEFAULT_STRAINS),
-      availableStrains ?? [],
-      fromLocal
-    );
+    const merged = mergeStrains(Array.from(DEFAULT_STRAINS), availableStrains ?? [], fromLocal);
 
-    // Keep deterministic ordering: defaults first, then rest alpha.
     const defaults = Array.from(DEFAULT_STRAINS);
     const rest = merged
       .filter((s) => !defaults.includes(s as any))
@@ -76,6 +81,10 @@ export function PlantFormModal({
     if (mode === 'edit' && initialPlant) {
       setName(initialPlant.name ?? '');
       setStrain(initialPlant.variant ?? '');
+
+      // pega species do plant, mas não quebra se ainda estiver faltando no type
+      setSpecies(coerceSpecies((initialPlant as any).species));
+
       setStage(initialPlant.type);
       setPot(potLitersToEnum(initialPlant.potLiters));
       setHeight(initialPlant.heightCm);
@@ -88,6 +97,7 @@ export function PlantFormModal({
       setFloracaoIso(brDateToIso(initialPlant.dataFloracao) ?? '');
     } else {
       setName('');
+      setSpecies('CANNABIS');
       setStrain(strains[0] ?? '');
       setStage('GERMINACAO');
       setPot('CINCO_L');
@@ -106,6 +116,22 @@ export function PlantFormModal({
     setIsSaving(false);
     setError(null);
   }, [mode, initialPlant, strains]);
+
+  // quando trocar espécie no CREATE, dá um default mais “humano”
+  useEffect(() => {
+    if (mode !== 'create') return;
+
+    if (species === 'CANNABIS') {
+      if (!strain || strain.trim().length === 0) setStrain(strains[0] ?? '');
+      return;
+    }
+
+    // espécies não-cannabis: não empurra strains de cannabis no user
+    if (!strain || strains.includes(strain)) {
+      setStrain(species === 'ROSEIRA' ? 'Roseira-anã' : '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [species]);
 
   const addCustomStrain = () => {
     const normalized = normalizeStrain(customStrainInput);
@@ -129,7 +155,7 @@ export function PlantFormModal({
 
     const normalizedStrain = normalizeStrain(strain);
     if (!normalizedStrain) {
-      setError('Informe uma strain para a planta.');
+      setError(species === 'CANNABIS' ? 'Informe uma strain.' : 'Informe a variedade/cultivar.');
       return;
     }
 
@@ -145,6 +171,7 @@ export function PlantFormModal({
         const payload = {
           nome: trimmedName,
           strain: normalizedStrain,
+          especie: species, // ✅ NOVO
           altura: alturaPayload,
           largura: larguraPayload,
           larguraCaule: caulePayload,
@@ -156,7 +183,7 @@ export function PlantFormModal({
           dataFloracao: null,
         };
 
-        const created = await apiService.createPlantaMe(payload);
+        const created = await apiService.createPlantaMe(payload as any);
         const mapped = mapPlantaToPokedexPlant(created, {
           name: grower?.name ?? null,
           phone: grower?.phone ?? null,
@@ -174,6 +201,7 @@ export function PlantFormModal({
       const payload = {
         nome: trimmedName,
         strain: normalizedStrain,
+        especie: species, // ✅ NOVO
         dataGerminacao: germinacaoIso ? germinacaoIso : null,
         altura: alturaPayload,
         largura: larguraPayload,
@@ -185,7 +213,7 @@ export function PlantFormModal({
         dataFloracao: floracaoIso ? floracaoIso : null,
       };
 
-      const updated = await apiService.updatePlanta(initialPlant.id, payload);
+      const updated = await apiService.updatePlanta(initialPlant.id, payload as any);
       const mapped = mapPlantaToPokedexPlant(updated, {
         name: grower?.name ?? null,
         phone: grower?.phone ?? null,
@@ -200,6 +228,8 @@ export function PlantFormModal({
     }
   };
 
+  const isCannabis = species === 'CANNABIS';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
@@ -212,9 +242,7 @@ export function PlantFormModal({
               {mode === 'create' ? 'Nova planta' : 'Editar planta'}
             </h3>
             <p className="text-xs text-[#9fb0c0] font-normal">
-              {mode === 'create'
-                ? 'Cria uma nova entrada na Pokédex.'
-                : 'Atualiza os dados da planta selecionada.'}
+              {mode === 'create' ? 'Cria uma nova entrada na Pokédex.' : 'Atualiza os dados da planta selecionada.'}
             </p>
           </div>
           <button
@@ -234,48 +262,80 @@ export function PlantFormModal({
           className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
         />
 
-        <div className="mt-3">
-          <label className="block text-xs font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Espécie / Strain</label>
-          <select
-            value={isAddingStrain ? ADD_STRAIN_VALUE : strain}
-            onChange={(event) => {
-              const v = event.target.value;
-              if (v === ADD_STRAIN_VALUE) {
-                setIsAddingStrain(true);
-                setCustomStrainInput('');
-                return;
-              }
-              setIsAddingStrain(false);
-              setStrain(v);
-            }}
-            className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
-          >
-            {strains.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-            <option value={ADD_STRAIN_VALUE}>Adicionar…</option>
-          </select>
+        {/* ✅ ESPÉCIE */}
+        <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Espécie</label>
+            <select
+              value={species}
+              onChange={(e) => setSpecies(coerceSpecies(e.target.value))}
+              className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+            >
+              <option value="CANNABIS">Cannabis 🌿</option>
+              <option value="ROSEIRA">Roseira 🌹</option>
+              <option value="OUTRA">Outra 🌱</option>
+            </select>
+          </div>
 
-          {isAddingStrain && (
-            <div className="mt-2 flex gap-2">
+          {/* ✅ STRAIN/VARIEDADE */}
+          <div>
+            <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">
+              {isCannabis ? 'Strain' : 'Variedade'}
+            </label>
+
+            {isCannabis ? (
+              <>
+                <select
+                  value={isAddingStrain ? ADD_STRAIN_VALUE : strain}
+                  onChange={(event) => {
+                    const v = event.target.value;
+                    if (v === ADD_STRAIN_VALUE) {
+                      setIsAddingStrain(true);
+                      setCustomStrainInput('');
+                      return;
+                    }
+                    setIsAddingStrain(false);
+                    setStrain(v);
+                  }}
+                  className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                >
+                  {strains.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                  <option value={ADD_STRAIN_VALUE}>Adicionar…</option>
+                </select>
+
+                {isAddingStrain && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      value={customStrainInput}
+                      onChange={(event) => setCustomStrainInput(event.target.value)}
+                      placeholder="Nova strain"
+                      className="flex-1 rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                    />
+                    <button
+                      onClick={addCustomStrain}
+                      className="rounded-lg border-2 border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-[#6fbf86]/60 hover:shadow-[0_0_12px_rgba(111,191,134,0.12)] transition"
+                      type="button"
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
               <input
                 type="text"
-                value={customStrainInput}
-                onChange={(event) => setCustomStrainInput(event.target.value)}
-                placeholder="Nova strain"
-                className="flex-1 rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                value={strain}
+                onChange={(e) => setStrain(e.target.value)}
+                placeholder={species === 'ROSEIRA' ? 'Ex: Roseira-anã' : 'Ex: Variedade X'}
+                className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
               />
-              <button
-                onClick={addCustomStrain}
-                className="rounded-lg border-2 border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-[#6fbf86]/60 hover:shadow-[0_0_12px_rgba(111,191,134,0.12)] transition"
-                type="button"
-              >
-                Adicionar
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
@@ -294,6 +354,7 @@ export function PlantFormModal({
               <option value="FINALIZACAO">Finalização</option>
             </select>
           </div>
+
           <div>
             <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Tamanho do vaso</label>
             <select
@@ -319,6 +380,7 @@ export function PlantFormModal({
               disabled={stage === 'GERMINACAO'}
             />
           </div>
+
           <div>
             <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Largura (cm)</label>
             <input
@@ -329,6 +391,7 @@ export function PlantFormModal({
               disabled={stage === 'GERMINACAO'}
             />
           </div>
+
           <div>
             <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Caule (cm)</label>
             <input
@@ -369,6 +432,7 @@ export function PlantFormModal({
                   <option value="HERMAFRODITA">Hermafrodita</option>
                 </select>
               </div>
+
               <div>
                 <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Data sexagem</label>
                 <input
@@ -402,6 +466,7 @@ export function PlantFormModal({
           >
             Cancelar
           </button>
+
           <button
             onClick={handleSubmit}
             disabled={isSaving}

@@ -6,6 +6,7 @@ public record DadosDetalhePlanta(
         Long id,
         String nome,
         String strain,
+        String especie,
         Double altura,
         Double largura,
         Double larguraCaule,
@@ -17,5 +18,4 @@ public record DadosDetalhePlanta(
         Boolean ativo,
         LocalDate dataGerminacao,
         LocalDate dataCriacao
-) {
-}
+) {}

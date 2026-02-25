@@ -1,6 +1,7 @@
 package cultivo.api.api.controller.planta;
 
 import cultivo.api.domain.planta.EstagioPlanta;
+import cultivo.api.domain.planta.EspeciePlanta;
 import cultivo.api.domain.planta.SexoPlanta;
 import jakarta.validation.constraints.*;
 
@@ -14,6 +15,9 @@ public record DadosCadastroPlanta(
         String nome,
 
         String strain,
+
+        // opcional (default: CANNABIS)
+        EspeciePlanta especie,
 
         LocalDate dataGerminacao,
 
@@ -40,5 +44,4 @@ public record DadosCadastroPlanta(
         LocalDate dataSexagem,
 
         LocalDate dataFloracao
-) {
-}
+) { }
