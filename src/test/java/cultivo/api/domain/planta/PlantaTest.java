@@ -52,7 +52,7 @@ class PlantaTest {
         Cultivador cultivador = new Cultivador(usuario);
 
         Planta planta = new Planta(
-            "Planta",
+            "Plant",
             null,
             null,
             null,
