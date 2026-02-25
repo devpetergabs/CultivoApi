@@ -113,19 +113,11 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         className="absolute bottom-5 right-4 z-20 h-10 w-10 rounded-full bg-transparent text-[#0b1220] flex items-center justify-center shadow-[0_0_10px_rgba(111,191,134,0.26)] border border-transparent hover:scale-105 hover:shadow-[0_0_12px_rgba(111,191,134,0.32)] transition-transform transition-shadow"
         aria-label="Acoes rapidas da planta"
       >
-        <img
-          src={cannabisIcon}
-          alt="Cannabis"
-          className="h-[30px] w-[30px] object-contain"
-        />
+        <img src={cannabisIcon} alt="Cannabis" className="h-[30px] w-[30px] object-contain" />
       </button>
 
       {isOpen && (
-        <div
-          ref={hubRef}
-          className="absolute bottom-16 right-6 z-30"
-          onClick={(event) => event.stopPropagation()}
-        >
+        <div ref={hubRef} className="absolute bottom-16 right-6 z-30" onClick={(event) => event.stopPropagation()}>
           <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-[#0b1324] to-[#0a1220] border border-[#6fbf86]/50 shadow-[0_0_14px_rgba(111,191,134,0.26)] flex items-center justify-center">
             <div className="absolute inset-2 rounded-full border border-[#6fbf86]/24 pointer-events-none" />
             <div className="relative z-10 h-9 w-9 rounded-full bg-black/70 border border-[#6fbf86] flex items-center justify-center text-[#6fbf86] text-lg font-semibold">
@@ -162,19 +154,9 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         plantStage={plant.type}
       />
 
-      <NoteModal
-        open={activeAction === 'note'}
-        onClose={closeModals}
-        plantId={plant.id}
-        plantName={plant.name}
-      />
+      <NoteModal open={activeAction === 'note'} onClose={closeModals} plantId={plant.id} plantName={plant.name} />
 
-      <PhotoModal
-        open={activeAction === 'photo'}
-        onClose={closeModals}
-        plantId={plant.id}
-        plantName={plant.name}
-      />
+      <PhotoModal open={activeAction === 'photo'} onClose={closeModals} plantId={plant.id} plantName={plant.name} />
 
       <InsecticideModal
         open={activeAction === 'insecticide'}
