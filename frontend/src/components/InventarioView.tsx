@@ -8,6 +8,8 @@ import {
   getAditivoStock,
   getDerivedStock,
   isAditivoOutOfStock,
+  syncAditivoStocksFromApi,
+  resetAllAditivoStocksOnce,
 } from '../utils/aditivoStorage';
 
 type InventarioViewProps = {
@@ -65,6 +67,11 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
 
   const [mostrarColecionaveis, setMostrarColecionaveis] = useState(false);
 
+  // ✅ força começar SEM estoque (limpa localStorage antigo 1x)
+  useEffect(() => {
+    resetAllAditivoStocksOnce('v2');
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handler = () => setRefreshKey((x) => x + 1);
@@ -80,6 +87,11 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
         const response = await apiService.getAditivos(0, 500);
         const list = (response as any)?.content ?? response;
         const items = Array.isArray(list) ? (list as Aditivo[]) : [];
+        // cache local (somente espelho) do estoque vindo do backend
+        // OBS: sync não cria estoque novo; só atualiza se já estiver tracked localmente.
+        try {
+          syncAditivoStocksFromApi(items as any);
+        } catch {}
         setAditivos(items);
       } catch (e: any) {
         const status = e?.response?.status;
@@ -103,6 +115,9 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
     } else {
       // Mostra todos com estoque, independente do status ativo
       base = aditivos.filter((a) => {
+        const tipo = String(a.tipo || "").toUpperCase();
+        if (tipo === "VASO") return true;
+
         const stock = getAditivoStock(a.id);
         const derived = getDerivedStock(stock);
         return !derived.isEmpty;
@@ -120,8 +135,8 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
         const yCollectible = !ay.ativo;
         if (xCollectible !== yCollectible) return xCollectible ? 1 : -1;
 
-        const xOut = isAditivoOutOfStock(ax.id);
-        const yOut = isAditivoOutOfStock(ay.id);
+        const xOut = String((ax as any).tipo || '').toUpperCase() === 'VASO' ? false : isAditivoOutOfStock(ax.id);
+        const yOut = String((ay as any).tipo || '').toUpperCase() === 'VASO' ? false : isAditivoOutOfStock(ay.id);
         if (xOut !== yOut) return xOut ? 1 : -1;
 
         return x.index - y.index;
@@ -171,11 +186,13 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {visible.map((a) => {
               const isCollectible = !a.ativo;
+              const tipo = String(a.tipo || "").toUpperCase();
+              const isEquipment = tipo === "VASO";
               const customIcon = getAditivoIcon(a.id);
               const stock = getAditivoStock(a.id);
               const derived = getDerivedStock(stock);
-              const isOutOfStock = derived.isEmpty;
-              const isLowStock = derived.isLow;
+              const isOutOfStock = isEquipment ? false : derived.isEmpty;
+              const isLowStock = isEquipment ? false : derived.isLow;
 
               const estoqueMl = derived.hasData ? derived.estoqueMl : 0;
               const capacityMl = derived.capacidadeMl;
@@ -259,17 +276,34 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                     </p>
 
                     <div className="mb-4 flex flex-wrap gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
-                        {classeLabel(a.classe)}
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
-                        {estagioLabel(a.estagio)}
-                      </span>
+                      {isEquipment ? (
+                        <>
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
+                            Equipamento
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
+                            {(a.capacidadeLitros ?? 0)}L
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
+                            {classeLabel(a.classe)}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
+                            {estagioLabel(a.estagio)}
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     <div className="flex-1 pt-3 border-t border-[rgba(255,255,255,0.12)]">
                       <div className="text-[11px] text-slate-300/80">
-                        {typeof a.dosePadraoEmML === 'number' ? (
+                        {isEquipment ? (
+                          <span>
+                            Capacidade: <span className="font-semibold text-slate-100">{(a.capacidadeLitros ?? 0)} L</span>
+                          </span>
+                        ) : typeof a.dosePadraoEmML === 'number' ? (
                           <span>
                             Dose padrão: <span className="font-semibold text-slate-100">{a.dosePadraoEmML} ml/L</span>
                           </span>
@@ -283,19 +317,29 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${stockPillClass}`}
                           >
-                              <span aria-hidden="true">{isEmptyStock ? '⛔' : '🧪'}</span>
-                              <span>
-                                Estoque:{' '}
-                                {derived.hasData ? (
-                                  <>{formatMl(estoqueMl)} ml</>
-                                ) : (
-                                  <span className="opacity-80">—</span>
-                                )}
-                              </span>
-                            {isLowStock && <span className="opacity-80">(baixo)</span>}
+                            <span aria-hidden="true">{isEquipment ? '🪴' : isEmptyStock ? '⛔' : '🧪'}</span>
+                            <span>
+                              {isEquipment ? (
+                                <>
+                                  Item: <span className="font-semibold text-slate-100">VASO</span>
+                                </>
+                              ) : (
+                                <>
+                                  Estoque:{' '}
+                                  {derived.hasData ? (
+                                    <>{formatMl(estoqueMl)} ml</>
+                                  ) : (
+                                    <span className="opacity-80">—</span>
+                                  )}
+                                </>
+                              )}
+                            </span>
+                            {!isEquipment && isLowStock && <span className="opacity-80">(baixo)</span>}
                           </span>
-                            {derived.hasData && capacityMl > 0 ? (
-                              <span className="text-[10px] text-slate-300/70 font-mono">{formatMl(estoqueMl)}/{formatMl(capacityMl)} ml</span>
+                          {isEquipment ? (
+                            <span className="text-[10px] text-slate-300/70 font-mono">{(a.capacidadeLitros ?? 0)}L</span>
+                          ) : derived.hasData && capacityMl > 0 ? (
+                            <span className="text-[10px] text-slate-300/70 font-mono">{formatMl(estoqueMl)}/{formatMl(capacityMl)} ml</span>
                           ) : (
                             <span className="text-[10px] text-slate-300/60">&nbsp;</span>
                           )}

@@ -1,162 +1,679 @@
-import React, { useMemo, useState } from "react";
-import type { PlantaEvento } from "../types/index";
+import React, { useMemo, useState } from 'react';
+import type { PlantaEvento } from '../types/index';
+import { apiService } from '../services/api';
 
 type Props = {
+  /** Necessário para editar/excluir via API */
+  plantId?: number | null;
   events: PlantaEvento[];
   onRefresh?: () => void;
   loading?: boolean;
   title?: string;
 };
 
-type Filter = "ALL" | string;
+type Filter = 'ALL' | string;
+type ModalMode = 'NONE' | 'CORRECT' | 'REPLACE';
 
 function fmtDateTime(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 function dayKey(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function labelForDay(key: string) {
-  const today = new Date().toLocaleDateString("pt-BR");
-  const y = new Date(Date.now() - 86400000).toLocaleDateString("pt-BR");
-  if (key === today) return "Hoje";
-  if (key === y) return "Ontem";
+  const today = new Date().toLocaleDateString('pt-BR');
+  const y = new Date(Date.now() - 86400000).toLocaleDateString('pt-BR');
+  if (key === today) return 'Hoje';
+  if (key === y) return 'Ontem';
   return key;
 }
 
-function typeMeta(tipo: string) {
-  // Paleta dark + feedback (sem gritar)
+function isWaterLike(tipo: string) {
+  return (
+    tipo === 'REGA_NORMAL' ||
+    tipo === 'REGA_ADITIVADA' ||
+    tipo === 'MODELO_NORMAL' ||
+    tipo === 'MODELO_ADITIVADO'
+  );
+}
+
+function prettyTipo(tipo: string) {
   switch (tipo) {
-    case "REGA_NORMAL":
-    case "REGA_ADITIVADA":
-    case "MODELO_NORMAL":
-    case "MODELO_ADITIVADO":
-      return { icon: "💧", badge: "bg-sky-500/15 text-sky-200 border-sky-400/30" };
-    case "INSETICIDA":
-      return { icon: "🛡️", badge: "bg-amber-500/15 text-amber-200 border-amber-400/30" };
-    case "OBSERVACAO":
-      return { icon: "📝", badge: "bg-violet-500/15 text-violet-200 border-violet-400/30" };
-    case "CRESCIMENTO":
-      return { icon: "📈", badge: "bg-emerald-500/15 text-emerald-200 border-emerald-400/30" };
-    case "EVOLUCAO":
-      return { icon: "✨", badge: "bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-400/30" };
+    case 'REGA_NORMAL':
+      return 'REGA (NORMAL)';
+    case 'REGA_ADITIVADA':
+      return 'REGA (ADITIVADA)';
+    case 'MODELO_NORMAL':
+      return 'MODELO (NORMAL)';
+    case 'MODELO_ADITIVADO':
+      return 'MODELO (ADITIVADO)';
+    case 'OBSERVACAO':
+      return 'OBSERVAÇÃO';
+    case 'INSETICIDA':
+      return 'INSETICIDA';
+    case 'TROCA_VASO':
+      return 'TROCA DE VASO';
+    case 'CRESCIMENTO':
+      return 'CRESCIMENTO';
+    case 'EVOLUCAO':
+      return 'EVOLUÇÃO';
     default:
-      return { icon: "📌", badge: "bg-slate-500/15 text-slate-200 border-slate-400/30" };
+      // fallback: "FOO_BAR" -> "FOO BAR"
+      return (tipo || '').replaceAll('_', ' ').toUpperCase();
   }
 }
 
-export const EventTimeline: React.FC<Props> = ({ events, onRefresh, loading, title = "Registro de Eventos" }) => {
-  const [filter, setFilter] = useState<Filter>("ALL");
+function niceTypeName(tipo: string) {
+  switch (tipo) {
+    case 'REGA_NORMAL':
+      return 'Rega (água pura)';
+    case 'REGA_ADITIVADA':
+      return 'Rega (aditivada)';
+    case 'MODELO_NORMAL':
+      return 'Modelo (normal)';
+    case 'MODELO_ADITIVADO':
+      return 'Modelo (aditivado)';
+    case 'OBSERVACAO':
+      return 'Observação';
+    case 'INSETICIDA':
+      return 'Inseticida';
+    case 'TROCA_VASO':
+      return 'Troca de vaso';
+    case 'CRESCIMENTO':
+      return 'Crescimento';
+    case 'EVOLUCAO':
+      return 'Evolução';
+    default:
+      return tipo;
+  }
+}
 
-  const types = useMemo(() => {
-    const set = new Set(events.map((e) => e.tipo));
-    return ["ALL", ...Array.from(set)];
+function typeMeta(tipo: string) {
+  switch (tipo) {
+    case 'REGA_NORMAL':
+    case 'REGA_ADITIVADA':
+    case 'MODELO_NORMAL':
+    case 'MODELO_ADITIVADO':
+      return { icon: '💧', badge: 'bg-sky-500/15 text-sky-200 border-sky-400/20' };
+
+    case 'OBSERVACAO':
+      return { icon: '📝', badge: 'bg-indigo-500/15 text-indigo-200 border-indigo-400/20' };
+
+    case 'INSETICIDA':
+      return { icon: '🛡️', badge: 'bg-amber-500/15 text-amber-200 border-amber-400/20' };
+
+    case 'TROCA_VASO':
+      return { icon: '📌', badge: 'bg-rose-500/15 text-rose-200 border-rose-400/20' };
+
+    case 'CRESCIMENTO':
+      return { icon: '📈', badge: 'bg-emerald-500/15 text-emerald-200 border-emerald-400/20' };
+
+    case 'EVOLUCAO':
+      return { icon: '✨', badge: 'bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-400/20' };
+
+    default:
+      return { icon: '📍', badge: 'bg-slate-500/15 text-slate-200 border-white/10' };
+  }
+}
+
+function defaultDescForEvent(tipo: string, ml: number | null) {
+  const base = niceTypeName(tipo);
+
+  if (isWaterLike(tipo)) {
+    if (ml != null && ml > 0) {
+      // escolhe texto mais “humano”
+      if (tipo === 'REGA_NORMAL' || tipo === 'MODELO_NORMAL') return `Rega (água pura): ${ml}mL`;
+      if (tipo === 'REGA_ADITIVADA' || tipo === 'MODELO_ADITIVADO') return `Rega (aditivada): ${ml}mL`;
+      return `${base}: ${ml}mL`;
+    }
+    return base;
+  }
+
+  return base;
+}
+
+function buildAuditLog(params: {
+  ev: PlantaEvento;
+  oldDesc: string | null;
+  oldMl: number | null;
+  newDesc: string | null;
+  newMl: number | null;
+  motivo: string;
+}) {
+  const { ev, oldDesc, oldMl, newDesc, newMl, motivo } = params;
+
+  const oldMlTxt = oldMl != null ? `${oldMl}mL` : '(sem mL)';
+  const newMlTxt = newMl != null ? `${newMl}mL` : '(sem mL)';
+
+  const oldDescTxt = (oldDesc ?? '').trim() || '(sem descrição)';
+  const newDescTxt = (newDesc ?? '').trim() || '(sem descrição)';
+
+  let log = `Correção do evento #${ev.id} (${niceTypeName(ev.tipo)}): ${oldMlTxt} → ${newMlTxt}.`;
+
+  if (oldDescTxt !== newDescTxt) {
+    log += ` "${oldDescTxt}" → "${newDescTxt}".`;
+  }
+
+  const m = motivo.trim();
+  if (m.length > 0) {
+    log += ` Motivo: ${m}`;
+  }
+
+  return log;
+}
+
+export const EventTimeline: React.FC<Props> = ({
+  plantId,
+  events,
+  onRefresh,
+  loading,
+  title = 'Registro de Eventos',
+}) => {
+  const [filter, setFilter] = useState<Filter>('ALL');
+
+  // menu “⋯”
+  const [menuOpenFor, setMenuOpenFor] = useState<number | null>(null);
+
+  // modal
+  const [modalMode, setModalMode] = useState<ModalMode>('NONE');
+  const [activeEvent, setActiveEvent] = useState<PlantaEvento | null>(null);
+
+  // inputs do modal
+  const [volumeMlStr, setVolumeMlStr] = useState<string>(''); // string pra permitir vazio
+  const [eventDesc, setEventDesc] = useState<string>('');
+  const [motivo, setMotivo] = useState<string>('');
+
+  // replace
+  const [deleteOldOnReplace, setDeleteOldOnReplace] = useState<boolean>(true);
+
+  // audit
+  const [createAuditObs, setCreateAuditObs] = useState<boolean>(true);
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const tipos = useMemo(() => {
+    const set = new Set<string>();
+    events.forEach((e) => set.add(e.tipo));
+    return Array.from(set).sort();
   }, [events]);
 
   const filtered = useMemo(() => {
-    if (filter === "ALL") return events;
+    if (filter === 'ALL') return events;
     return events.filter((e) => e.tipo === filter);
   }, [events, filter]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, PlantaEvento[]>();
     for (const e of filtered) {
-      const key = dayKey(e.dataEvento);
-      const arr = map.get(key) ?? [];
-      arr.push(e);
-      map.set(key, arr);
+      const k = dayKey(e.dataEvento);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(e);
     }
-    // Ordena grupos por data (desc)
-    const keys = Array.from(map.keys()).sort((a, b) => {
-      const da = new Date(a.split("/").reverse().join("-")).getTime();
-      const db = new Date(b.split("/").reverse().join("-")).getTime();
+    // newest first within day
+    for (const [k, list] of map.entries()) {
+      list.sort((a, b) => new Date(b.dataEvento).getTime() - new Date(a.dataEvento).getTime());
+      map.set(k, list);
+    }
+    // newest days first
+    return Array.from(map.entries()).sort((a, b) => {
+      const da = new Date(a[1][0].dataEvento).getTime();
+      const db = new Date(b[1][0].dataEvento).getTime();
       return db - da;
     });
-    return keys.map((k) => ({ day: k, items: map.get(k)! }));
   }, [filtered]);
 
+  function closeModal() {
+    setModalMode('NONE');
+    setActiveEvent(null);
+    setVolumeMlStr('');
+    setEventDesc('');
+    setMotivo('');
+    setDeleteOldOnReplace(true);
+    setCreateAuditObs(true);
+    setErr(null);
+  }
+
+  function openCorrect(ev: PlantaEvento) {
+    setActiveEvent(ev);
+    setModalMode('CORRECT');
+
+    // Prefill REAL do evento (isso é o que vai ser PATCHado)
+    setVolumeMlStr(ev.doseEmML != null ? String(ev.doseEmML) : '');
+    setEventDesc(ev.descricao ?? '');
+
+    // Motivo começa vazio (você escreve se quiser)
+    setMotivo('');
+
+    // Corrigir por padrão cria audit OBS (padrão ON)
+    setCreateAuditObs(true);
+    setDeleteOldOnReplace(true);
+
+    setErr(null);
+    setMenuOpenFor(null);
+  }
+
+  function openReplace(ev: PlantaEvento) {
+    setActiveEvent(ev);
+    setModalMode('REPLACE');
+
+    // Prefill do novo evento
+    setVolumeMlStr(ev.doseEmML != null ? String(ev.doseEmML) : '');
+    setEventDesc(ev.descricao ?? '');
+    setMotivo('');
+    setDeleteOldOnReplace(true);
+
+    // Replace não precisa de audit (mas deixo disponível se quiser)
+    setCreateAuditObs(false);
+
+    setErr(null);
+    setMenuOpenFor(null);
+  }
+
+  function parseMlOrNull() {
+    const raw = volumeMlStr.trim();
+    if (raw.length === 0) return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return NaN;
+    return Math.round(n);
+  }
+
+  async function doDelete(ev: PlantaEvento) {
+    if (!plantId) return;
+    const ok = window.confirm(`Excluir evento #${ev.id} (${niceTypeName(ev.tipo)})?`);
+    if (!ok) return;
+
+    try {
+      await apiService.deletePlantaEvento(plantId, ev.id);
+      onRefresh?.();
+    } catch {
+      window.alert('Não foi possível excluir o evento.');
+    }
+  }
+
+  async function onSave() {
+    if (!plantId || !activeEvent) {
+      setErr('plantId não está disponível.');
+      return;
+    }
+
+    const oldMl = activeEvent.doseEmML ?? null;
+    const oldDesc = activeEvent.descricao ?? null;
+
+    const parsedMl = parseMlOrNull();
+    if (Number.isNaN(parsedMl)) {
+      setErr('mL inválido.');
+      return;
+    }
+
+    const wantsMl = parsedMl != null;
+    const nextMl = wantsMl ? parsedMl : oldMl;
+
+    // Validação “AAA”: eventos de rega/modelo precisam de mL > 0
+    if (isWaterLike(activeEvent.tipo)) {
+      if (nextMl == null || nextMl <= 0) {
+        setErr('Para REGA/MODELO, informe um volume maior que 0 mL.');
+        return;
+      }
+    }
+
+    // descrição final: se usuário apagar, gera padrão
+    let nextDesc = (eventDesc ?? '').trim();
+    if (nextDesc.length === 0) {
+      nextDesc = defaultDescForEvent(activeEvent.tipo, nextMl);
+    }
+
+    setIsSaving(true);
+    setErr(null);
+
+    try {
+      if (modalMode === 'CORRECT') {
+        // ✅ PATCH DE VERDADE: altera o evento
+        await apiService.patchPlantaEvento(plantId, activeEvent.id, {
+          descricao: nextDesc,
+          doseEmML: nextMl,
+        });
+
+        // ✅ (Opcional) cria OBSERVAÇÃO de auditoria
+        if (createAuditObs) {
+          const audit = buildAuditLog({
+            ev: activeEvent,
+            oldDesc,
+            oldMl,
+            newDesc: nextDesc,
+            newMl: nextMl,
+            motivo,
+          });
+
+          await apiService.createPlantaEvento(plantId, {
+            tipo: 'OBSERVACAO',
+            descricao: audit,
+            doseEmML: null,
+          });
+        }
+
+        onRefresh?.();
+        closeModal();
+        return;
+      }
+
+      if (modalMode === 'REPLACE') {
+        // cria um novo evento (mesmo tipo) e opcionalmente apaga o antigo
+        await apiService.createPlantaEvento(plantId, {
+          tipo: activeEvent.tipo,
+          descricao: nextDesc,
+          doseEmML: nextMl,
+        });
+
+        if (deleteOldOnReplace) {
+          await apiService.deletePlantaEvento(plantId, activeEvent.id);
+        }
+
+        onRefresh?.();
+        closeModal();
+        return;
+      }
+    } catch (e: any) {
+      // se o backend ainda estiver bloqueando PATCH pra tipos, vai cair aqui.
+      setErr('Falha ao salvar. Se estiver dando 403, o backend ainda está bloqueando PATCH pra este tipo.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-      <div className="flex items-center justify-between gap-2">
+    <div className="w-full" onClick={() => setMenuOpenFor(null)}>
+      <div className="mb-2 flex items-start justify-between gap-2">
         <div>
-          <h3 className="text-base font-semibold text-white">{title}</h3>
-          <p className="text-xs text-white/60">A “visão de estado” da planta vem daqui.</p>
+          <div className="text-sm font-semibold text-white">{title}</div>
+          <div className="text-xs text-white/60">A “visão de estado” da planta vem daqui.</div>
         </div>
 
         <div className="flex items-center gap-2">
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="bg-black/30 border border-white/10 text-white text-xs rounded-lg px-2 py-1"
+            onChange={(e) => setFilter(e.target.value as Filter)}
+            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 outline-none"
           >
-            {types.map((t) => (
+            <option value="ALL">Todos</option>
+            {tipos.map((t) => (
               <option key={t} value={t}>
-                {t === "ALL" ? "Todos" : t}
+                {prettyTipo(t)}
               </option>
             ))}
           </select>
 
           {onRefresh && (
             <button
-              onClick={onRefresh}
-              className="text-xs px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white"
+              type="button"
+              onClick={() => onRefresh()}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80 hover:bg-white/10"
             >
-              {loading ? "..." : "Atualizar"}
+              {loading ? '...' : 'Atualizar'}
             </button>
           )}
         </div>
       </div>
 
-      <div className="mt-4 space-y-4">
-        {grouped.length === 0 ? (
-          <div className="text-sm text-white/60">Nenhum evento ainda.</div>
-        ) : (
-          grouped.map((g) => (
-            <div key={g.day} className="space-y-2">
-              <div className="text-xs text-white/60">{labelForDay(g.day)}</div>
+      {err && <div className="mb-2 text-xs text-red-300">{err}</div>}
+
+      {grouped.length === 0 ? (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/60">Sem eventos ainda.</div>
+      ) : (
+        <div className="space-y-3">
+          {grouped.map(([day, list]) => (
+            <div key={day}>
+              <div className="mb-2 text-xs font-semibold text-white/70">{labelForDay(day)}</div>
 
               <div className="space-y-2">
-                {g.items.map((e) => {
-                  const meta = typeMeta(e.tipo);
+                {list.map((ev) => {
+                  const meta = typeMeta(ev.tipo);
+                  const menuOpen = menuOpenFor === ev.id;
+
                   return (
                     <div
-                      key={e.id}
-                      className="flex gap-3 rounded-xl bg-black/25 border border-white/10 p-3 hover:bg-black/30 transition"
+                      key={ev.id}
+                      className="relative rounded-xl border border-white/10 bg-white/5 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.25)]"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10">
-                        <span className="text-lg">{meta.icon}</span>
-                      </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-base">
+                            {meta.icon}
+                          </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[11px] px-2 py-0.5 rounded-full border ${meta.badge}`}>
-                            {e.tipo}
-                          </span>
-                          <span className="text-[11px] text-white/50">{fmtDateTime(e.dataEvento)}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}
+                              >
+                                {prettyTipo(ev.tipo)}
+                              </span>
+                              <span className="text-[11px] text-white/60">{fmtDateTime(ev.dataEvento)}</span>
+                            </div>
+
+                            {ev.descricao && ev.descricao.trim().length > 0 && (
+                              <div className="mt-1 text-sm text-white/90 whitespace-pre-line">{ev.descricao}</div>
+                            )}
+
+                            {ev.doseEmML != null && (
+                              <div className="mt-1 text-[11px] text-white/60">
+                                dose/volume: <span className="font-mono text-white/75">{ev.doseEmML} mL</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
-                        {e.descricao && (
-                          <div className="mt-1 text-sm text-white/90 whitespace-pre-wrap break-words">
-                            {e.descricao}
-                          </div>
-                        )}
+                        {plantId ? (
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setMenuOpenFor((prev) => (prev === ev.id ? null : ev.id))}
+                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+                              disabled={isSaving}
+                              aria-label="Ações"
+                            >
+                              ⋯
+                            </button>
 
-                        {typeof e.doseEmML === "number" && (
-                          <div className="mt-1 text-xs text-white/60">dose/volume: {e.doseEmML} mL</div>
-                        )}
+                            {menuOpen && (
+                              <div className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#0b1220] shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
+                                <div className="px-3 py-2 text-[11px] font-semibold text-white/60">Ações</div>
+                                <div className="h-px bg-white/10" />
+
+                                <div className="p-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => openReplace(ev)}
+                                    className="w-full rounded-lg px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10"
+                                  >
+                                    Substituir…
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => openCorrect(ev)}
+                                    className="w-full rounded-lg px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10"
+                                  >
+                                    Corrigir…
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setMenuOpenFor(null);
+                                      void doDelete(ev);
+                                    }}
+                                    className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-300 hover:bg-red-500/10"
+                                  >
+                                    Excluir
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {/* MODAL */}
+      {modalMode !== 'NONE' && activeEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={closeModal}>
+          <div
+            className="w-full max-w-[520px] rounded-2xl border border-white/10 bg-[#0b1220] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2">
+              <div className="text-sm font-semibold text-white">
+                {modalMode === 'CORRECT' ? 'Corrigir evento' : 'Substituir evento'}
+              </div>
+              <div className="text-xs text-white/60">
+                #{activeEvent.id} • {niceTypeName(activeEvent.tipo)}
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wide text-white/60">
+                  Volume (mL) — {isWaterLike(activeEvent.tipo) ? 'obrigatório' : 'opcional'}
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={volumeMlStr}
+                  onChange={(e) => setVolumeMlStr(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/40"
+                  disabled={isSaving}
+                />
+                <div className="mt-1 text-[11px] text-white/45">
+                  ≈ {(() => {
+                    const n = Number(volumeMlStr || 0);
+                    if (!Number.isFinite(n)) return '0.00';
+                    return (n / 1000).toFixed(2);
+                  })()}
+                  L
+                </div>
+              </div>
+
+              {modalMode === 'REPLACE' && (
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-xs text-white/70">
+                    <input
+                      type="checkbox"
+                      checked={deleteOldOnReplace}
+                      onChange={(e) => setDeleteOldOnReplace(e.target.checked)}
+                      disabled={isSaving}
+                    />
+                    Excluir evento antigo após substituir
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3">
+              <label className="block text-[11px] font-semibold uppercase tracking-wide text-white/60">
+                Descrição (vai ficar no evento)
+              </label>
+              <textarea
+                rows={3}
+                value={eventDesc}
+                onChange={(e) => setEventDesc(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/40"
+                disabled={isSaving}
+              />
+              <div className="mt-1 text-[11px] text-white/45">
+                Se deixar vazio, o app gera uma descrição padrão coerente com o tipo + mL.
+              </div>
+            </div>
+
+            {modalMode === 'CORRECT' && (
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-white/70">Auditoria (Observação automática)</div>
+                  <label className="flex items-center gap-2 text-xs text-white/70">
+                    <input
+                      type="checkbox"
+                      checked={createAuditObs}
+                      onChange={(e) => setCreateAuditObs(e.target.checked)}
+                      disabled={isSaving}
+                    />
+                    Criar observação
+                  </label>
+                </div>
+
+                <label className="mt-2 block text-[11px] font-semibold uppercase tracking-wide text-white/60">
+                  Motivo (opcional)
+                </label>
+                <input
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/40"
+                  disabled={isSaving || !createAuditObs}
+                  placeholder="ex: digitei errado / cliquei errado / ajuste fino…"
+                />
+
+                <div className="mt-2 text-[11px] text-white/55">
+                  Preview do log que será salvo como OBSERVAÇÃO:
+                </div>
+                <div className="mt-1 rounded-xl border border-white/10 bg-black/20 p-2 text-[11px] text-white/70 whitespace-pre-wrap">
+                  {buildAuditLog({
+                    ev: activeEvent,
+                    oldDesc: activeEvent.descricao ?? null,
+                    oldMl: activeEvent.doseEmML ?? null,
+                    newDesc: (eventDesc ?? '').trim().length > 0 ? eventDesc.trim() : defaultDescForEvent(activeEvent.tipo, (() => {
+                      const raw = volumeMlStr.trim();
+                      const n = raw.length ? Number(raw) : NaN;
+                      const newMl = Number.isFinite(n) ? Math.round(n) : null;
+                      const chosenMl = newMl != null ? newMl : (activeEvent.doseEmML ?? null);
+                      return chosenMl;
+                    })()),
+                    newMl: (() => {
+                      const raw = volumeMlStr.trim();
+                      const n = raw.length ? Number(raw) : NaN;
+                      const newMl = Number.isFinite(n) ? Math.round(n) : null;
+                      return newMl != null ? newMl : (activeEvent.doseEmML ?? null);
+                    })(),
+                    motivo,
+                  })}
+                </div>
+              </div>
+            )}
+
+            {err && <div className="mt-3 text-xs text-red-300">{err}</div>}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/75 hover:bg-white/10"
+                disabled={isSaving}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void onSave()}
+                className="rounded-xl bg-emerald-500/90 px-3 py-2 text-xs font-bold text-[#0b1220] hover:brightness-110 disabled:opacity-60"
+                disabled={isSaving}
+              >
+                {isSaving ? 'Salvando…' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

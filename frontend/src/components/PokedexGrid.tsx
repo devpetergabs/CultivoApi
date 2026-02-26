@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import type { Plant, PlantType } from '../types/pokedex';
 import { PlantCardPreview } from './PlantCardPreview';
 import cauleImg from '../assets/caule.png';
+import { BulkInsecticideModal } from './BulkInsecticideModal';
 
 
 interface PokedexGridProps {
@@ -49,6 +51,8 @@ export function PokedexGrid({
   hideCannabis,
   onHideCannabisChange,
 }: PokedexGridProps) {
+  const [bulkInsecticideOpen, setBulkInsecticideOpen] = useState(false);
+
   const dispatchNewPlant = () => {
     if (typeof window === 'undefined') return;
     window.dispatchEvent(new CustomEvent('pokedex:new-plant'));
@@ -57,6 +61,24 @@ export function PokedexGrid({
   return (
     <div className="flex flex-col h-full gap-4 p-6 overflow-y-auto">
       <div className="sticky top-0 z-20 pokedex-card-frame p-5 space-y-4 border-cyan-500/20">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs font-medium text-[#8FD6A4] uppercase tracking-[0.06em]">⚡ Ações</div>
+
+          <button
+            type="button"
+            onClick={() => setBulkInsecticideOpen(true)}
+            disabled={plants.length === 0}
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] transition-colors duration-200 ${
+              plants.length === 0
+                ? 'bg-slate-800/30 text-slate-500 border-slate-700 cursor-not-allowed opacity-70'
+                : 'bg-amber-500/15 text-amber-200 border-amber-400/30 hover:border-amber-300/60 hover:bg-amber-500/20'
+            }`}
+            title="Aplicar inseticida em várias plantas (lote)"
+          >
+            🛡️ Inseticida (lote)
+          </button>
+        </div>
+
         <div className="space-y-2">
           <label className="text-xs font-medium text-[#8FD6A4] uppercase tracking-[0.06em]">🔍 Buscar Pokédex</label>
           <input
@@ -230,6 +252,12 @@ export function PokedexGrid({
           </button>
         </div>
       )}
+
+      <BulkInsecticideModal
+        open={bulkInsecticideOpen}
+        onClose={() => setBulkInsecticideOpen(false)}
+        plants={plants}
+      />
     </div>
   );
 }

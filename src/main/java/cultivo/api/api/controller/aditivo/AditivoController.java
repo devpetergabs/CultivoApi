@@ -1,16 +1,25 @@
 package cultivo.api.api.controller.aditivo;
 
 import cultivo.api.application.aditivo.ClassificadorAditivoService;
+import cultivo.api.application.estoque.ProdutoEstoqueService;
 import cultivo.api.domain.aditivo.ClasseAditivo;
 import cultivo.api.domain.aditivo.Aditivo;
+import cultivo.api.domain.aditivo.TipoProduto;
+import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.persistence.aditivo.AditivoRepository;
+import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/aditivos")
@@ -21,6 +30,12 @@ public class AditivoController {
 
     @Autowired
     private ClassificadorAditivoService classificadorAditivoService;
+
+    @Autowired
+    private CultivadorRepository cultivadorRepository;
+
+    @Autowired
+    private ProdutoEstoqueService estoqueService;
 
     @PostMapping
     public ResponseEntity<Aditivo> cadastrar(@Valid @RequestBody DadosCadastroAditivo dados, UriComponentsBuilder uri) {
@@ -34,17 +49,106 @@ public class AditivoController {
         return ResponseEntity.created(uriBuilder).body(aditivo);
     }
 
+    /**
+     * Catálogo do jogo (com estoque por cultivador).
+     *
+     * Observação: continua em /aditivos por compatibilidade com o front.
+     */
     @GetMapping
-    public ResponseEntity<Page<Aditivo>> listar(Pageable paginacao) {
+    public ResponseEntity<?> listar(
+            @AuthenticationPrincipal Usuario usuario,
+            Pageable paginacao
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var cultivador = cultivadorRepository.findByUsuarioId(usuario.getId());
+        if (cultivador == null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
         var page = repository.findAll(paginacao);
-        return ResponseEntity.ok(page);
+        var ids = page.getContent().stream().map(Aditivo::getId).toList();
+        var estoqueMap = estoqueService.mapByProdutoId(cultivador.getId(), ids);
+
+        List<DadosAditivoCatalogo> content = page.getContent().stream().map(a -> {
+            var estoque = estoqueMap.get(a.getId());
+            var estoqueDto = estoque == null
+                    ? new DadosEstoqueProduto(false, a.getTipo() != null ? a.getTipo().toString() : null, 0.0, 0, 0)
+                    : new DadosEstoqueProduto(true,
+                        estoque.getTipoProduto() != null ? estoque.getTipoProduto().toString() : null,
+                        estoque.getStockMlAtual(),
+                        estoque.getUnidades(),
+                        estoque.getMlFrasco());
+
+            return new DadosAditivoCatalogo(
+                    a.getId(),
+                    a.getNome(),
+                    a.getMarca(),
+                    a.getDescricao(),
+                    a.getEstagio(),
+                    a.getClasse(),
+                    a.getDosePadraoEmML(),
+                    a.getAtivo(),
+                    a.getTipo() != null ? a.getTipo().toString() : null,
+                    a.getCapacidadeLitros(),
+                    a.getRoundsRecomendados(),
+                    a.getDescansoDiasRecomendados(),
+                    estoqueDto
+            );
+        }).toList();
+
+        Page<DadosAditivoCatalogo> dtoPage = new PageImpl<>(content, paginacao, page.getTotalElements());
+        return ResponseEntity.ok(dtoPage);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Aditivo> detalhar(@PathVariable Long id) {
-        var aditivo = repository.findById(id);
-        return aditivo.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<?> detalhar(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Usuario usuario
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var cultivador = cultivadorRepository.findByUsuarioId(usuario.getId());
+        if (cultivador == null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
+        var aditivoOpt = repository.findById(id);
+        if (aditivoOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var a = aditivoOpt.get();
+        var estoqueOpt = estoqueService.findByCultivadorAndProduto(cultivador.getId(), id);
+        var estoqueDto = estoqueOpt
+                .map(e -> new DadosEstoqueProduto(true,
+                        e.getTipoProduto() != null ? e.getTipoProduto().toString() : null,
+                        e.getStockMlAtual(),
+                        e.getUnidades(),
+                        e.getMlFrasco()))
+                .orElseGet(() -> new DadosEstoqueProduto(false, a.getTipo() != null ? a.getTipo().toString() : null, 0.0, 0, 0));
+
+        var dto = new DadosAditivoCatalogo(
+                a.getId(),
+                a.getNome(),
+                a.getMarca(),
+                a.getDescricao(),
+                a.getEstagio(),
+                a.getClasse(),
+                a.getDosePadraoEmML(),
+                a.getAtivo(),
+                a.getTipo() != null ? a.getTipo().toString() : null,
+                a.getCapacidadeLitros(),
+                a.getRoundsRecomendados(),
+                a.getDescansoDiasRecomendados(),
+                estoqueDto
+        );
+
+        return ResponseEntity.ok(dto);
     }
 
     @PutMapping("/{id}")
@@ -53,19 +157,31 @@ public class AditivoController {
         if (aditivo.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        
+
         var aditivoExistente = aditivo.get();
-        if (dados.nome() != null) {
-            aditivoExistente = new Aditivo(id, dados.nome(), 
-                    dados.marca() != null ? dados.marca() : aditivoExistente.getMarca(),
-                    dados.descricao() != null ? dados.descricao() : "",
-                    dados.estagio() != null ? dados.estagio() : aditivoExistente.getEstagio(),
-                    dados.classe() != null ? dados.classe() : aditivoExistente.getClasse(),
-                    dados.dosePadraoEmML() != null ? dados.dosePadraoEmML() : aditivoExistente.getDosePadraoEmML(),
-                    aditivoExistente.getAtivo());
-            repository.save(aditivoExistente);
-        }
-        
+
+        // tipo é opcional; se não vier, preserva.
+        TipoProduto tipo = null;
+        try {
+            if (dados.tipo() != null) {
+                tipo = TipoProduto.valueOf(dados.tipo());
+            }
+        } catch (Exception ignored) {}
+
+        aditivoExistente.atualizarDados(
+                dados.nome(),
+                dados.marca(),
+                dados.descricao(),
+                dados.estagio(),
+                dados.classe(),
+                dados.dosePadraoEmML(),
+                tipo,
+                dados.capacidadeLitros(),
+                dados.roundsRecomendados(),
+                dados.descansoDiasRecomendados()
+        );
+
+        repository.save(aditivoExistente);
         return ResponseEntity.ok(aditivoExistente);
     }
 
@@ -75,11 +191,11 @@ public class AditivoController {
         if (aditivo.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        
+
         var aditivoExistente = aditivo.get();
         aditivoExistente.desativar();
         repository.save(aditivoExistente);
-        
+
         return ResponseEntity.noContent().build();
     }
 }

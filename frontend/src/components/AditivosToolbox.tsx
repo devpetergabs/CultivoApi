@@ -3,7 +3,6 @@ import type { Aditivo } from '../types';
 import type { PlantType } from '../types/pokedex';
 import { apiService } from '../services/api';
 import type { StoredWateringMixItem } from '../utils/wateringMixStorage';
-import { getAditivoStock, ADITIVO_STOCK_UPDATED_EVENT } from '../utils/aditivoStorage';
 import { EstoqueBox } from './EstoqueBox';
 
 type ToolboxProps = {
@@ -122,6 +121,27 @@ export function AditivosToolbox({
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchAditivos = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await apiService.getAditivos(0, 500);
+      const list = (response as any)?.content ?? response;
+      const items = Array.isArray(list) ? (list as Aditivo[]) : [];
+      setAllAditivos(items);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      if (status === 401 || status === 403) {
+        setError('Você precisa estar logado para ver o inventário.');
+      } else {
+        setError('Não foi possível carregar os aditivos do inventário.');
+      }
+      setAllAditivos([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const [allAditivos, setAllAditivos] = useState<Aditivo[]>([]);
 
   const [draft, setDraft] = useState<Record<number, StoredWateringMixItem>>({});
@@ -140,45 +160,32 @@ export function AditivosToolbox({
     setQuery('');
     setError(null);
 
-    let active = true;
-    setIsLoading(true);
-    apiService
-      .getAditivos(0, 500)
-      .then((response) => {
-        const list = (response as any)?.content ?? response;
-        const items = Array.isArray(list) ? (list as Aditivo[]) : [];
-        if (!active) return;
-        setAllAditivos(items);
-      })
-      .catch((e: any) => {
-        if (!active) return;
-        const status = e?.response?.status;
-        if (status === 401 || status === 403) {
-          setError('Você precisa estar logado para ver o inventário.');
-        } else {
-          setError('Não foi possível carregar os aditivos do inventário.');
-        }
-        setAllAditivos([]);
-      })
-      .finally(() => {
-        if (!active) return;
-        setIsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
+    void fetchAditivos();
   }, [open, initialSelected, plantId]);
+
+  // Estoque pode mudar após registrar evento (rega aditivada / inseticida).
+  // Quando isso acontecer, recarrega o catálogo enquanto o modal estiver aberto.
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => {
+      void fetchAditivos();
+    };
+    window.addEventListener('PRODUTO_ESTOQUE_UPDATED', handler);
+    return () => window.removeEventListener('PRODUTO_ESTOQUE_UPDATED', handler);
+  }, [open]);
 
   // Only show aditivos with enough stock for the desired dose (volume)
   const filtered = useMemo(() => {
     const q = normalizeText(query);
-    const base = q
+    const baseRaw = q
       ? allAditivos.filter((a) => {
           const hay = `${a.nome} ${a.marca}`;
           return normalizeText(hay).includes(q);
         })
       : allAditivos;
+
+    // Este modal é do MIX (rega aditivada). Não deve listar INSETICIDA/VASO.
+    const base = baseRaw.filter((a) => String(a.tipo ?? 'ADITIVO').toUpperCase() === 'ADITIVO');
 
     // Get the current desired volume in mL from localStorage (same as WateringModal)
     let desiredVolumeMl = 1000;
@@ -195,8 +202,12 @@ export function AditivosToolbox({
     const filteredByStock = base.filter((a) => {
       // Always show if already selected (to allow user to remove)
       if (draft[a.id]) return true;
-      const stock = getAditivoStock(a.id);
-      const estoque = stock.estoqueMl;
+
+      const est = a.estoque;
+      // Sem rastreio → não bloqueia (jogo não controla ainda).
+      if (!est || !est.tracked) return true;
+
+      const estoque = typeof est.stockMlAtual === 'number' ? est.stockMlAtual : 0;
       const dose = typeof a.dosePadraoEmML === 'number' && a.dosePadraoEmML > 0 ? a.dosePadraoEmML : 1;
       // Dose is per L, so multiply by desired volume in L
       const totalDose = dose * (desiredVolumeMl / 1000);
@@ -325,7 +336,7 @@ export function AditivosToolbox({
                       : '—';
                   const desc = briefDescription(a.descricao);
 
-                  const stockML = getAditivoStock(a.id).estoqueMl;
+                  const stockML = Math.max(0, Math.round(a.estoque?.stockMlAtual ?? 0));
                   return (
                     <div
                       key={a.id}

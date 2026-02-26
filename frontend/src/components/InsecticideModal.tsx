@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiService } from '../services/api';
 import type { Aditivo } from '../types';
-import { getAditivoStock } from '../utils/aditivoStorage';
+import {
+  getAditivoStock,
+  setAditivoStock,
+  syncAditivoStocksFromApi,
+  type AditivoStock,
+} from '../utils/aditivoStorage';
 
 interface InsecticideModalProps {
   open: boolean;
@@ -15,6 +20,8 @@ type InsecticidePreset = {
   aditivoId: number;
   doseMlPorLitro: number;
   litrosAplicados: number;
+  roundsTotal: number;
+  descansoDias: number;
 };
 
 function presetKey(plantId: number) {
@@ -28,15 +35,21 @@ function safeParsePreset(raw: string | null): InsecticidePreset | null {
     const aditivoId = Number(parsed?.aditivoId);
     const doseMlPorLitro = Number(parsed?.doseMlPorLitro);
     const litrosAplicados = Number(parsed?.litrosAplicados);
+    const roundsTotal = Number(parsed?.roundsTotal);
+    const descansoDias = Number(parsed?.descansoDias);
 
     if (!Number.isFinite(aditivoId) || aditivoId <= 0) return null;
     if (!Number.isFinite(doseMlPorLitro) || doseMlPorLitro <= 0) return null;
     if (!Number.isFinite(litrosAplicados) || litrosAplicados <= 0) return null;
+    if (!Number.isFinite(roundsTotal) || roundsTotal <= 0) return null;
+    if (!Number.isFinite(descansoDias) || descansoDias < 0) return null;
 
     return {
       aditivoId: Math.round(aditivoId),
       doseMlPorLitro: Math.round(doseMlPorLitro),
       litrosAplicados: Number(litrosAplicados.toFixed(2)),
+      roundsTotal: Math.round(roundsTotal),
+      descansoDias: Math.round(descansoDias),
     };
   } catch {
     return null;
@@ -62,21 +75,47 @@ function brief(text: unknown, max = 220) {
 }
 
 function isInsecticideLike(aditivo: Aditivo): boolean {
-  const classe = String((aditivo as any)?.classe ?? '');
+  const tipo = String((aditivo as any)?.tipo ?? '').toUpperCase();
+  const classe = String((aditivo as any)?.classe ?? '').toUpperCase();
+  const label = String((aditivo as any)?.label ?? '').toUpperCase();
+
+  if (tipo === 'INSETICIDA') return true;
+  if (label === 'INSETICIDA') return true;
+  if (classe === 'PROTECAO' || classe === 'PROTEÇÃO') return true;
+
   const nome = String(aditivo?.nome ?? '').toLowerCase();
   const marca = String(aditivo?.marca ?? '').toLowerCase();
-
-  if (classe === 'PROTECAO') return true;
-
   const hay = `${nome} ${marca}`;
+
   return (
-    hay.includes('inset') ||
     hay.includes('spinosad') ||
     hay.includes('neem') ||
     hay.includes('bacillus') ||
-    hay.includes('bt ') ||
-    hay.includes('fung')
+    hay.includes('bt') ||
+    hay.includes('fung') ||
+    hay.includes('inset')
   );
+}
+
+function mergeLocalStock(item: Aditivo): Aditivo {
+  try {
+    const local = getAditivoStock(item.id);
+    if (local?.tracked) {
+      return {
+        ...item,
+        estoque: {
+          tracked: true,
+          tipoProduto: local.tipoProduto ?? (item as any)?.tipo ?? null,
+          stockMlAtual: Number(local.stockMlAtual ?? 0),
+          unidades: Number(local.unidades ?? 0),
+          mlFrasco: Number(local.mlFrasco ?? 0),
+        } as any,
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return item;
 }
 
 export function InsecticideModal({ open, onClose, plantId, plantName }: InsecticideModalProps) {
@@ -86,6 +125,8 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [doseMlPorLitro, setDoseMlPorLitro] = useState<number>(10);
   const [litrosAplicados, setLitrosAplicados] = useState<number>(1);
+  const [roundsTotal, setRoundsTotal] = useState<number>(6);
+  const [descansoDias, setDescansoDias] = useState<number>(4);
   const [notes, setNotes] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -100,29 +141,53 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
     });
   }, [inventory]);
 
-  const selected = useMemo(() => {
-    if (!selectedId) return null;
-    return selectable.find((a) => a.id === selectedId) ?? null;
-  }, [selectable, selectedId]);
+  // ✅ ID efetivo: se state estiver null, usa o 1º disponível
+  const effectiveSelectedId = useMemo(() => {
+    if (selectedId && selectedId > 0) return selectedId;
+    return selectable[0]?.id ?? null;
+  }, [selectedId, selectable]);
 
+  // ✅ garante que o state “case” com o que o select exibe
+  useEffect(() => {
+    if (!open) return;
+    if (!effectiveSelectedId) return;
+    if (selectedId !== effectiveSelectedId) setSelectedId(effectiveSelectedId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, effectiveSelectedId]);
+
+  const selected = useMemo(() => {
+    if (!effectiveSelectedId) return null;
+    return selectable.find((a) => a.id === effectiveSelectedId) ?? null;
+  }, [selectable, effectiveSelectedId]);
+
+  // ✅ estoque real (UI/MVP): localStorage primeiro, fallback API
   const selectedStockMl = useMemo(() => {
     if (!selected) return null;
+
     try {
-      const stock = getAditivoStock(selected.id);
-      return typeof (stock as any)?.estoqueMl === 'number' ? (stock as any).estoqueMl : null;
+      const local = getAditivoStock(selected.id);
+      if (local?.tracked) {
+        const v = Number(local.stockMlAtual);
+        return Number.isFinite(v) ? v : 0;
+      }
     } catch {
-      return null;
+      // ignore
     }
+
+    const est = (selected as any)?.estoque;
+    if (!est || !est.tracked) return null;
+    const v = Number(est.stockMlAtual);
+    return Number.isFinite(v) ? v : 0;
   }, [selected]);
 
   const totalMl = useMemo(() => {
     const dose = clampInt(Number(doseMlPorLitro), 1, 100000);
     const litros = clampFloat(Number(litrosAplicados), 0.1, 9999, 2);
-    return clampInt(dose * litros, 1, 100000000);
+    return Math.max(1, Math.round(dose * litros));
   }, [doseMlPorLitro, litrosAplicados]);
 
   const hasStockEnough = useMemo(() => {
-    if (typeof selectedStockMl !== 'number') return true; // sem estoque -> não bloqueia
+    if (typeof selectedStockMl !== 'number') return true; // sem estoque rastreado -> não bloqueia
     return selectedStockMl >= totalMl;
   }, [selectedStockMl, totalMl]);
 
@@ -150,13 +215,18 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
       setSelectedId(preset.aditivoId);
       setDoseMlPorLitro(preset.doseMlPorLitro);
       setLitrosAplicados(preset.litrosAplicados);
+      setRoundsTotal(preset.roundsTotal);
+      setDescansoDias(preset.descansoDias);
     } else {
       setSelectedId(null);
       setDoseMlPorLitro(10);
       setLitrosAplicados(1);
+      setRoundsTotal(6);
+      setDescansoDias(4);
     }
   }, [open, plantId]);
 
+  // ao abrir, carrega inventário e mescla estoque local
   useEffect(() => {
     if (!open) return;
     let active = true;
@@ -168,16 +238,17 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
       .getAditivos(0, 500)
       .then((response) => {
         const list = (response as any)?.content ?? response;
-        const items = Array.isArray(list) ? (list as Aditivo[]) : [];
+        const itemsRaw = Array.isArray(list) ? (list as Aditivo[]) : [];
         if (!active) return;
 
-        setInventory(items);
+        try {
+          syncAditivoStocksFromApi(itemsRaw as any);
+        } catch {
+          // ignore
+        }
 
-        setSelectedId((current) => {
-          if (current && items.some((a) => a.id === current)) return current;
-          const first = items.filter(isInsecticideLike)[0];
-          return first ? first.id : null;
-        });
+        const items = itemsRaw.map(mergeLocalStock);
+        setInventory(items);
       })
       .catch(() => {
         if (!active) return;
@@ -199,27 +270,21 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
   const canInteract = !isSaving && !isLoading;
 
   const handleSalvarPreset = () => {
-    const id = Number(selectedId);
+    const id = Number(effectiveSelectedId);
     const dose = clampInt(Number(doseMlPorLitro), 1, 100000);
     const litros = clampFloat(Number(litrosAplicados), 0.1, 9999, 2);
+    const rounds = clampInt(Number(roundsTotal), 1, 50);
+    const descanso = clampInt(Number(descansoDias), 0, 30);
 
-    if (!Number.isFinite(id) || id <= 0) {
+    if (!Number.isFinite(id) || id <= 0 || !selected) {
       setError('Selecione um produto do inventário.');
-      return;
-    }
-    if (dose <= 0) {
-      setError('Informe uma dose maior que 0.');
-      return;
-    }
-    if (litros <= 0) {
-      setError('Informe os litros aplicados.');
       return;
     }
 
     try {
       localStorage.setItem(
         presetKey(plantId),
-        JSON.stringify({ aditivoId: id, doseMlPorLitro: dose, litrosAplicados: litros })
+        JSON.stringify({ aditivoId: id, doseMlPorLitro: dose, litrosAplicados: litros, roundsTotal: rounds, descansoDias: descanso })
       );
       onClose();
     } catch {
@@ -228,20 +293,14 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
   };
 
   const handleAplicar = async () => {
-    const id = Number(selectedId);
+    const id = Number(effectiveSelectedId);
     const dose = clampInt(Number(doseMlPorLitro), 1, 100000);
     const litros = clampFloat(Number(litrosAplicados), 0.1, 9999, 2);
+    const rounds = clampInt(Number(roundsTotal), 1, 50);
+    const descanso = clampInt(Number(descansoDias), 0, 30);
 
     if (!Number.isFinite(id) || id <= 0 || !selected) {
       setError('Selecione um produto do inventário.');
-      return;
-    }
-    if (dose <= 0) {
-      setError('Informe uma dose maior que 0.');
-      return;
-    }
-    if (litros <= 0) {
-      setError('Informe os litros aplicados.');
       return;
     }
     if (!hasStockEnough) {
@@ -252,25 +311,59 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
     setIsSaving(true);
     setError(null);
     try {
-      // persiste preset
       try {
         localStorage.setItem(
           presetKey(plantId),
-          JSON.stringify({ aditivoId: id, doseMlPorLitro: dose, litrosAplicados: litros })
+          JSON.stringify({ aditivoId: id, doseMlPorLitro: dose, litrosAplicados: litros, roundsTotal: rounds, descansoDias: descanso })
         );
       } catch {}
 
       const safeObs = notes.trim();
-      const baseDesc = `${selected.nome} (${selected.marca}) — ${dose} mL/L × ${litros} L = ${totalMl} mL`;
+      const baseDesc = `${selected.nome} (${selected.marca}) — ${dose} mL/L × ${litros} L = ${totalMl} mL | Tratamento: ${rounds} rounds / descanso ${descanso}d`;
       const descricao = safeObs ? `${baseDesc} | ${safeObs}` : baseDesc;
 
       await apiService.createPlantaEvento(plantId, {
         tipo: 'INSETICIDA',
         descricao,
-        // aqui fica REAL: consumo total em mL
         doseEmML: totalMl,
-        idempotencyKey: `insecticide:${plantId}:${id}:${dose}:${litros}:${Date.now()}`,
+        produtoId: id,
+        roundsTotal: rounds,
+        descansoDias: descanso,
+        idempotencyKey: `insecticide:${plantId}:${id}:${dose}:${litros}:${rounds}:${descanso}:${Date.now()}`,
       });
+
+      // Atualiza cache local 1x pra UI reagir na hora
+      try {
+        const local = getAditivoStock(id);
+        if (local?.tracked) {
+          const next = Math.max(0, Number(local.stockMlAtual ?? 0) - totalMl);
+          const payload: AditivoStock = {
+            tracked: true,
+            tipoProduto: local.tipoProduto ?? (selected as any)?.tipo ?? null,
+            stockMlAtual: next,
+            unidades: Number(local.unidades ?? 0),
+            mlFrasco: Number(local.mlFrasco ?? 0),
+          };
+          setAditivoStock(id, payload);
+
+          setInventory((prev) =>
+            prev.map((p) =>
+              p.id === id
+                ? {
+                    ...p,
+                    estoque: {
+                      tracked: true,
+                      tipoProduto: payload.tipoProduto,
+                      stockMlAtual: payload.stockMlAtual,
+                      unidades: payload.unidades,
+                      mlFrasco: payload.mlFrasco,
+                    } as any,
+                  }
+                : p
+            )
+          );
+        }
+      } catch {}
 
       onClose();
     } catch {
@@ -298,23 +391,20 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
           <div>
             <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Produto</label>
             <select
-              value={selectedId ?? ''}
+              value={effectiveSelectedId ?? ''}
               onChange={(e) => setSelectedId(e.target.value ? Number(e.target.value) : null)}
               disabled={!canInteract}
               className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
             >
-              <option value="" disabled>
-                {isLoading
-                  ? 'Carregando...'
-                  : selectable.length
-                    ? 'Selecione um produto'
-                    : 'Nenhum produto com label INSETICIDA'}
-              </option>
-              {selectable.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nome} — {a.marca}
-                </option>
-              ))}
+              {selectable.length === 0 ? (
+                <option value="">Nenhum produto com label INSETICIDA</option>
+              ) : (
+                selectable.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nome} — {a.marca}
+                  </option>
+                ))
+              )}
             </select>
 
             <div className="mt-1 flex items-center justify-between text-[11px] text-slate-300/80">
@@ -322,12 +412,10 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
                 <span className="h-1.5 w-1.5 rounded-full bg-[#f39a5c]" />
                 Label: <span className="text-slate-100/90 font-semibold">INSETICIDA</span>
               </span>
+
               {typeof selectedStockMl === 'number' ? (
                 <span className="text-slate-200/80">
-                  Estoque:{' '}
-                  <span className="font-semibold text-slate-100">
-                    {Math.max(0, Math.round(selectedStockMl))} mL
-                  </span>
+                  Estoque: <span className="font-semibold text-slate-100">{Math.max(0, Math.round(selectedStockMl))} mL</span>
                 </span>
               ) : (
                 <span className="text-slate-400/70">Estoque: —</span>
@@ -369,6 +457,40 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Rounds</label>
+                <span className="text-[11px] text-slate-400/80">(tratamento)</span>
+              </div>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={roundsTotal}
+                onChange={(event) => setRoundsTotal(Number(event.target.value))}
+                disabled={!canInteract}
+                className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Descanso (dias)</label>
+                <span className="text-[11px] text-slate-400/80">(entre rounds)</span>
+              </div>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={descansoDias}
+                onChange={(event) => setDescansoDias(Number(event.target.value))}
+                disabled={!canInteract}
+                className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
+              />
+            </div>
+          </div>
+
           <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-slate-300/90 uppercase tracking-[0.06em]">Consumo total</span>
@@ -384,7 +506,7 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
           <div>
             <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Recomendação</label>
             <div className="mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200/90">
-              {selected ? brief(selected.descricao, 240) : 'Selecione um produto para ver a recomendação.'}
+              {selected ? brief((selected as any)?.descricao, 240) : 'Selecione um produto para ver a recomendação.'}
             </div>
           </div>
         </div>
@@ -416,8 +538,7 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
             type="button"
             onClick={handleSalvarPreset}
             className="rounded-lg border border-[#f39a5c]/60 bg-[#0f1726] px-3 py-2 text-xs font-semibold text-[#f7c6a1] hover:bg-white/5 hover:border-[#f39a5c]/80 disabled:opacity-60"
-            disabled={!canInteract}
-            title="Salva produto + dose + litros como preset desta planta"
+            disabled={!canInteract || !selected}
           >
             Salvar
           </button>

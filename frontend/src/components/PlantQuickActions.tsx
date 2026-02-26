@@ -24,8 +24,11 @@ const getPolarPosition = (angleDeg: number, radius: number) => {
 export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeAction, setActiveAction] = useState<QuickAction | null>(null);
+  const [auraKey, setAuraKey] = useState<QuickAction | null>(null);
+
   const fabRef = useRef<HTMLButtonElement>(null);
   const hubRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const actions = useMemo(
     () => [
@@ -79,8 +82,10 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
-      if (hubRef.current?.contains(target)) return;
-      if (fabRef.current?.contains(target)) return;
+
+      // Clique dentro do root (FAB + Hub) não fecha.
+      if (rootRef.current?.contains(target)) return;
+
       setIsOpen(false);
     };
 
@@ -96,6 +101,11 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
   const handleActionClick = (event: React.MouseEvent, action: QuickAction, enabled: boolean) => {
     event.stopPropagation();
     if (!enabled) return;
+
+    // Aura arcana: micro-interação curta pra dar feedback de clique.
+    setAuraKey(action);
+    window.setTimeout(() => setAuraKey((prev) => (prev === action ? null : prev)), 380);
+
     setActiveAction(action);
     setIsOpen(false);
   };
@@ -106,45 +116,62 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
 
   return (
     <>
-      <button
-        type="button"
-        ref={fabRef}
-        onClick={handleOpen}
-        className="absolute bottom-5 right-4 z-20 h-10 w-10 rounded-full bg-transparent text-[#0b1220] flex items-center justify-center shadow-[0_0_10px_rgba(111,191,134,0.26)] border border-transparent hover:scale-105 hover:shadow-[0_0_12px_rgba(111,191,134,0.32)] transition-transform transition-shadow"
-        aria-label="Acoes rapidas da planta"
-      >
-        <img src={cannabisIcon} alt="Cannabis" className="h-[30px] w-[30px] object-contain" />
-      </button>
+      {/* Root ancorado: evita “torto” quando o componente cai em um pai não-positionado */}
+      <div ref={rootRef} className="absolute bottom-5 right-4 z-30">
+        <button
+          type="button"
+          ref={fabRef}
+          onClick={handleOpen}
+          className="h-10 w-10 rounded-full bg-transparent text-[#0b1220] flex items-center justify-center shadow-[0_0_10px_rgba(111,191,134,0.26)] border border-transparent hover:scale-105 hover:shadow-[0_0_12px_rgba(111,191,134,0.32)] transition-transform transition-shadow"
+          aria-label="Acoes rapidas da planta"
+        >
+          <img src={cannabisIcon} alt="Cannabis" className="h-[30px] w-[30px] object-contain" />
+        </button>
 
-      {isOpen && (
-        <div ref={hubRef} className="absolute bottom-16 right-6 z-30" onClick={(event) => event.stopPropagation()}>
-          <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-[#0b1324] to-[#0a1220] border border-[#6fbf86]/50 shadow-[0_0_14px_rgba(111,191,134,0.26)] flex items-center justify-center">
-            <div className="absolute inset-2 rounded-full border border-[#6fbf86]/24 pointer-events-none" />
-            <div className="relative z-10 h-9 w-9 rounded-full bg-black/70 border border-[#6fbf86] flex items-center justify-center text-[#6fbf86] text-lg font-semibold">
-              +
+        {isOpen && (
+          <div
+            ref={hubRef}
+            className="absolute bottom-12 right-0 z-40"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-[#0b1324] to-[#0a1220] border border-[#6fbf86]/50 shadow-[0_0_14px_rgba(111,191,134,0.26)] flex items-center justify-center">
+              <div className="absolute inset-2 rounded-full border border-[#6fbf86]/24 pointer-events-none" />
+              <div className="relative z-10 h-9 w-9 rounded-full bg-black/70 border border-[#6fbf86] flex items-center justify-center text-[#6fbf86] text-lg font-semibold">
+                +
+              </div>
+
+              {actions.map((action) => {
+                const pos = getPolarPosition(action.angle, ACTION_RADIUS);
+                const aura = auraKey === action.key;
+
+                return (
+                  <button
+                    key={action.key}
+                    type="button"
+                    className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-0.5 bg-gradient-to-r ${action.gradient} text-black text-[10px] font-semibold tracking-wide whitespace-nowrap border ${action.border} ${action.shadow} ${
+                      action.enabled ? 'hover:scale-105 transition-transform' : 'opacity-60 cursor-not-allowed'
+                    } ${aura ? 'ring-2 ring-white/30 shadow-[0_0_18px_rgba(255,255,255,0.18)]' : ''}`}
+                    style={{
+                      transform: `translate(-50%, -50%) translate(${pos.x}px, ${pos.y}px)`,
+                    }}
+                    onClick={(event) => handleActionClick(event, action.key, action.enabled)}
+                    aria-disabled={!action.enabled}
+                  >
+                    {aura && (
+                      <span
+                        className="pointer-events-none absolute -inset-2 rounded-full border border-white/20 bg-white/5 blur-[1px]"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="mr-1">{action.emoji}</span>
+                    {action.label}
+                  </button>
+                );
+              })}
             </div>
-
-            {actions.map((action) => {
-              const pos = getPolarPosition(action.angle, ACTION_RADIUS);
-              return (
-                <button
-                  key={action.key}
-                  type="button"
-                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-0.5 bg-gradient-to-r ${action.gradient} text-black text-[10px] font-semibold tracking-wide whitespace-nowrap ${action.border} ${action.shadow} ${
-                    action.enabled ? 'hover:scale-105 transition-transform' : 'opacity-60 cursor-not-allowed'
-                  }`}
-                  style={{ transform: `translate(-50%, -50%) translate(${pos.x}px, ${pos.y}px)` }}
-                  onClick={(event) => handleActionClick(event, action.key, action.enabled)}
-                  aria-disabled={!action.enabled}
-                >
-                  <span className="mr-1">{action.emoji}</span>
-                  {action.label}
-                </button>
-              );
-            })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <WateringModal
         open={activeAction === 'watering'}
@@ -158,12 +185,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
 
       <PhotoModal open={activeAction === 'photo'} onClose={closeModals} plantId={plant.id} plantName={plant.name} />
 
-      <InsecticideModal
-        open={activeAction === 'insecticide'}
-        onClose={closeModals}
-        plantId={plant.id}
-        plantName={plant.name}
-      />
+      <InsecticideModal open={activeAction === 'insecticide'} onClose={closeModals} plantId={plant.id} plantName={plant.name} />
     </>
   );
 }

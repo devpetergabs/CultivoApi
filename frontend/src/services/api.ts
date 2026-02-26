@@ -103,6 +103,10 @@ class ApiService {
         tipo: payload.tipo,
         descricao: payload.descricao,
         doseEmML: payload.doseEmML ?? null,
+        produtoId: payload.produtoId ?? null,
+        roundsTotal: payload.roundsTotal ?? null,
+        descansoDias: payload.descansoDias ?? null,
+        consumos: payload.consumos ?? null,
       },
       { headers }
     );
@@ -112,7 +116,36 @@ class ApiService {
   async getPlantaEventos(plantaId: number, page = 0, size = 50) {
     const response = await this.axiosInstance.get(`/plantas/${plantaId}/eventos`, { params: { page, size } });
     return response.data; // Page<PlantaEvento>
-    }
+  }
+
+  async equiparPote(
+    plantaId: number,
+    payload: { produtoId: number; corHex?: string | null; skinId?: string | null; apelido?: string | null }
+  ): Promise<any> {
+    const response = await this.axiosInstance.put(`/plantas/${plantaId}/equipamentos/pote`, {
+      produtoId: payload.produtoId,
+      corHex: payload.corHex ?? null,
+      skinId: payload.skinId ?? null,
+      apelido: payload.apelido ?? null,
+    });
+    return response.data;
+  }
+
+  async deletePlantaEvento(plantaId: number, eventoId: number): Promise<void> {
+    await this.axiosInstance.delete(`/plantas/${plantaId}/eventos/${eventoId}`);
+  }
+
+  async patchPlantaEvento(
+    plantaId: number,
+    eventoId: number,
+    payload: { descricao?: string | null; doseEmML?: number | null }
+  ): Promise<PlantaEvento> {
+    const response = await this.axiosInstance.patch(`/plantas/${plantaId}/eventos/${eventoId}`, {
+      descricao: payload.descricao ?? null,
+      doseEmML: typeof payload.doseEmML === 'number' ? payload.doseEmML : null,
+    });
+    return response.data;
+  }
 
   async createPlantaFoto(
     plantaId: number,
@@ -129,6 +162,15 @@ class ApiService {
 
   async getPlantaAditivos(plantaId: number, page: number = 0, size: number = 100): Promise<any> {
     const response = await this.axiosInstance.get(`/plantas/${plantaId}/aditivos`, { params: { page, size } });
+    return response.data;
+  }
+
+  async updateProdutoEstoque(produtoId: number, payload: { stockMlAtual?: number | null; unidades?: number | null; mlFrasco?: number | null }): Promise<any> {
+    const response = await this.axiosInstance.put(`/estoque/produtos/${produtoId}`, {
+      stockMlAtual: typeof payload.stockMlAtual === 'number' ? payload.stockMlAtual : payload.stockMlAtual ?? null,
+      unidades: typeof payload.unidades === 'number' ? payload.unidades : payload.unidades ?? null,
+      mlFrasco: typeof payload.mlFrasco === 'number' ? payload.mlFrasco : payload.mlFrasco ?? null,
+    });
     return response.data;
   }
 

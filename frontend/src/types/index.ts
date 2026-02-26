@@ -26,7 +26,7 @@ export interface Planta {
 export interface PlantaCompleta extends Planta {
   cultivadorId: number;
   cultivadorNome: string;
-  cultivivadorLogin?: string | null;
+  cultivadorLogin?: string | null;
   cultivadorTelefone: string;
   cultivadorAtivo: boolean;
   aditivos: PlantaAditivo[];
@@ -40,6 +40,14 @@ export interface PlantaAditivo {
   aditivoDescricao: string;
   estagio: string;
   doseEmML: number;
+}
+
+export interface ProdutoEstoque {
+  tracked: boolean;
+  tipoProduto: string | null;
+  stockMlAtual: number;
+  unidades: number;
+  mlFrasco: number;
 }
 
 export interface Aditivo {
@@ -59,6 +67,13 @@ export interface Aditivo {
     | string;
   dosePadraoEmML: number | null;
   ativo: boolean;
+
+  // --- produto (MVP: mesma API) ---
+  tipo?: 'ADITIVO' | 'INSETICIDA' | 'VASO' | 'OUTRO' | string;
+  estoque?: ProdutoEstoque;
+  capacidadeLitros?: number | null;
+  roundsRecomendados?: number | null;
+  descansoDiasRecomendados?: number | null;
 }
 
 export interface Page<T> {
@@ -87,15 +102,42 @@ export interface PlantaEvento {
   dataEvento: string;
   descricao: string | null;
   doseEmML: number | null;
+
+  // --- inseticida/tratamento ---
+  produtoId?: number | null;
+  tratamentoId?: number | null;
+  roundAtual?: number | null;
+  roundsTotal?: number | null;
+  descansoDias?: number | null;
+  proximaAplicacaoEm?: string | null;
+  fimTratamentoEm?: string | null;
 }
 
 export interface PlantaEventoPayload {
   tipo: string;
   descricao: string;
   doseEmML?: number | null;
+  produtoId?: number | null;
+  consumos?: Array<{ produtoId: number; consumoEmML: number }>;
+  roundsTotal?: number | null;
+  descansoDias?: number | null;
   idempotencyKey?: string;
 }
 
+
+
+export interface PlantaEquipamento {
+  id: number;
+  slot: 'POT' | string;
+  produtoId: number;
+  produtoNome: string;
+  produtoTipo: string;
+  capacidadeLitros?: number | null;
+  corHex?: string | null;
+  skinId?: string | null;
+  apelido?: string | null;
+  equipadoEm?: string | null;
+}
 export interface PlantaCreatePayload {
   cultivadorId: number;
   nome: string;

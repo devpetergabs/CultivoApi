@@ -1,3 +1,5 @@
+-- V3__seed_inventario_aditivos.sql
+
 -- Upsert requested additive catalog entries (idempotent).
 -- Notes:
 -- - `estagio` here refers to EstagioAditivo (VEGETATIVA | FLORACAO | FINALIZACAO)
@@ -354,3 +356,138 @@ SELECT 'Connoisseur Bloom B', 'Advanced Nutrients',
   'Parte B do sistema Connoisseur Bloom. Complementa a Parte A fornecendo fósforo e potássio em proporções ideais para formação de flores densas e resinosas.',
   'FLORACAO', 'BASE_NUTRICIONAL', 1.0, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Connoisseur Bloom B');
+
+-- Backfill FINALIZADOR classification for existing records.
+-- Only updates rows that are currently NULL/OUTROS to avoid overriding manual classifications.
+
+UPDATE aditivos
+SET classe = 'FINALIZADOR'
+WHERE (classe IS NULL OR classe = 'OUTROS')
+  AND LOWER(CONCAT_WS(' ', nome, descricao)) REGEXP '(^|[^a-z])flush([^a-z]|$)|finish|finalizador|flawless';
+
+-- Restore canonical catalog descriptions with proper accents.
+-- Some earlier migrations may have stored '?' placeholders depending on connection/session encoding at the time.
+-- This migration is idempotent and simply re-applies the expected descriptions.
+
+UPDATE aditivos SET descricao = 'Base completa de floração' WHERE nome = 'pH Perfect Bloom';
+UPDATE aditivos SET descricao = 'Base nutricional de floração' WHERE nome = 'FLOWER Coco';
+
+UPDATE aditivos SET descricao = 'Arranque de floração' WHERE nome = 'Bud Ignitor';
+UPDATE aditivos SET descricao = 'Booster genérico' WHERE nome = 'Bloom Booster';
+UPDATE aditivos SET descricao = 'Booster de engorda' WHERE nome = 'Big Bud';
+UPDATE aditivos SET descricao = 'Booster final' WHERE nome = 'Overdrive';
+UPDATE aditivos SET descricao = 'Booster estrutural' WHERE nome = 'Hammerhead';
+
+UPDATE aditivos SET descricao = 'Estímulo metabólico' WHERE nome = 'Bud Factor X';
+UPDATE aditivos SET descricao = 'Estimulante energético' WHERE nome = 'Bud Candy';
+UPDATE aditivos SET descricao = 'Aroma e perfil' WHERE nome = 'Tasty Terpenes';
+UPDATE aditivos SET descricao = 'Estímulo geral' WHERE nome = 'B-52';
+
+UPDATE aditivos SET descricao = 'Base A da floração' WHERE nome = 'Sensi Bloom Part A';
+UPDATE aditivos SET descricao = 'Base B da floração' WHERE nome = 'Sensi Bloom Part B';
+UPDATE aditivos SET descricao = 'Base A do vegetativo' WHERE nome = 'Sensi Grow Part A';
+UPDATE aditivos SET descricao = 'Base B do vegetativo' WHERE nome = 'Sensi Grow Part B';
+UPDATE aditivos SET descricao = 'Base nutricional vegetativa' WHERE nome = 'VEG Coco';
+
+UPDATE aditivos SET descricao = 'Fortalece estrutura' WHERE nome = 'Rhino Skin';
+UPDATE aditivos SET descricao = 'Flush final' WHERE nome = 'Flawless Finish';
+
+UPDATE aditivos
+SET descricao = 'Potencializador de densidade de flores na finalização'
+WHERE nome = 'Benzinga';
+
+-- =========================
+-- Complementos de inventário (PROTECAO/INSETICIDA + VASOS) + backfills
+-- =========================
+
+-- Regra de classificação (fallback) para qualquer item sem classe.
+UPDATE aditivos
+SET classe = (
+    CASE
+        WHEN LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%a+b%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%a + b%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%part a%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%part b%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%base%'
+        THEN 'BASE_NUTRICIONAL'
+
+        WHEN LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%silica%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%silício%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%silicio%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%fortificante%'
+        THEN 'FORTIFICANTE'
+
+        WHEN LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%candy%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%sweet%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%carbo%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%melassa%'
+        THEN 'ESTIMULANTE'
+
+        WHEN LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%big bud%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%bloom booster%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%booster%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%pk%'
+        THEN 'BOOSTER'
+
+        WHEN LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%spinosad%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%neem%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%inseticida%'
+          OR LOWER(CONCAT_WS(' ', nome, descricao)) LIKE '%fungicida%'
+        THEN 'PROTECAO'
+
+        ELSE 'OUTROS'
+    END
+)
+WHERE classe IS NULL;
+
+-- Upsert Spinosad (inventário)
+UPDATE aditivos
+SET marca = 'Corteva Agriscience',
+    descricao = 'Inseticida (classe PROTECAO) à base de Spinosad (spinosyns A + D), derivado de fermentação de Saccharopolyspora spinosa. IRAC Group 5 (Spinosyns). Use conforme rótulo do fabricante e boas práticas de segurança.',
+    classe = 'PROTECAO',
+    tipo = 'INSETICIDA',
+    ativo = TRUE,
+    dose_padrao_em_ml = 3.0,
+    estoque_ml = 90.0,
+    rounds_recomendados = 6,
+    descanso_dias_recomendados = 4
+WHERE nome = 'Spinosad';
+
+INSERT INTO aditivos (nome, marca, descricao, classe, tipo, dose_padrao_em_ml, estoque_ml, rounds_recomendados, descanso_dias_recomendados, ativo)
+SELECT
+    'Spinosad',
+    'Corteva Agriscience',
+    'Inseticida (classe PROTECAO) à base de Spinosad (spinosyns A + D), derivado de fermentação de Saccharopolyspora spinosa. IRAC Group 5 (Spinosyns). Use conforme rótulo do fabricante e boas práticas de segurança.',
+    'PROTECAO',
+    'INSETICIDA',
+    3.0,
+    90.0,
+    6,
+    4,
+    TRUE
+WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Spinosad');
+
+-- Backfill: qualquer PROTECAO vira INSETICIDA (se ainda não estiver).
+UPDATE aditivos
+SET tipo = 'INSETICIDA'
+WHERE classe = 'PROTECAO'
+  AND (tipo IS NULL OR tipo = '' OR tipo = 'ADITIVO');
+
+-- Backfill: itens não-PROTECAO ficam como ADITIVO quando tipo vazio.
+UPDATE aditivos
+SET tipo = 'ADITIVO'
+WHERE (tipo IS NULL OR tipo = '')
+  AND (classe IS NULL OR classe <> 'PROTECAO');
+
+-- Catálogo mínimo de vasos (equipamento) - capacidades reais do seu cultivo.
+INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, estoque_ml, ativo, tipo, capacidade_litros)
+SELECT 'Vaso 5L', 'Genérico', 'Vaso (equipamento) de 5 litros. Base do early game.', NULL, 'OUTROS', NULL, 0.0, TRUE, 'VASO', 5
+WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Vaso 5L');
+
+INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, estoque_ml, ativo, tipo, capacidade_litros)
+SELECT 'Vaso 21L', 'Genérico', 'Vaso (equipamento) de 21 litros. Mid game outdoor.', NULL, 'OUTROS', NULL, 0.0, TRUE, 'VASO', 21
+WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Vaso 21L');
+
+INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, estoque_ml, ativo, tipo, capacidade_litros)
+SELECT 'Vaso 30L', 'Genérico', 'Vaso (equipamento) de 30 litros. Late game outdoor.', NULL, 'OUTROS', NULL, 0.0, TRUE, 'VASO', 30
+WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Vaso 30L');

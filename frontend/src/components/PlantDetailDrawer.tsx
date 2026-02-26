@@ -249,6 +249,7 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             <PlantStateSummary events={events as any} />
 
             <EventTimeline
+              plantId={plant?.id ?? null}
               events={events as any}
               loading={eventsLoading}
               onRefresh={refreshEvents}

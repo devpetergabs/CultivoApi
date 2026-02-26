@@ -60,6 +60,7 @@ function getNextStage(stage: PlantType): PlantType | null {
 
 export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPreviewProps) {
   const [growthModalOpen, setGrowthModalOpen] = useState(false);
+  const [bucketFx, setBucketFx] = useState<{ variant: 'A' | 'B'; key: number } | null>(null);
 
   const age = calculateAge(plant.germinationDate);
   const isEpic = plant.heightCm > 180;
@@ -226,6 +227,13 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
   const registerWateringEvent = async (variant: 'A' | 'B') => {
     const ml = getStoredVolumeMl();
 
+    // Aura arcana (feedback imediato)
+    try {
+      const k = Date.now();
+      setBucketFx({ variant, key: k });
+      window.setTimeout(() => setBucketFx((cur) => (cur?.key === k ? null : cur)), 720);
+    } catch {}
+
     const doWaterNormal = async () => {
       try {
         await apiService.createPlantaEvento(plant.id, {
@@ -269,20 +277,35 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
 
       const doWaterAditivada = async () => {
         try {
+          const itemsToConsume = mix.items as Array<{ id: number; doseMl: number }>;
+          const consumos = itemsToConsume
+            .map((item) => {
+              const volumeLiters = ml / 1000;
+              const totalMl = Math.round(item.doseMl * volumeLiters);
+              return { produtoId: item.id, consumoEmML: totalMl };
+            })
+            .filter((c) => Number.isFinite(c.consumoEmML) && c.consumoEmML > 0);
+
           await apiService.createPlantaEvento(plant.id, {
             tipo: 'REGA_ADITIVADA',
             descricao: `Rega (água aditivada): ${ml}mL + ${mixDescription}`,
             doseEmML: ml,
+            consumos,
           });
 
-          const itemsToDeduct = mix.items as Array<{ id: number; doseMl: number }>;
-          for (const item of itemsToDeduct) {
+          // Deduz cache local (somente espelho) após sucesso da API
+          for (const item of itemsToConsume) {
             if (Number.isFinite(item.doseMl) && item.doseMl > 0) {
               const volumeLiters = ml / 1000;
               const totalMl = Math.round(item.doseMl * volumeLiters);
               deductAditivoStockMl(item.id, totalMl);
             }
           }
+
+          // Força outras telas/modais a recarregarem estoque do backend.
+          try {
+            window.dispatchEvent(new Event('PRODUTO_ESTOQUE_UPDATED'));
+          } catch {}
 
           showToast('Rega aditivada registrada', 'success');
           setNextWaterType('A');
@@ -498,7 +521,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                   type="button"
                   aria-label="Regar A: água pura"
                   title="Regar A (água pura)"
-                  className={`w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
+                  className={`relative overflow-hidden w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
                     nextWaterType === 'A'
                       ? 'ring-2 ring-emerald-400 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,.28)] animate-[pulse_3s_ease-in-out_infinite]'
                       : 'opacity-50 grayscale-[0.2] hover:opacity-80'
@@ -509,6 +532,19 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                     await registerWateringEvent('A');
                   }}
                 >
+                  {bucketFx?.variant === 'A' && (
+                    <motion.span
+                      key={`fxA:${bucketFx.key}`}
+                      className="pointer-events-none absolute inset-0 rounded-full"
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      animate={{ opacity: [0, 0.85, 0], scale: [0.6, 1.25, 1.55] }}
+                      transition={{ duration: 0.7, ease: 'easeOut' }}
+                      style={{
+                        background:
+                          'radial-gradient(circle at 35% 30%, rgba(16,185,129,0.55) 0%, rgba(16,185,129,0.18) 35%, rgba(0,0,0,0) 70%)',
+                      }}
+                    />
+                  )}
                   <img src={baldeAgua} alt="" className="h-10 w-10 object-contain" />
                 </button>
 
@@ -517,7 +553,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                   type="button"
                   aria-label="Regar B: água aditivada"
                   title="Regar B (água aditivada)"
-                  className={`w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 ${
+                  className={`relative overflow-hidden w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 ${
                     nextWaterType === 'B'
                       ? mixStockFlags.hasEmpty
                         ? 'ring-2 ring-red-400 bg-red-500/10 shadow-[0_0_12px_rgba(248,113,113,.24)] animate-[pulse_3s_ease-in-out_infinite] opacity-60 cursor-not-allowed'
@@ -534,6 +570,19 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                   }}
                   disabled={mixStockFlags.hasEmpty}
                 >
+                  {bucketFx?.variant === 'B' && (
+                    <motion.span
+                      key={`fxB:${bucketFx.key}`}
+                      className="pointer-events-none absolute inset-0 rounded-full"
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      animate={{ opacity: [0, 0.9, 0], scale: [0.6, 1.28, 1.6] }}
+                      transition={{ duration: 0.75, ease: 'easeOut' }}
+                      style={{
+                        background:
+                          'radial-gradient(circle at 40% 35%, rgba(168,85,247,0.55) 0%, rgba(236,72,153,0.18) 40%, rgba(0,0,0,0) 72%)',
+                      }}
+                    />
+                  )}
                   <img src={baldeMistico} alt="" className="h-10 w-10 object-contain" />
                 </button>
 

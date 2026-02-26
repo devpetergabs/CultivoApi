@@ -20,6 +20,15 @@ public record DadosAtualizacaoAditivo(
         @Positive(message = "Dose padrão deve ser maior que zero")
         Double dosePadraoEmML,
 
-        ClasseAditivo classe
+        ClasseAditivo classe,
+
+        // --- produto ---
+        String tipo,
+
+        Integer capacidadeLitros,
+
+        Integer roundsRecomendados,
+
+        Integer descansoDiasRecomendados
 ) {
 }

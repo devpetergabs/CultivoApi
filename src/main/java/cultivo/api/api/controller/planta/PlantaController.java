@@ -1,6 +1,7 @@
 package cultivo.api.api.controller.planta;
 
 import cultivo.api.domain.planta.Planta;
+import cultivo.api.application.planta.PlantaEquipamentoService;
 import cultivo.api.domain.planta.TamanhVaso;
 import cultivo.api.domain.planta.EspeciePlanta;
 import cultivo.api.domain.usuario.Usuario;
@@ -32,6 +33,9 @@ public class PlantaController {
 
     @Autowired
     private PlantaAditivoRepository plantaAditivoRepository;
+    @Autowired
+    private PlantaEquipamentoService equipamentoService;
+
 
     @PostMapping("/me")
     public ResponseEntity<?> cadastrarMe(@Valid @RequestBody DadosCadastroPlantaMe dados,
@@ -63,6 +67,9 @@ public class PlantaController {
 
         planta.atualizarDados(null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
         repository.save(planta);
+
+        // Opção 2: vaso como equipamento (slot POT)
+        equipamentoService.garantirPoteSincronizado(planta, false);
 
         var resposta = new DadosDetalhePlanta(
                 planta.getId(),
@@ -104,6 +111,9 @@ public class PlantaController {
         planta.atualizarDados(null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
         repository.save(planta);
 
+        // Opção 2: vaso como equipamento (slot POT)
+        equipamentoService.garantirPoteSincronizado(planta, false);
+
         var resposta = new DadosDetalhePlanta(
                 planta.getId(),
                 planta.getNome(),
@@ -127,8 +137,20 @@ public class PlantaController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<DadosDetalhePlanta>> listar(Pageable paginacao) {
-        var page = repository.findByAtivoTrue(paginacao)
+    public ResponseEntity<Page<DadosDetalhePlanta>> listar(
+            @AuthenticationPrincipal Usuario usuario,
+            Pageable paginacao
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var cultivador = cultivadorRepository.findByUsuarioId(usuario.getId());
+        if (cultivador == null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
+        var page = repository.findByCultivadorIdAndAtivoTrue(cultivador.getId(), paginacao)
                 .map(p -> new DadosDetalhePlanta(
                         p.getId(),
                         p.getNome(),
@@ -150,15 +172,22 @@ public class PlantaController {
     }
 
     @GetMapping("/{id}/completa")
-    public ResponseEntity<DadosDetalhePlantaCompleta> detalharCompleta(@PathVariable Long id) {
+    public ResponseEntity<DadosDetalhePlantaCompleta> detalharCompleta(@PathVariable Long id, @AuthenticationPrincipal Usuario usuario) {
         var planta = repository.findById(id);
         if (planta.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         var p = planta.get();
+        if (p.getCultivador() == null || p.getCultivador().getUsuario() == null || !p.getCultivador().getUsuario().getId().equals(usuario.getId())) {
+            return ResponseEntity.notFound().build();
+        }
         var cultivador = p.getCultivador();
-        var usuario = cultivador.getUsuario();
+        var usuarioCultivador = cultivador.getUsuario();
 
         var aditivos = plantaAditivoRepository.findByPlantaId(id, Pageable.unpaged())
                 .map(pa -> new DadosDetalhePlantaAditivo(
@@ -190,8 +219,8 @@ public class PlantaController {
                 p.getDataGerminacao(),
                 p.getDataCriacao(),
                 cultivador.getId(),
-                usuario.getNome(),
-                usuario.getLogin(),
+                usuarioCultivador.getNome(),
+                usuarioCultivador.getLogin(),
                 cultivador.getTelefone(),
                 cultivador.getAtivo(),
                 aditivos
@@ -201,13 +230,20 @@ public class PlantaController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DadosDetalhePlanta> detalhar(@PathVariable Long id) {
+    public ResponseEntity<DadosDetalhePlanta> detalhar(@PathVariable Long id, @AuthenticationPrincipal Usuario usuario) {
         var planta = repository.findById(id);
         if (planta.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
         var p = planta.get();
+
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (p.getCultivador() == null || p.getCultivador().getUsuario() == null || !p.getCultivador().getUsuario().getId().equals(usuario.getId())) {
+            return ResponseEntity.notFound().build();
+        }
         var resposta = new DadosDetalhePlanta(
                 p.getId(),
                 p.getNome(),
@@ -230,13 +266,21 @@ public class PlantaController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<DadosDetalhePlanta> atualizar(@PathVariable Long id, @Valid @RequestBody DadosAtualizacaoPlanta dados) {
+    public ResponseEntity<DadosDetalhePlanta> atualizar(@PathVariable Long id, @AuthenticationPrincipal Usuario usuario, @Valid @RequestBody DadosAtualizacaoPlanta dados) {
         var planta = repository.findById(id);
         if (planta.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
         var p = planta.get();
+
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (p.getCultivador() == null || p.getCultivador().getUsuario() == null || !p.getCultivador().getUsuario().getId().equals(usuario.getId())) {
+            return ResponseEntity.notFound().build();
+        }
+        var tamanhoAnterior = p.getTamanhoVaso();
 
         if (dados.especie() != null) {
             p.setEspecie(dados.especie());
@@ -256,6 +300,12 @@ public class PlantaController {
                 dados.dataFloracao()
         );
         repository.save(p);
+
+        // Opção 2: garante equipamento POT coerente; gera evento apenas se mudou
+        boolean mudouVaso = (tamanhoAnterior != null && p.getTamanhoVaso() != null)
+                ? !tamanhoAnterior.equals(p.getTamanhoVaso())
+                : (tamanhoAnterior != p.getTamanhoVaso());
+        equipamentoService.garantirPoteSincronizado(p, mudouVaso);
 
         var resposta = new DadosDetalhePlanta(
                 p.getId(),
