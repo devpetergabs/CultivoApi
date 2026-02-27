@@ -6,6 +6,7 @@ import cultivo.api.domain.planta.TamanhVaso;
 import cultivo.api.domain.planta.EspeciePlanta;
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.exception.ErrorResponse;
+import cultivo.api.infrastructure.security.AccessControl;
 import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaAditivoRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaRepository;
@@ -36,6 +37,9 @@ public class PlantaController {
     @Autowired
     private PlantaEquipamentoService equipamentoService;
 
+    // Regras (MVP):
+    // - ADMIN: read all, write only own
+    // - USER: read/write only own
 
     @PostMapping("/me")
     public ResponseEntity<?> cadastrarMe(@Valid @RequestBody DadosCadastroPlantaMe dados,
@@ -94,10 +98,26 @@ public class PlantaController {
     }
 
     @PostMapping
-    public ResponseEntity<DadosDetalhePlanta> cadastrar(@Valid @RequestBody DadosCadastroPlanta dados, UriComponentsBuilder uri) {
+    public ResponseEntity<?> cadastrar(
+            @Valid @RequestBody DadosCadastroPlanta dados,
+            @AuthenticationPrincipal Usuario usuario,
+            UriComponentsBuilder uri
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         var cultivador = cultivadorRepository.findById(dados.cultivadorId());
         if (cultivador.isEmpty()) {
             return ResponseEntity.badRequest().build();
+        }
+
+        // Ajuste fino do MVP:
+        // ninguém cria planta para terceiros (nem ADMIN).
+        if (cultivador.get().getUsuario() == null
+                || cultivador.get().getUsuario().getId() == null
+                || !cultivador.get().getUsuario().getId().equals(usuario.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         var planta = new Planta(dados.nome(), dados.strain(), dados.dataGerminacao(),
@@ -145,6 +165,29 @@ public class PlantaController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        // ADMIN vê tudo (read-only).
+        if (AccessControl.isAdmin(usuario)) {
+            var page = repository.findAll(paginacao)
+                    .map(p -> new DadosDetalhePlanta(
+                            p.getId(),
+                            p.getNome(),
+                            p.getStrain(),
+                            p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+                            p.getAltura(),
+                            p.getLargura(),
+                            p.getLarguraCaule(),
+                            p.getTamanhoVaso().toString(),
+                            p.getEstagio() != null ? p.getEstagio().toString() : null,
+                            p.getSexo() != null ? p.getSexo().toString() : null,
+                            p.getDataSexagem(),
+                            p.getDataFloracao(),
+                            p.getAtivo(),
+                            p.getDataGerminacao(),
+                            p.getDataCriacao()
+                    ));
+            return ResponseEntity.ok(page);
+        }
+
         var cultivador = cultivadorRepository.findByUsuarioId(usuario.getId());
         if (cultivador == null) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -183,11 +226,13 @@ public class PlantaController {
         }
 
         var p = planta.get();
-        if (p.getCultivador() == null || p.getCultivador().getUsuario() == null || !p.getCultivador().getUsuario().getId().equals(usuario.getId())) {
+
+        if (!AccessControl.canReadPlanta(usuario, p)) {
             return ResponseEntity.notFound().build();
         }
+
         var cultivador = p.getCultivador();
-        var usuarioCultivador = cultivador.getUsuario();
+        var usuarioCultivador = (cultivador != null) ? cultivador.getUsuario() : null;
 
         var aditivos = plantaAditivoRepository.findByPlantaId(id, Pageable.unpaged())
                 .map(pa -> new DadosDetalhePlantaAditivo(
@@ -218,11 +263,11 @@ public class PlantaController {
                 p.getAtivo(),
                 p.getDataGerminacao(),
                 p.getDataCriacao(),
-                cultivador.getId(),
-                usuarioCultivador.getNome(),
-                usuarioCultivador.getLogin(),
-                cultivador.getTelefone(),
-                cultivador.getAtivo(),
+                cultivador != null ? cultivador.getId() : null,
+                usuarioCultivador != null ? usuarioCultivador.getNome() : null,
+                usuarioCultivador != null ? usuarioCultivador.getLogin() : null,
+                cultivador != null ? cultivador.getTelefone() : null,
+                cultivador != null ? cultivador.getAtivo() : null,
                 aditivos
         );
 
@@ -241,9 +286,11 @@ public class PlantaController {
         if (usuario == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        if (p.getCultivador() == null || p.getCultivador().getUsuario() == null || !p.getCultivador().getUsuario().getId().equals(usuario.getId())) {
+
+        if (!AccessControl.canReadPlanta(usuario, p)) {
             return ResponseEntity.notFound().build();
         }
+
         var resposta = new DadosDetalhePlanta(
                 p.getId(),
                 p.getNome(),
@@ -277,9 +324,12 @@ public class PlantaController {
         if (usuario == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        if (p.getCultivador() == null || p.getCultivador().getUsuario() == null || !p.getCultivador().getUsuario().getId().equals(usuario.getId())) {
+
+        // ADMIN NÃO pode interagir com plantas de terceiros.
+        if (!AccessControl.canWritePlanta(usuario, p)) {
             return ResponseEntity.notFound().build();
         }
+
         var tamanhoAnterior = p.getTamanhoVaso();
 
         if (dados.especie() != null) {
@@ -328,9 +378,17 @@ public class PlantaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<Void> deletar(@PathVariable Long id, @AuthenticationPrincipal Usuario usuario) {
         var planta = repository.findById(id);
         if (planta.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        if (!AccessControl.canWritePlanta(usuario, planta.get())) {
             return ResponseEntity.notFound().build();
         }
 
@@ -342,7 +400,23 @@ public class PlantaController {
     }
 
     @GetMapping("/cultivador/{cultivadorId}")
-    public ResponseEntity<Page<DadosDetalhePlanta>> listarPorCultivador(@PathVariable Long cultivadorId, Pageable paginacao) {
+    public ResponseEntity<?> listarPorCultivador(
+            @PathVariable Long cultivadorId,
+            @AuthenticationPrincipal Usuario usuario,
+            Pageable paginacao
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // ADMIN pode consultar qualquer cultivador (read-only). USER só o próprio.
+        if (!AccessControl.isAdmin(usuario)) {
+            var meuCult = cultivadorRepository.findByUsuarioId(usuario.getId());
+            if (meuCult == null || !meuCult.getId().equals(cultivadorId)) {
+                return ResponseEntity.notFound().build();
+            }
+        }
+
         var page = repository.findByCultivadorIdAndAtivoTrue(cultivadorId, paginacao)
                 .map(p -> new DadosDetalhePlanta(
                         p.getId(),
@@ -368,11 +442,23 @@ public class PlantaController {
     private cultivo.api.infrastructure.persistence.planta.PlantaEventoRepository plantaEventoRepository;
 
     @PatchMapping("/{id}/crescer")
-    public ResponseEntity<?> crescer(@PathVariable Long id, @RequestBody DadosCrescimentoPlanta dados) {
+    public ResponseEntity<?> crescer(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Usuario usuario,
+            @RequestBody DadosCrescimentoPlanta dados
+    ) {
         var plantaOpt = repository.findById(id);
         if (plantaOpt.isEmpty()) return ResponseEntity.notFound().build();
 
         var planta = plantaOpt.get();
+
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        if (!AccessControl.canWritePlanta(usuario, planta)) {
+            return ResponseEntity.notFound().build();
+        }
 
         // Atualiza diretamente as métricas de crescimento
         planta.setAltura(dados.altura());

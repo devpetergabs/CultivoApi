@@ -22,13 +22,6 @@ VALUES ((SELECT id FROM plantas WHERE nome = 'P5'), 'CRESCIMENTO', '2025-12-14',
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
 VALUES ((SELECT id FROM plantas WHERE nome = 'P5'), 'CRESCIMENTO', '2025-12-21', '14cm ALT, 12cm LARG');
 
--- Crescimento P6
-INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
-VALUES ((SELECT id FROM plantas WHERE nome = 'P6'), 'CRESCIMENTO', '2025-12-14', '8cm ALT, 11cm LARG');
-
-INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
-VALUES ((SELECT id FROM plantas WHERE nome = 'P6'), 'CRESCIMENTO', '2025-12-21', '9cm ALT, 9cm LARG');
-
 -- Observações P7
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
 VALUES ((SELECT id FROM plantas WHERE nome = 'P7'), 'OBSERVACAO', '2026-02-24 08:20:00', 'Inserida para hidratação inicial no copo de germinação');
@@ -45,9 +38,12 @@ VALUES (
   (SELECT id FROM plantas WHERE nome = 'P7' LIMIT 1),
   'OBSERVACAO',
   '2026-02-24 08:40:00',
-  'Foi feito a preparação do vaso com substrato preparado (perlita, arroz carbonizado, humus, terra adubada), escoamento com argila expandida e vaso ativado com 2L de água. A P7 foi transportada com buraco de 1.5cm.'
+  'Foi feito a preparação do vaso com substrato preparado (perlita, arroz carbonizado, humus, terra adubada), escoamento com argila expandida e vaso ativado com 2L de água.'
 );
 
+-- Observações P8
+INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
+VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-02-24 09:20:00', 'Inserida para hidratação inicial no copo de germinação');
 
 -- ===== 18/02/2026 - INSETICIDA 22:00 =====
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao, dose_em_ml, idempotency_key)
@@ -83,7 +79,19 @@ SELECT
   6.0,
   CONCAT('seed:inseticida:spinosad:2026-02-22T22:00:', p.nome)
 FROM plantas p
-WHERE p.nome IN ('P1', 'P3', 'P4', 'P5', 'P6');
+WHERE p.nome IN ('P1', 'P4', 'P5');
+
+-- ===== 22/02/2026 - INSETICIDA 22:00 =====
+INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao, dose_em_ml, idempotency_key)
+SELECT
+  p.id,
+  'INSETICIDA',
+  '2026-02-26 23:00:00',
+  'SPINOSAD 3 mL/L | 2 L aplicados | Consumo total: 6 mL',
+  6.0,
+  CONCAT('seed:inseticida:spinosad:2026-02-26T23:00:', p.nome)
+FROM plantas p
+WHERE p.nome IN ('P1', 'P4', 'P5');
 
 -- ===== 22/02/2026 - REGA água pura 22:30 =====
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao, dose_em_ml, idempotency_key)
@@ -95,4 +103,4 @@ SELECT
   NULL,
   CONCAT('seed:rega-agua:2026-02-22T22:30:', p.nome)
 FROM plantas p
-WHERE p.nome IN ('P1', 'P3', 'P4', 'P5', 'P6');
+WHERE p.nome IN ('P1', 'P4', 'P5');

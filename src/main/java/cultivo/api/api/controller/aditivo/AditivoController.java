@@ -6,6 +6,7 @@ import cultivo.api.domain.aditivo.ClasseAditivo;
 import cultivo.api.domain.aditivo.Aditivo;
 import cultivo.api.domain.aditivo.TipoProduto;
 import cultivo.api.domain.usuario.Usuario;
+import cultivo.api.domain.estoque.ProdutoEstoque;
 import cultivo.api.infrastructure.persistence.aditivo.AditivoRepository;
 import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import jakarta.validation.Valid;
@@ -36,6 +37,16 @@ public class AditivoController {
 
     @Autowired
     private ProdutoEstoqueService estoqueService;
+
+    private DadosEstoqueProduto toEstoqueDto(ProdutoEstoque e) {
+        if (e == null) return null;
+        // Defesa dupla: garante que o JSON nunca venha com null em campos numéricos.
+        Double stock = e.getStockMlAtual() != null ? e.getStockMlAtual() : 0.0;
+        Integer unidades = e.getUnidades() != null ? e.getUnidades() : 0;
+        Integer mlFrasco = e.getMlFrasco() != null ? e.getMlFrasco() : 0;
+        String tipo = (e.getTipoProduto() != null) ? e.getTipoProduto().toString() : null;
+        return new DadosEstoqueProduto(true, tipo, stock, unidades, mlFrasco);
+    }
 
     @PostMapping
     public ResponseEntity<Aditivo> cadastrar(@Valid @RequestBody DadosCadastroAditivo dados, UriComponentsBuilder uri) {
@@ -80,13 +91,7 @@ public class AditivoController {
             //   Isso evita o front tratar um "não rastreado" como um estoque 0 e sobrescrever
             //   o cache local (localStorage) com `tracked=false` em listas antigas.
             // - Se existir registro, retornamos os valores reais e `tracked=true`.
-            DadosEstoqueProduto estoqueDto = (estoque == null)
-                    ? null
-                    : new DadosEstoqueProduto(true,
-                        estoque.getTipoProduto() != null ? estoque.getTipoProduto().toString() : null,
-                        estoque.getStockMlAtual(),
-                        estoque.getUnidades(),
-                        estoque.getMlFrasco());
+            DadosEstoqueProduto estoqueDto = toEstoqueDto(estoque);
 
             return new DadosAditivoCatalogo(
                     a.getId(),
@@ -130,14 +135,8 @@ public class AditivoController {
 
         var a = aditivoOpt.get();
         var estoqueOpt = estoqueService.findByCultivadorAndProduto(cultivador.getId(), id);
-        // Mesma regra do listar(): sem registro => estoque = null.
-        var estoqueDto = estoqueOpt
-                .map(e -> new DadosEstoqueProduto(true,
-                        e.getTipoProduto() != null ? e.getTipoProduto().toString() : null,
-                        e.getStockMlAtual(),
-                        e.getUnidades(),
-                        e.getMlFrasco()))
-                .orElse(null);
+        // Sem registro => estoque = null (front decide via cache/localStorage).
+        var estoqueDto = estoqueOpt.map(this::toEstoqueDto).orElse(null);
 
         var dto = new DadosAditivoCatalogo(
                 a.getId(),

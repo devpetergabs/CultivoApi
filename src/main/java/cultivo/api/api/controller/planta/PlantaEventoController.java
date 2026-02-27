@@ -4,6 +4,7 @@ import cultivo.api.application.planta.PlantaEventoService;
 import cultivo.api.domain.planta.PlantaEvento;
 import cultivo.api.domain.planta.TipoEvento;
 import cultivo.api.domain.usuario.Usuario;
+import cultivo.api.infrastructure.security.AccessControl;
 import cultivo.api.infrastructure.persistence.planta.PlantaEventoRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaRepository;
 import jakarta.validation.Valid;
@@ -39,6 +40,15 @@ public class PlantaEventoController {
     ) {
         if (usuario == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!AccessControl.canWritePlanta(usuario, plantaOpt.get())) {
+            // ADMIN não pode interagir com plantas de terceiros.
+            return ResponseEntity.notFound().build();
         }
 
         PlantaEvento evento;
@@ -81,12 +91,11 @@ public class PlantaEventoController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // hard check: planta pertence ao cultivador
         var plantaOpt = plantaRepository.findById(plantaId);
-        if (plantaOpt.isEmpty() || plantaOpt.get().getCultivador() == null || plantaOpt.get().getCultivador().getUsuario() == null) {
+        if (plantaOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        if (!plantaOpt.get().getCultivador().getUsuario().getId().equals(usuario.getId())) {
+        if (!AccessControl.canReadPlanta(usuario, plantaOpt.get())) {
             return ResponseEntity.notFound().build();
         }
 
@@ -119,13 +128,15 @@ public class PlantaEventoController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canReadPlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var evento = repository.findById(id);
         if (evento.isEmpty()
                 || !evento.get().getPlanta().getId().equals(plantaId)
-                || evento.get().isDeleted()
-                || evento.get().getPlanta().getCultivador() == null
-                || evento.get().getPlanta().getCultivador().getUsuario() == null
-                || !evento.get().getPlanta().getCultivador().getUsuario().getId().equals(usuario.getId())) {
+                || evento.get().isDeleted()) {
             return ResponseEntity.notFound().build();
         }
 
@@ -158,13 +169,15 @@ public class PlantaEventoController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canWritePlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var evento = repository.findById(id);
         if (evento.isEmpty()
                 || !evento.get().getPlanta().getId().equals(plantaId)
-                || evento.get().isDeleted()
-                || evento.get().getPlanta().getCultivador() == null
-                || evento.get().getPlanta().getCultivador().getUsuario() == null
-                || !evento.get().getPlanta().getCultivador().getUsuario().getId().equals(usuario.getId())) {
+                || evento.get().isDeleted()) {
             return ResponseEntity.notFound().build();
         }
 
@@ -191,13 +204,15 @@ public class PlantaEventoController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canWritePlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var evento = repository.findById(id);
         if (evento.isEmpty()
                 || !evento.get().getPlanta().getId().equals(plantaId)
-                || evento.get().isDeleted()
-                || evento.get().getPlanta().getCultivador() == null
-                || evento.get().getPlanta().getCultivador().getUsuario() == null
-                || !evento.get().getPlanta().getCultivador().getUsuario().getId().equals(usuario.getId())) {
+                || evento.get().isDeleted()) {
             return ResponseEntity.notFound().build();
         }
 
