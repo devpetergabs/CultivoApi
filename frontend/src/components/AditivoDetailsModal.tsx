@@ -92,11 +92,16 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props
     // ícone segue localStorage
     setIconDataUrl(getAditivoIcon(aditivo.id));
 
-    // estoque: API -> cache -> state
+    // estoque: regra de precedência
+    // 1) Se o cache local já está tracked=true, ele é a verdade imediata da UI.
+    // 2) Só sobrescrevemos o cache local quando a API retorna tracked=true.
+    //    (Isso evita "zerar" estoque ao abrir modal com lista antiga onde tracked=false.)
+    const local = getAditivoStock(aditivo.id);
     const apiStock = aditivo.estoque;
-    if (apiStock) {
+
+    if (apiStock && Boolean(apiStock.tracked)) {
       const payload: AditivoStock = {
-        tracked: Boolean(apiStock.tracked),
+        tracked: true,
         tipoProduto: apiStock.tipoProduto ?? (typeof aditivo.tipo === 'string' ? aditivo.tipo : null),
         stockMlAtual: normalizeNumber(apiStock.stockMlAtual),
         unidades: normalizeNumber(apiStock.unidades),
@@ -104,9 +109,25 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props
       };
       setAditivoStock(aditivo.id, payload);
       setStock(payload);
+      return;
+    }
+
+    if (local?.tracked) {
+      setStock(local);
+      return;
+    }
+
+    // API sem rastreio (ou sem campo) → modal abre "sem estoque" sem apagar nada.
+    if (apiStock) {
+      setStock({
+        tracked: false,
+        tipoProduto: apiStock.tipoProduto ?? (typeof aditivo.tipo === 'string' ? aditivo.tipo : null),
+        stockMlAtual: normalizeNumber(apiStock.stockMlAtual),
+        unidades: normalizeNumber(apiStock.unidades),
+        mlFrasco: normalizeNumber(apiStock.mlFrasco),
+      });
     } else {
-      // fallback: cache (se já foi sincronizado antes)
-      setStock(getAditivoStock(aditivo.id));
+      setStock(local);
     }
   }, [open, aditivo]);
 

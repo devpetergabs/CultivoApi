@@ -74,8 +74,14 @@ public class AditivoController {
 
         List<DadosAditivoCatalogo> content = page.getContent().stream().map(a -> {
             var estoque = estoqueMap.get(a.getId());
-            var estoqueDto = estoque == null
-                    ? new DadosEstoqueProduto(false, a.getTipo() != null ? a.getTipo().toString() : null, 0.0, 0, 0)
+
+            // IMPORTANT (MVP):
+            // - Se NÃO existe registro em `cultivador_produtos_estoque`, retornamos `estoque = null`.
+            //   Isso evita o front tratar um "não rastreado" como um estoque 0 e sobrescrever
+            //   o cache local (localStorage) com `tracked=false` em listas antigas.
+            // - Se existir registro, retornamos os valores reais e `tracked=true`.
+            DadosEstoqueProduto estoqueDto = (estoque == null)
+                    ? null
                     : new DadosEstoqueProduto(true,
                         estoque.getTipoProduto() != null ? estoque.getTipoProduto().toString() : null,
                         estoque.getStockMlAtual(),
@@ -124,13 +130,14 @@ public class AditivoController {
 
         var a = aditivoOpt.get();
         var estoqueOpt = estoqueService.findByCultivadorAndProduto(cultivador.getId(), id);
+        // Mesma regra do listar(): sem registro => estoque = null.
         var estoqueDto = estoqueOpt
                 .map(e -> new DadosEstoqueProduto(true,
                         e.getTipoProduto() != null ? e.getTipoProduto().toString() : null,
                         e.getStockMlAtual(),
                         e.getUnidades(),
                         e.getMlFrasco()))
-                .orElseGet(() -> new DadosEstoqueProduto(false, a.getTipo() != null ? a.getTipo().toString() : null, 0.0, 0, 0));
+                .orElse(null);
 
         var dto = new DadosAditivoCatalogo(
                 a.getId(),

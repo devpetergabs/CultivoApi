@@ -174,6 +174,39 @@ export function AditivosToolbox({
     return () => window.removeEventListener('PRODUTO_ESTOQUE_UPDATED', handler);
   }, [open]);
 
+  // Se um item estiver selecionado no MIX mas o estoque virou 0 (ou ainda não foi cadastrado),
+  // removemos automaticamente do draft para evitar "seleção fantasma" no Apply.
+  useEffect(() => {
+    if (!open) return;
+    if (!allAditivos || allAditivos.length === 0) return;
+
+    const allowedIds = new Set(
+      allAditivos
+        .filter((a) => String(a.tipo ?? 'ADITIVO').toUpperCase() === 'ADITIVO')
+        .filter((a) => {
+          const est = a.estoque;
+          if (!est || !est.tracked) return false;
+          const estoque = typeof est.stockMlAtual === 'number' ? est.stockMlAtual : 0;
+          return estoque > 0;
+        })
+        .map((a) => a.id)
+    );
+
+    setDraft((prev) => {
+      let changed = false;
+      const next: Record<number, StoredWateringMixItem> = {};
+      for (const [key, item] of Object.entries(prev)) {
+        const id = Number(key);
+        if (allowedIds.has(id)) {
+          next[id] = item;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [open, allAditivos]);
+
   // Only show aditivos with enough stock for the desired dose (volume)
   const filtered = useMemo(() => {
     const q = normalizeText(query);
@@ -198,18 +231,23 @@ export function AditivosToolbox({
       } catch {}
     }
 
-    // Only show aditivos with enough stock for the desired dose (dosePadraoEmML * desiredVolumeMl/1000)
+    // Somente lista o que tem estoque rastreado e > 0.
+    // (Se estoque = 0 => não aparece na seleção)
     const filteredByStock = base.filter((a) => {
-      // Always show if already selected (to allow user to remove)
-      if (draft[a.id]) return true;
-
       const est = a.estoque;
-      // Sem rastreio → não bloqueia (jogo não controla ainda).
-      if (!est || !est.tracked) return true;
+
+      // Regra do MVP: se não tem estoque rastreado/cadastrado, NÃO lista para seleção no MIX.
+      if (!est || !est.tracked) return false;
 
       const estoque = typeof est.stockMlAtual === 'number' ? est.stockMlAtual : 0;
+      // Estoque 0 => não aparece.
+      if (estoque <= 0) return false;
+
+      // Se já está selecionado, mantém visível (para permitir remover).
+      if (draft[a.id]) return true;
+
       const dose = typeof a.dosePadraoEmML === 'number' && a.dosePadraoEmML > 0 ? a.dosePadraoEmML : 1;
-      // Dose is per L, so multiply by desired volume in L
+      // Dose é por L, então multiplica pelo volume desejado (em L).
       const totalDose = dose * (desiredVolumeMl / 1000);
       return estoque >= totalDose;
     });
