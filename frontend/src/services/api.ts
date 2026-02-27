@@ -16,6 +16,17 @@ import type {
 
 const API_URL = '/api';
 
+// Eventos globais (UI)
+// - app:toast -> { message: string; tone?: 'success' | 'warning' | 'error' }
+function emitToast(detail: { message: string; tone?: 'success' | 'warning' | 'error' }) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent('app:toast', { detail }));
+  } catch {
+    // noop
+  }
+}
+
 class ApiService {
   private axiosInstance: AxiosInstance;
   private credentials: { login: string; senha: string } | null = null;
@@ -24,6 +35,41 @@ class ApiService {
     this.axiosInstance = axios.create({
       baseURL: API_URL,
     });
+
+    // Interceptor global: transforma o “404 silencioso” (não-proprietário) em feedback visível.
+    // - Backend antigo: retorna 404 para ações em plantas de terceiros
+    // - Backend novo (se você mudar): pode retornar 403
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        const status: number | undefined = error?.response?.status;
+        const method: string | undefined = error?.config?.method;
+
+        // Só em mutações (POST/PUT/PATCH/DELETE). GET 404 é válido (recurso não encontrado).
+        const isMutation = typeof method === 'string' && method.toLowerCase() !== 'get';
+
+        if (isMutation && (status === 403 || status === 404)) {
+          const serverMsg =
+            typeof error?.response?.data === 'string'
+              ? error.response.data
+              : error?.response?.data?.message;
+
+          emitToast({
+            tone: 'warning',
+            message: serverMsg || 'Você não é o proprietário desta planta.',
+          });
+        }
+
+        if (status === 401) {
+          emitToast({
+            tone: 'warning',
+            message: 'Sessão expirada ou credenciais inválidas. Faça login novamente.',
+          });
+        }
+
+        return Promise.reject(error);
+      }
+    );
   }
 
   setCredentials(login: string, senha: string) {

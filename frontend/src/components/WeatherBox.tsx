@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { FaThermometerHalf, FaTint, FaCloudRain } from "react-icons/fa";
+import React, { useEffect, useMemo, useState } from "react";
 
 interface Weather {
   temperature: number;
@@ -8,7 +7,13 @@ interface Weather {
   location: string;
 }
 
-export default function WeatherBox() {
+type WeatherBoxProps = {
+  /** Variante compacta (header) */
+  compact?: boolean;
+  className?: string;
+};
+
+export default function WeatherBox({ compact = true, className }: WeatherBoxProps) {
   const [weather, setWeather] = useState<Weather | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [location, setLocation] = useState("");
@@ -42,49 +47,90 @@ export default function WeatherBox() {
     setLoading(false);
   };
 
-  if (!weather) return <div className="bg-gray-800 rounded-xl p-4">Carregando...</div>;
+  const containerClass = useMemo(() => {
+    const base =
+      "inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_10px_26px_rgba(9,15,25,0.35)]";
+    const size = compact ? "px-3 py-2" : "px-4 py-3";
+    return [base, size, className].filter(Boolean).join(" ");
+  }, [compact, className]);
+
+  if (!weather)
+    return (
+      <div className={containerClass}>
+        <div className="flex items-center gap-2 text-xs text-white/70">
+          <span className="inline-block h-2 w-2 rounded-full bg-[#6fbf86] animate-pulse" />
+          Carregando clima…
+        </div>
+      </div>
+    );
 
   return (
-    <div className="flex items-center bg-gray-800 rounded-xl p-2 gap-3">
-      <div className="flex items-center gap-1 text-sm">
-        <FaThermometerHalf color="#f87171" />
-        <span>{weather.temperature?.toFixed(1)}°C</span>
-      </div>
-      <div className="flex items-center gap-1 text-sm">
-        <FaTint color="#60a5fa" />
-        <span>{weather.humidity}%</span>
-      </div>
-      <div className="flex items-center gap-1 text-sm">
-        <FaCloudRain color="#67e8f9" />
-        <span>{weather.precipitation}mm</span>
-      </div>
-      <span className="ml-2 text-xs text-gray-300 font-semibold">- {weather.location}</span>
-      {editMode ? (
-        <div className="flex items-center">
-          <input
-            className="rounded px-2 py-1 text-sm bg-gray-700 text-white border border-gray-600"
-            value={location}
-            onChange={e => setLocation(e.target.value)}
-            disabled={loading}
-            style={{ width: 120 }}
-          />
-          <button
-            className="bg-green-500 hover:bg-green-600 text-white rounded px-3 py-1 text-sm ml-1"
-            onClick={handleLocationChange}
-            disabled={loading}
-          >Salvar</button>
-          <button
-            className="bg-gray-500 hover:bg-gray-600 text-white rounded px-3 py-1 text-sm ml-1"
-            onClick={() => setEditMode(false)}
-            disabled={loading}
-          >Cancelar</button>
+    <div className={containerClass}>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 text-xs text-white/85">
+          <span className="text-red-300" aria-hidden>
+            🌡️
+          </span>
+          <span className="font-semibold">{weather.temperature?.toFixed(1)}°C</span>
         </div>
-      ) : (
-        <button
-          className="bg-green-500 hover:bg-green-600 text-white rounded px-3 py-1 text-sm ml-2"
-          onClick={() => setEditMode(true)}
-        >Alterar</button>
-      )}
+
+        <div className="flex items-center gap-1 text-xs text-white/85">
+          <span className="text-sky-300" aria-hidden>
+            💧
+          </span>
+          <span className="font-semibold">{weather.humidity}%</span>
+        </div>
+
+        <div className="flex items-center gap-1 text-xs text-white/85">
+          <span className="text-cyan-200" aria-hidden>
+            🌧️
+          </span>
+          <span className="font-semibold">{weather.precipitation}mm</span>
+        </div>
+      </div>
+
+      <div className="h-5 w-px bg-white/10" />
+
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-white/70 font-medium truncate max-w-[180px]">{weather.location}</span>
+
+        {editMode ? (
+          <div className="flex items-center gap-1">
+            <input
+              className="h-8 w-[150px] rounded-lg px-2 text-xs bg-black/30 text-white border border-white/15 focus:outline-none focus:ring-2 focus:ring-[#6fbf86]/30"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              disabled={loading}
+            />
+            <button
+              className="h-8 rounded-lg px-2 text-xs font-semibold bg-[#6fbf86] text-[#0B1220] hover:brightness-110 transition disabled:opacity-60"
+              onClick={handleLocationChange}
+              disabled={loading}
+              type="button"
+              title="Salvar"
+            >
+              OK
+            </button>
+            <button
+              className="h-8 rounded-lg px-2 text-xs font-semibold bg-white/10 text-white/80 hover:bg-white/15 transition disabled:opacity-60"
+              onClick={() => setEditMode(false)}
+              disabled={loading}
+              type="button"
+              title="Cancelar"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            className="h-8 rounded-lg px-2 text-xs font-semibold bg-white/10 text-white/80 hover:bg-white/15 transition"
+            onClick={() => setEditMode(true)}
+            type="button"
+          >
+            Alterar
+          </button>
+        )}
+      </div>
     </div>
   );
 }

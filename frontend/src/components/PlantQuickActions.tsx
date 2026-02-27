@@ -12,7 +12,9 @@ interface PlantQuickActionsProps {
 
 type QuickAction = 'watering' | 'photo' | 'note' | 'insecticide';
 
-const ACTION_RADIUS = 40;
+type ExtendedQuickAction = QuickAction | 'inventory';
+
+const ACTION_RADIUS = 46;
 
 const getPolarPosition = (angleDeg: number, radius: number) => {
   const rad = (angleDeg * Math.PI) / 180;
@@ -24,7 +26,7 @@ const getPolarPosition = (angleDeg: number, radius: number) => {
 export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeAction, setActiveAction] = useState<QuickAction | null>(null);
-  const [auraKey, setAuraKey] = useState<QuickAction | null>(null);
+  const [auraKey, setAuraKey] = useState<ExtendedQuickAction | null>(null);
 
   const fabRef = useRef<HTMLButtonElement>(null);
   const hubRef = useRef<HTMLDivElement>(null);
@@ -72,6 +74,17 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         shadow: 'shadow-[0_0_10px_rgba(243,154,92,0.26)]',
         enabled: true,
       },
+      // BAÚ: ação global (abre inventário). Fica perto do inseticida.
+      {
+        key: 'inventory' as const,
+        label: 'BAÚ',
+        emoji: '🧰',
+        angle: 315,
+        gradient: 'from-[#e7c35a] to-[#d9a441]',
+        border: 'border-[#f2e0ad]',
+        shadow: 'shadow-[0_0_10px_rgba(231,195,90,0.22)]',
+        enabled: true,
+      },
     ],
     []
   );
@@ -98,13 +111,19 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
     setIsOpen((prev) => !prev);
   };
 
-  const handleActionClick = (event: React.MouseEvent, action: QuickAction, enabled: boolean) => {
+  const handleActionClick = (event: React.MouseEvent, action: ExtendedQuickAction, enabled: boolean) => {
     event.stopPropagation();
     if (!enabled) return;
 
     // Aura arcana: micro-interação curta pra dar feedback de clique.
     setAuraKey(action);
     window.setTimeout(() => setAuraKey((prev) => (prev === action ? null : prev)), 380);
+
+    if (action === 'inventory') {
+      window.dispatchEvent(new CustomEvent('pokedex:switch-view', { detail: { view: 'INVENTARIO' } }));
+      setIsOpen(false);
+      return;
+    }
 
     setActiveAction(action);
     setIsOpen(false);
@@ -134,7 +153,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
             className="absolute bottom-12 right-0 z-40"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-[#0b1324] to-[#0a1220] border border-[#6fbf86]/50 shadow-[0_0_14px_rgba(111,191,134,0.26)] flex items-center justify-center">
+            <div className="relative h-28 w-28 rounded-full bg-gradient-to-br from-[#0b1324] to-[#0a1220] border border-[#6fbf86]/50 shadow-[0_0_14px_rgba(111,191,134,0.26)] flex items-center justify-center">
               <div className="absolute inset-2 rounded-full border border-[#6fbf86]/24 pointer-events-none" />
               <div className="relative z-10 h-9 w-9 rounded-full bg-black/70 border border-[#6fbf86] flex items-center justify-center text-[#6fbf86] text-lg font-semibold">
                 +

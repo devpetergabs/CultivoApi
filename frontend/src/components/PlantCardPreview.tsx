@@ -247,6 +247,8 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
         persistNextWaterType('B');
       } catch (err) {
         console.error('[ERRO REGISTRO REGA]', err);
+        const status = (err as any)?.response?.status;
+        if (status === 403 || status === 404) return; // toast global (não-proprietário)
         showToast('Falha ao registrar rega', 'error');
       }
     };
@@ -312,6 +314,8 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
           persistNextWaterType('A');
         } catch (err) {
           console.error('[ERRO REGISTRO REGA]', err);
+          const status = (err as any)?.response?.status;
+          if (status === 403 || status === 404) return; // toast global (não-proprietário)
           showToast('Falha ao registrar rega', 'error');
         }
       };

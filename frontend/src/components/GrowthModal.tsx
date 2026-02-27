@@ -69,7 +69,12 @@ export const GrowthModal: React.FC<GrowthModalProps> = ({ open, onClose, plantId
       window.location.reload();
     } catch (err) {
       setLoading(false);
-      setErrorMsg('Falha ao salvar. Tente novamente.');
+      const status = (err as any)?.response?.status;
+      if (status === 403 || status === 404) {
+        setErrorMsg('Você não é o proprietário desta planta.');
+      } else {
+        setErrorMsg('Falha ao salvar. Tente novamente.');
+      }
       console.error('[GrowthModal] erro ao salvar', err);
     }
   };
