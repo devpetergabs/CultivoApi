@@ -29,6 +29,12 @@ public record DadosAtualizacaoAditivo(
 
         Integer roundsRecomendados,
 
-        Integer descansoDiasRecomendados
+        Integer descansoDiasRecomendados,
+
+        Double doseMinEmML,
+
+        Double doseMaxEmML,
+
+        String pragasEfetivas
 ) {
 }

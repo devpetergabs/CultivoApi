@@ -18,6 +18,9 @@ public record DadosAditivoCatalogo(
         Integer capacidadeLitros,
         Integer roundsRecomendados,
         Integer descansoDiasRecomendados,
+        Double doseMinEmML,
+        Double doseMaxEmML,
+        String pragasEfetivas,
 
         // --- estoque por cultivador ---
         DadosEstoqueProduto estoque

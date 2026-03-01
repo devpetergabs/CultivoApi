@@ -64,11 +64,12 @@ public class PlantaEventoService {
         }
 
         var tipo = TipoEvento.valueOf(dados.tipo());
+        Double doseEmML = (tipo == TipoEvento.PRAGA) ? null : dados.doseEmML();
 
         // 1 timestamp para tudo
         LocalDateTime when = LocalDateTime.now();
 
-        var evento = new PlantaEvento(planta, tipo, when, dados.descricao(), dados.doseEmML());
+        var evento = new PlantaEvento(planta, tipo, when, dados.descricao(), doseEmML);
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             evento.setIdempotencyKey(idempotencyKey);
         }
@@ -78,7 +79,7 @@ public class PlantaEventoService {
             Map<String, Object> payload = new HashMap<>();
             payload.put("tipo", dados.tipo());
             payload.put("descricao", dados.descricao());
-            payload.put("doseEmML", dados.doseEmML());
+            payload.put("doseEmML", doseEmML);
             payload.put("produtoId", dados.produtoId());
             payload.put("consumos", dados.consumos());
             payload.put("roundsTotal", dados.roundsTotal());
@@ -104,6 +105,8 @@ public class PlantaEventoService {
                     estoqueService.debitarSeExiste(planta.getCultivador().getId(), c.produtoId(), ml);
                 }
             }
+        } else if (tipo == TipoEvento.PRAGA) {
+            // Evento de marcação de praga: não exige produto/rounds e não movimenta estoque.
         } else {
             // fallback: evento com produtoId único (ex: APLICACAO_ADITIVO)
             if (dados.produtoId() != null && dados.doseEmML() != null && dados.doseEmML() > 0) {

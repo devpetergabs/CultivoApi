@@ -2,12 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiService } from '../services/api';
 import type { Aditivo } from '../types';
-import {
-  getAditivoStock,
-  setAditivoStock,
-  syncAditivoStocksFromApi,
-  type AditivoStock,
-} from '../utils/aditivoStorage';
 
 interface InsecticideModalProps {
   open: boolean;
@@ -16,63 +10,17 @@ interface InsecticideModalProps {
   plantName: string;
 }
 
-type InsecticidePreset = {
-  aditivoId: number;
-  doseMlPorLitro: number;
-  litrosAplicados: number;
-  roundsTotal: number;
-  descansoDias: number;
-};
+const PEST_CATALOG = [
+  { value: 'PULGAO', label: 'Pulgão' },
+  { value: 'MOSCA_BRANCA', label: 'Mosca-branca' },
+  { value: 'TRIPES', label: 'Tripes' },
+  { value: 'ACARO', label: 'Ácaro' },
+  { value: 'COCHONILHA', label: 'Cochonilha' },
+  { value: 'LAGARTA', label: 'Lagarta' },
+] as const;
 
-function presetKey(plantId: number) {
-  return `plant:${plantId}:insecticide-preset`;
-}
-
-function safeParsePreset(raw: string | null): InsecticidePreset | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    const aditivoId = Number(parsed?.aditivoId);
-    const doseMlPorLitro = Number(parsed?.doseMlPorLitro);
-    const litrosAplicados = Number(parsed?.litrosAplicados);
-    const roundsTotal = Number(parsed?.roundsTotal);
-    const descansoDias = Number(parsed?.descansoDias);
-
-    if (!Number.isFinite(aditivoId) || aditivoId <= 0) return null;
-    if (!Number.isFinite(doseMlPorLitro) || doseMlPorLitro <= 0) return null;
-    if (!Number.isFinite(litrosAplicados) || litrosAplicados <= 0) return null;
-    if (!Number.isFinite(roundsTotal) || roundsTotal <= 0) return null;
-    if (!Number.isFinite(descansoDias) || descansoDias < 0) return null;
-
-    return {
-      aditivoId: Math.round(aditivoId),
-      doseMlPorLitro: Math.round(doseMlPorLitro),
-      litrosAplicados: Number(litrosAplicados.toFixed(2)),
-      roundsTotal: Math.round(roundsTotal),
-      descansoDias: Math.round(descansoDias),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function clampInt(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min;
-  return Math.max(min, Math.min(max, Math.round(value)));
-}
-
-function clampFloat(value: number, min: number, max: number, decimals = 2): number {
-  if (!Number.isFinite(value)) return min;
-  const v = Math.max(min, Math.min(max, value));
-  return Number(v.toFixed(decimals));
-}
-
-function brief(text: unknown, max = 220) {
-  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
-  if (!t) return '—';
-  if (t.length <= max) return t;
-  return `${t.slice(0, max - 1)}…`;
-}
+type PestType = (typeof PEST_CATALOG)[number]['value'];
+type PestIntensity = 'BAIXA' | 'MEDIA' | 'ALTA';
 
 function isInsecticideLike(aditivo: Aditivo): boolean {
   const tipo = String((aditivo as any)?.tipo ?? '').toUpperCase();
@@ -97,36 +45,12 @@ function isInsecticideLike(aditivo: Aditivo): boolean {
   );
 }
 
-function mergeLocalStock(item: Aditivo): Aditivo {
-  try {
-    const local = getAditivoStock(item.id);
-    if (local?.tracked) {
-      return {
-        ...item,
-        estoque: {
-          tracked: true,
-          tipoProduto: local.tipoProduto ?? (item as any)?.tipo ?? null,
-          stockMlAtual: Number(local.stockMlAtual ?? 0),
-          unidades: Number(local.unidades ?? 0),
-          mlFrasco: Number(local.mlFrasco ?? 0),
-        } as any,
-      };
-    }
-  } catch {
-    // ignore
-  }
-  return item;
-}
-
 export function InsecticideModal({ open, onClose, plantId, plantName }: InsecticideModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [inventory, setInventory] = useState<Aditivo[]>([]);
 
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [doseMlPorLitro, setDoseMlPorLitro] = useState<number>(10);
-  const [litrosAplicados, setLitrosAplicados] = useState<number>(1);
-  const [roundsTotal, setRoundsTotal] = useState<number>(6);
-  const [descansoDias, setDescansoDias] = useState<number>(4);
+  const [pestType, setPestType] = useState<PestType>(PEST_CATALOG[0].value);
+  const [intensity, setIntensity] = useState<PestIntensity>('MEDIA');
   const [notes, setNotes] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -141,55 +65,7 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
     });
   }, [inventory]);
 
-  // ✅ ID efetivo: se state estiver null, usa o 1º disponível
-  const effectiveSelectedId = useMemo(() => {
-    if (selectedId && selectedId > 0) return selectedId;
-    return selectable[0]?.id ?? null;
-  }, [selectedId, selectable]);
-
-  // ✅ garante que o state “case” com o que o select exibe
-  useEffect(() => {
-    if (!open) return;
-    if (!effectiveSelectedId) return;
-    if (selectedId !== effectiveSelectedId) setSelectedId(effectiveSelectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, effectiveSelectedId]);
-
-  const selected = useMemo(() => {
-    if (!effectiveSelectedId) return null;
-    return selectable.find((a) => a.id === effectiveSelectedId) ?? null;
-  }, [selectable, effectiveSelectedId]);
-
-  // ✅ estoque real (UI/MVP): localStorage primeiro, fallback API
-  const selectedStockMl = useMemo(() => {
-    if (!selected) return null;
-
-    try {
-      const local = getAditivoStock(selected.id);
-      if (local?.tracked) {
-        const v = Number(local.stockMlAtual);
-        return Number.isFinite(v) ? v : 0;
-      }
-    } catch {
-      // ignore
-    }
-
-    const est = (selected as any)?.estoque;
-    if (!est || !est.tracked) return null;
-    const v = Number(est.stockMlAtual);
-    return Number.isFinite(v) ? v : 0;
-  }, [selected]);
-
-  const totalMl = useMemo(() => {
-    const dose = clampInt(Number(doseMlPorLitro), 1, 100000);
-    const litros = clampFloat(Number(litrosAplicados), 0.1, 9999, 2);
-    return Math.max(1, Math.round(dose * litros));
-  }, [doseMlPorLitro, litrosAplicados]);
-
-  const hasStockEnough = useMemo(() => {
-    if (typeof selectedStockMl !== 'number') return true; // sem estoque rastreado -> não bloqueia
-    return selectedStockMl >= totalMl;
-  }, [selectedStockMl, totalMl]);
+  const selectedProduct = selectable[0] ?? null;
 
   useEffect(() => {
     if (!open) return;
@@ -204,29 +80,11 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
     if (!open) return;
 
     setError(null);
+    setPestType(PEST_CATALOG[0].value);
+    setIntensity('MEDIA');
     setNotes('');
+  }, [open]);
 
-    let preset: InsecticidePreset | null = null;
-    try {
-      preset = safeParsePreset(localStorage.getItem(presetKey(plantId)));
-    } catch {}
-
-    if (preset) {
-      setSelectedId(preset.aditivoId);
-      setDoseMlPorLitro(preset.doseMlPorLitro);
-      setLitrosAplicados(preset.litrosAplicados);
-      setRoundsTotal(preset.roundsTotal);
-      setDescansoDias(preset.descansoDias);
-    } else {
-      setSelectedId(null);
-      setDoseMlPorLitro(10);
-      setLitrosAplicados(1);
-      setRoundsTotal(6);
-      setDescansoDias(4);
-    }
-  }, [open, plantId]);
-
-  // ao abrir, carrega inventário e mescla estoque local
   useEffect(() => {
     if (!open) return;
     let active = true;
@@ -241,19 +99,12 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
         const itemsRaw = Array.isArray(list) ? (list as Aditivo[]) : [];
         if (!active) return;
 
-        try {
-          syncAditivoStocksFromApi(itemsRaw as any);
-        } catch {
-          // ignore
-        }
-
-        const items = itemsRaw.map(mergeLocalStock);
-        setInventory(items);
+        setInventory(itemsRaw);
       })
       .catch(() => {
         if (!active) return;
         setInventory([]);
-        setError('Não foi possível carregar os produtos do inventário.');
+        setError('Não foi possível carregar produtos de referência para registrar o sinal de praga.');
       })
       .finally(() => {
         if (!active) return;
@@ -263,111 +114,35 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
     return () => {
       active = false;
     };
-  }, [open, plantId]);
+  }, [open]);
 
   if (!open || typeof document === 'undefined') return null;
 
   const canInteract = !isSaving && !isLoading;
 
-  const handleSalvarPreset = () => {
-    const id = Number(effectiveSelectedId);
-    const dose = clampInt(Number(doseMlPorLitro), 1, 100000);
-    const litros = clampFloat(Number(litrosAplicados), 0.1, 9999, 2);
-    const rounds = clampInt(Number(roundsTotal), 1, 50);
-    const descanso = clampInt(Number(descansoDias), 0, 30);
-
-    if (!Number.isFinite(id) || id <= 0 || !selected) {
-      setError('Selecione um produto do inventário.');
-      return;
-    }
-
-    try {
-      localStorage.setItem(
-        presetKey(plantId),
-        JSON.stringify({ aditivoId: id, doseMlPorLitro: dose, litrosAplicados: litros, roundsTotal: rounds, descansoDias: descanso })
-      );
-      onClose();
-    } catch {
-      setError('Não foi possível salvar o preset.');
-    }
-  };
-
   const handleAplicar = async () => {
-    const id = Number(effectiveSelectedId);
-    const dose = clampInt(Number(doseMlPorLitro), 1, 100000);
-    const litros = clampFloat(Number(litrosAplicados), 0.1, 9999, 2);
-    const rounds = clampInt(Number(roundsTotal), 1, 50);
-    const descanso = clampInt(Number(descansoDias), 0, 30);
+    const id = Number(selectedProduct?.id ?? 0);
 
-    if (!Number.isFinite(id) || id <= 0 || !selected) {
-      setError('Selecione um produto do inventário.');
-      return;
-    }
-    if (!hasStockEnough) {
-      setError('Estoque insuficiente para esse consumo total (mL).');
-      return;
-    }
+    const signalLine = `[PEST_SIGNAL] type=${pestType} intensity=${intensity}`;
+    const safeObs = notes.trim();
+    const descricao = safeObs ? `${signalLine}\n${safeObs}` : signalLine;
 
     setIsSaving(true);
     setError(null);
     try {
-      try {
-        localStorage.setItem(
-          presetKey(plantId),
-          JSON.stringify({ aditivoId: id, doseMlPorLitro: dose, litrosAplicados: litros, roundsTotal: rounds, descansoDias: descanso })
-        );
-      } catch {}
-
-      const safeObs = notes.trim();
-      const baseDesc = `${selected.nome} (${selected.marca}) — ${dose} mL/L × ${litros} L = ${totalMl} mL | Tratamento: ${rounds} rounds / descanso ${descanso}d`;
-      const descricao = safeObs ? `${baseDesc} | ${safeObs}` : baseDesc;
-
       await apiService.createPlantaEvento(plantId, {
-        tipo: 'INSETICIDA',
+        tipo: 'PRAGA',
         descricao,
-        doseEmML: totalMl,
-        produtoId: id,
-        roundsTotal: rounds,
-        descansoDias: descanso,
-        idempotencyKey: `insecticide:${plantId}:${id}:${dose}:${litros}:${rounds}:${descanso}:${Date.now()}`,
+        doseEmML: null,
+        produtoId: Number.isFinite(id) && id > 0 ? id : null,
+        roundsTotal: null,
+        descansoDias: null,
+        idempotencyKey: `pest-signal:${plantId}:${pestType}:${intensity}:${Date.now()}`,
       });
-
-      // Atualiza cache local 1x pra UI reagir na hora
-      try {
-        const local = getAditivoStock(id);
-        if (local?.tracked) {
-          const next = Math.max(0, Number(local.stockMlAtual ?? 0) - totalMl);
-          const payload: AditivoStock = {
-            tracked: true,
-            tipoProduto: local.tipoProduto ?? (selected as any)?.tipo ?? null,
-            stockMlAtual: next,
-            unidades: Number(local.unidades ?? 0),
-            mlFrasco: Number(local.mlFrasco ?? 0),
-          };
-          setAditivoStock(id, payload);
-
-          setInventory((prev) =>
-            prev.map((p) =>
-              p.id === id
-                ? {
-                    ...p,
-                    estoque: {
-                      tracked: true,
-                      tipoProduto: payload.tipoProduto,
-                      stockMlAtual: payload.stockMlAtual,
-                      unidades: payload.unidades,
-                      mlFrasco: payload.mlFrasco,
-                    } as any,
-                  }
-                : p
-            )
-          );
-        }
-      } catch {}
 
       onClose();
     } catch {
-      setError('Não foi possível registrar a aplicação do inseticida.');
+      setError('Não foi possível registrar o sinal de praga.');
     } finally {
       setIsSaving(false);
     }
@@ -380,134 +155,42 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Registrar inseticida"
+        aria-label="Registrar sinal de praga"
       >
         <div className="mb-3">
-          <h3 className="text-sm font-semibold text-white tracking-tight">Inseticida</h3>
-          <p className="text-xs text-[#9fb0c0] font-normal">Planta: {plantName}</p>
+          <h3 className="text-sm font-semibold text-white tracking-tight">Sinal de Praga</h3>
+          <p className="text-xs text-[#9fb0c0] font-normal">Marcação de praga na planta: {plantName}</p>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Produto</label>
+            <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Tipo de praga</label>
             <select
-              value={effectiveSelectedId ?? ''}
-              onChange={(e) => setSelectedId(e.target.value ? Number(e.target.value) : null)}
+              value={pestType}
+              onChange={(event) => setPestType(event.target.value as PestType)}
               disabled={!canInteract}
               className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
             >
-              {selectable.length === 0 ? (
-                <option value="">Nenhum produto com label INSETICIDA</option>
-              ) : (
-                selectable.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.nome} — {a.marca}
-                  </option>
-                ))
-              )}
+              {PEST_CATALOG.map((pest) => (
+                <option key={pest.value} value={pest.value}>
+                  {pest.label}
+                </option>
+              ))}
             </select>
-
-            <div className="mt-1 flex items-center justify-between text-[11px] text-slate-300/80">
-              <span className="inline-flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#f39a5c]" />
-                Label: <span className="text-slate-100/90 font-semibold">INSETICIDA</span>
-              </span>
-
-              {typeof selectedStockMl === 'number' ? (
-                <span className="text-slate-200/80">
-                  Estoque: <span className="font-semibold text-slate-100">{Math.max(0, Math.round(selectedStockMl))} mL</span>
-                </span>
-              ) : (
-                <span className="text-slate-400/70">Estoque: —</span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">ML/L</label>
-                <span className="text-[11px] text-slate-400/80">(dose)</span>
-              </div>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={doseMlPorLitro}
-                onChange={(event) => setDoseMlPorLitro(Number(event.target.value))}
-                disabled={!canInteract}
-                className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Litros</label>
-                <span className="text-[11px] text-slate-400/80">(aplicados)</span>
-              </div>
-              <input
-                type="number"
-                min={0.1}
-                step={0.1}
-                value={litrosAplicados}
-                onChange={(event) => setLitrosAplicados(Number(event.target.value))}
-                disabled={!canInteract}
-                className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Rounds</label>
-                <span className="text-[11px] text-slate-400/80">(tratamento)</span>
-              </div>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={roundsTotal}
-                onChange={(event) => setRoundsTotal(Number(event.target.value))}
-                disabled={!canInteract}
-                className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Descanso (dias)</label>
-                <span className="text-[11px] text-slate-400/80">(entre rounds)</span>
-              </div>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={descansoDias}
-                onChange={(event) => setDescansoDias(Number(event.target.value))}
-                disabled={!canInteract}
-                className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-slate-300/90 uppercase tracking-[0.06em]">Consumo total</span>
-              <span className={`text-xs font-semibold ${hasStockEnough ? 'text-[#f7c6a1]' : 'text-red-400'}`}>
-                {totalMl} mL
-              </span>
-            </div>
-            <div className="mt-1 text-[11px] text-slate-400/80">
-              {hasStockEnough ? 'Ok para aplicar.' : 'Estoque insuficiente para esse volume.'}
-            </div>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Recomendação</label>
-            <div className="mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200/90">
-              {selected ? brief((selected as any)?.descricao, 240) : 'Selecione um produto para ver a recomendação.'}
-            </div>
+            <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Intensidade</label>
+            <select
+              value={intensity}
+              onChange={(event) => setIntensity(event.target.value as PestIntensity)}
+              disabled={!canInteract}
+              className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
+            >
+              <option value="BAIXA">Baixa</option>
+              <option value="MEDIA">Média</option>
+              <option value="ALTA">Alta</option>
+            </select>
           </div>
         </div>
 
@@ -536,20 +219,11 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
 
           <button
             type="button"
-            onClick={handleSalvarPreset}
-            className="rounded-lg border border-[#f39a5c]/60 bg-[#0f1726] px-3 py-2 text-xs font-semibold text-[#f7c6a1] hover:bg-white/5 hover:border-[#f39a5c]/80 disabled:opacity-60"
-            disabled={!canInteract || !selected}
-          >
-            Salvar
-          </button>
-
-          <button
-            type="button"
             onClick={handleAplicar}
             className="rounded-lg bg-[#f39a5c] px-3 py-2 text-xs font-semibold text-[#0B1220] hover:brightness-110 disabled:opacity-60"
-            disabled={!canInteract || !selected || !hasStockEnough}
+            disabled={!canInteract || !selectedProduct}
           >
-            {isSaving ? 'Aplicando...' : 'Aplicar'}
+            {isSaving ? 'Registrando...' : 'Registrar sinal'}
           </button>
         </div>
       </div>

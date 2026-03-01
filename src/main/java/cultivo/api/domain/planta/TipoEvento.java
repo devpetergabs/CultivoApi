@@ -10,6 +10,7 @@ public enum TipoEvento {
     TROCA_VASO,
     APLICACAO_ADITIVO,
     INSETICIDA,
+    PRAGA,
     OBSERVACAO,
     COLHEITA,
     EVOLUCAO,

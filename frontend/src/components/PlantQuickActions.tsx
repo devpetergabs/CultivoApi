@@ -12,8 +12,6 @@ interface PlantQuickActionsProps {
 
 type QuickAction = 'watering' | 'photo' | 'note' | 'insecticide';
 
-type ExtendedQuickAction = QuickAction | 'inventory';
-
 const ACTION_RADIUS = 46;
 
 const getPolarPosition = (angleDeg: number, radius: number) => {
@@ -26,7 +24,7 @@ const getPolarPosition = (angleDeg: number, radius: number) => {
 export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeAction, setActiveAction] = useState<QuickAction | null>(null);
-  const [auraKey, setAuraKey] = useState<ExtendedQuickAction | null>(null);
+  const [auraKey, setAuraKey] = useState<QuickAction | null>(null);
 
   const fabRef = useRef<HTMLButtonElement>(null);
   const hubRef = useRef<HTMLDivElement>(null);
@@ -66,23 +64,12 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
       },
       {
         key: 'insecticide' as const,
-        label: 'INSETICIDA',
-        emoji: '☠️',
+        label: 'SINAL DE PRAGA',
+        emoji: '🐛',
         angle: 270,
         gradient: 'from-[#f39a5c] to-[#df7a3a]',
         border: 'border-[#f6d2b4]',
         shadow: 'shadow-[0_0_10px_rgba(243,154,92,0.26)]',
-        enabled: true,
-      },
-      // BAÚ: ação global (abre inventário). Fica perto do inseticida.
-      {
-        key: 'inventory' as const,
-        label: 'BAÚ',
-        emoji: '🧰',
-        angle: 315,
-        gradient: 'from-[#e7c35a] to-[#d9a441]',
-        border: 'border-[#f2e0ad]',
-        shadow: 'shadow-[0_0_10px_rgba(231,195,90,0.22)]',
         enabled: true,
       },
     ],
@@ -111,19 +98,13 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
     setIsOpen((prev) => !prev);
   };
 
-  const handleActionClick = (event: React.MouseEvent, action: ExtendedQuickAction, enabled: boolean) => {
+  const handleActionClick = (event: React.MouseEvent, action: QuickAction, enabled: boolean) => {
     event.stopPropagation();
     if (!enabled) return;
 
     // Aura arcana: micro-interação curta pra dar feedback de clique.
     setAuraKey(action);
     window.setTimeout(() => setAuraKey((prev) => (prev === action ? null : prev)), 380);
-
-    if (action === 'inventory') {
-      window.dispatchEvent(new CustomEvent('pokedex:switch-view', { detail: { view: 'INVENTARIO' } }));
-      setIsOpen(false);
-      return;
-    }
 
     setActiveAction(action);
     setIsOpen(false);
@@ -173,7 +154,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
                     style={{
                       transform: `translate(-50%, -50%) translate(${pos.x}px, ${pos.y}px)`,
                     }}
-                    onClick={(event) => handleActionClick(event, action.key, action.enabled)}
+                    onClick={(event) => handleActionClick(event, action.key as QuickAction, action.enabled)}
                     aria-disabled={!action.enabled}
                   >
                     {aura && (

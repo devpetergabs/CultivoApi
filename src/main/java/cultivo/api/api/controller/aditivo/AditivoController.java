@@ -106,6 +106,9 @@ public class AditivoController {
                     a.getCapacidadeLitros(),
                     a.getRoundsRecomendados(),
                     a.getDescansoDiasRecomendados(),
+                    a.getDoseMinEmML(),
+                    a.getDoseMaxEmML(),
+                    a.getPragasEfetivas(),
                     estoqueDto
             );
         }).toList();
@@ -151,6 +154,9 @@ public class AditivoController {
                 a.getCapacidadeLitros(),
                 a.getRoundsRecomendados(),
                 a.getDescansoDiasRecomendados(),
+                a.getDoseMinEmML(),
+                a.getDoseMaxEmML(),
+                a.getPragasEfetivas(),
                 estoqueDto
         );
 
@@ -158,7 +164,7 @@ public class AditivoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Aditivo> atualizar(@PathVariable Long id, @Valid @RequestBody DadosAtualizacaoAditivo dados) {
+    public ResponseEntity<?> atualizar(@PathVariable Long id, @Valid @RequestBody DadosAtualizacaoAditivo dados) {
         var aditivo = repository.findById(id);
         if (aditivo.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -174,18 +180,25 @@ public class AditivoController {
             }
         } catch (Exception ignored) {}
 
-        aditivoExistente.atualizarDados(
-                dados.nome(),
-                dados.marca(),
-                dados.descricao(),
-                dados.estagio(),
-                dados.classe(),
-                dados.dosePadraoEmML(),
-                tipo,
-                dados.capacidadeLitros(),
-                dados.roundsRecomendados(),
-                dados.descansoDiasRecomendados()
-        );
+        try {
+            aditivoExistente.atualizarDados(
+                    dados.nome(),
+                    dados.marca(),
+                    dados.descricao(),
+                    dados.estagio(),
+                    dados.classe(),
+                    dados.dosePadraoEmML(),
+                    tipo,
+                    dados.capacidadeLitros(),
+                    dados.roundsRecomendados(),
+                    dados.descansoDiasRecomendados(),
+                    dados.doseMinEmML(),
+                    dados.doseMaxEmML(),
+                    dados.pragasEfetivas()
+            );
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
 
         repository.save(aditivoExistente);
         return ResponseEntity.ok(aditivoExistente);

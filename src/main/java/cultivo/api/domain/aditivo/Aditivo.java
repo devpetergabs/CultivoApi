@@ -47,6 +47,15 @@ public class Aditivo {
     @Column(name = "descanso_dias_recomendados")
     private Integer descansoDiasRecomendados;
 
+    @Column(name = "dose_min_em_ml")
+    private Double doseMinEmML;
+
+    @Column(name = "dose_max_em_ml")
+    private Double doseMaxEmML;
+
+    @Column(name = "pragas_efetivas")
+    private String pragasEfetivas;
+
     private Boolean ativo;
 
     public Aditivo(String nome, String marca, String descricao, EstagioAditivo estagio, Double dosePadraoEmML) {
@@ -81,8 +90,15 @@ public class Aditivo {
             TipoProduto tipo,
             Integer capacidadeLitros,
             Integer roundsRecomendados,
-            Integer descansoDiasRecomendados
+            Integer descansoDiasRecomendados,
+            Double doseMinEmML,
+            Double doseMaxEmML,
+            String pragasEfetivas
     ) {
+        if (doseMinEmML != null && doseMaxEmML != null && doseMinEmML > doseMaxEmML) {
+            throw new IllegalArgumentException("doseMinEmML não pode ser maior que doseMaxEmML");
+        }
+
         if (nome != null && !nome.isBlank()) this.nome = nome;
         if (marca != null && !marca.isBlank()) this.marca = marca;
         if (descricao != null) this.descricao = descricao;
@@ -94,6 +110,9 @@ public class Aditivo {
         if (capacidadeLitros != null) this.capacidadeLitros = capacidadeLitros;
         if (roundsRecomendados != null) this.roundsRecomendados = roundsRecomendados;
         if (descansoDiasRecomendados != null) this.descansoDiasRecomendados = descansoDiasRecomendados;
+        if (doseMinEmML != null) this.doseMinEmML = doseMinEmML;
+        if (doseMaxEmML != null) this.doseMaxEmML = doseMaxEmML;
+        if (pragasEfetivas != null) this.pragasEfetivas = pragasEfetivas;
     }
 
     public void desativar() {
