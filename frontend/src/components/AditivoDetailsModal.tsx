@@ -172,7 +172,7 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props
   const isInsecticide = tipo === 'INSETICIDA';
   const doseRecomendada = formatDoseRecomendada(aditivo.doseMinEmML, aditivo.doseMaxEmML);
 
-  const pragasEfetivas = useMemo(() => {
+  const pragasEfetivas = (() => {
     if (!isInsecticide) return [] as string[];
     const raw = String(aditivo.pragasEfetivas ?? '');
     if (!raw.trim()) return [] as string[];
@@ -185,7 +185,7 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props
     });
 
     return Array.from(unique).map(pestLabel);
-  }, [aditivo.pragasEfetivas, isInsecticide]);
+  })();
 
   const handleUploadClick = () => {
     setError(null);
