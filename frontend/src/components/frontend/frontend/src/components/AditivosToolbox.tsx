@@ -216,13 +216,8 @@ export function AditivosToolbox({
     // Este modal é do MIX (rega aditivada). Não deve listar INSETICIDA/VASO.
     const base = baseRaw.filter((a) => String(a.tipo ?? 'ADITIVO').toUpperCase() === 'ADITIVO');
 
-    // Regra do produto: aqui devem aparecer somente itens realmente em estoque.
-    // (O modelo usa catálogo do inventário; se está 0ml, não deve poluir a lista.)
-    const filteredByStock = base.filter((a) => {
-      const tracked = Boolean(a.estoque?.tracked);
-      const stock = Number(a.estoque?.stockMlAtual ?? 0);
-      return tracked && Number.isFinite(stock) && stock > 0;
-    });
+    // MODELO não consome estoque; mostramos TODOS os aditivos e exibimos o estoque apenas como informação.
+    const filteredByStock = base;
 
     const relRank = (r: Relevance) => (r === 'match' ? 0 : r === 'neutral' ? 1 : 2);
 
@@ -316,7 +311,7 @@ export function AditivosToolbox({
           ) : error ? (
             <div className="mt-3 text-sm text-red-300">{error}</div>
           ) : filtered.length === 0 ? (
-            <div className="mt-3 text-sm text-[#9fb0c0]">Nenhum aditivo em estoque para uso.</div>
+            <div className="mt-3 text-sm text-[#9fb0c0]">Nenhum aditivo encontrado.</div>
           ) : (
             <div className="mt-3 max-h-[46vh] overflow-auto rounded-lg border border-white/10 bg-black/20">
               <div className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-3 py-2 text-[11px] font-semibold text-slate-300/80 uppercase tracking-[0.06em] bg-[#0B1220]/80 backdrop-blur border-b border-white/10">
