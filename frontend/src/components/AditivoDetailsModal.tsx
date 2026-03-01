@@ -65,6 +65,29 @@ function normalizeNumber(value: unknown): number {
   return Math.max(0, parsed);
 }
 
+function formatDoseRecomendada(min: number | null | undefined, max: number | null | undefined): string {
+  const hasMin = typeof min === 'number' && Number.isFinite(min);
+  const hasMax = typeof max === 'number' && Number.isFinite(max);
+
+  if (hasMin && hasMax) return `${min}–${max} ml/L`;
+  if (hasMin) return `${min} ml/L`;
+  if (hasMax) return `${max} ml/L`;
+  return '—';
+}
+
+function pestLabel(code: string): string {
+  switch (code) {
+    case 'TRIPES':
+      return 'Tripes';
+    case 'LAGARTAS':
+      return 'Lagartas';
+    case 'PULGOES':
+      return 'Pulgões';
+    default:
+      return code;
+  }
+}
+
 export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -146,6 +169,23 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props
 
   const tipo = String(aditivo.tipo || '').toUpperCase();
   const isEquipment = tipo === 'VASO';
+  const isInsecticide = tipo === 'INSETICIDA';
+  const doseRecomendada = formatDoseRecomendada(aditivo.doseMinEmML, aditivo.doseMaxEmML);
+
+  const pragasEfetivas = useMemo(() => {
+    if (!isInsecticide) return [] as string[];
+    const raw = String(aditivo.pragasEfetivas ?? '');
+    if (!raw.trim()) return [] as string[];
+
+    const unique = new Set<string>();
+    raw.split(',').forEach((item) => {
+      const normalized = item.trim().toUpperCase();
+      if (!normalized) return;
+      unique.add(normalized);
+    });
+
+    return Array.from(unique).map(pestLabel);
+  }, [aditivo.pragasEfetivas, isInsecticide]);
 
   const handleUploadClick = () => {
     setError(null);
@@ -350,6 +390,33 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props
                     <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Ativo</div>
                     <div className="text-xs font-semibold text-white">{aditivo.ativo ? 'Sim' : 'Não'}</div>
                   </div>
+                </div>
+              )}
+
+              {!isEquipment && (
+                <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                  <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Dose recomendada</div>
+                  <div className="text-xs font-semibold text-white">{doseRecomendada}</div>
+                </div>
+              )}
+
+              {!isEquipment && isInsecticide && (
+                <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                  <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Pragas efetivas</div>
+                  {pragasEfetivas.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {pragasEfetivas.map((praga) => (
+                        <span
+                          key={praga}
+                          className="inline-flex items-center rounded-full border border-[#f39a5c]/25 bg-[#f39a5c]/10 px-2 py-0.5 text-[10px] font-semibold text-[#ffd9bf]"
+                        >
+                          {praga}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-xs font-semibold text-white">—</div>
+                  )}
                 </div>
               )}
 

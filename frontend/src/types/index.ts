@@ -74,6 +74,9 @@ export interface Aditivo {
   capacidadeLitros?: number | null;
   roundsRecomendados?: number | null;
   descansoDiasRecomendados?: number | null;
+  doseMinEmML?: number | null;
+  doseMaxEmML?: number | null;
+  pragasEfetivas?: string | null;
 }
 
 export interface Page<T> {

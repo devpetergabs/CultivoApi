@@ -31,6 +31,8 @@ type InfectedPlant = {
   signal: PestSignal;
 };
 
+type ProductMatch = 'recommended' | 'off';
+
 const PRESET_KEY = 'pokedex:bulk-insecticide-preset';
 
 function safeParsePreset(raw: string | null): BulkPreset | null {
@@ -154,6 +156,32 @@ function normalizeEventsPayload(payload: any): PlantaEvento[] {
   return content as PlantaEvento[];
 }
 
+function parseCsvUpper(raw: string | null | undefined): string[] {
+  const text = String(raw ?? '').trim();
+  if (!text) return [];
+
+  return text
+    .split(',')
+    .map((item) => item.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function resolveProductMatch(aditivo: Aditivo, pestType: string | null): ProductMatch {
+  if (!pestType) return 'off';
+  const pragas = parseCsvUpper(aditivo.pragasEfetivas);
+  return pragas.includes(pestType.toUpperCase()) ? 'recommended' : 'off';
+}
+
+function formatDoseRange(min: number | null | undefined, max: number | null | undefined): string {
+  const hasMin = typeof min === 'number' && Number.isFinite(min);
+  const hasMax = typeof max === 'number' && Number.isFinite(max);
+
+  if (hasMin && hasMax) return `${min}–${max} mL`;
+  if (hasMin) return `${min} mL`;
+  if (hasMax) return `${max} mL`;
+  return '—';
+}
+
 export function BulkInsecticideModal({ open, onClose, plants }: BulkInsecticideModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [inventory, setInventory] = useState<Aditivo[]>([]);
@@ -167,15 +195,27 @@ export function BulkInsecticideModal({ open, onClose, plants }: BulkInsecticideM
   const [selectedPlantIds, setSelectedPlantIds] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDoseForaFaixa, setConfirmDoseForaFaixa] = useState(false);
+
+  const pestTypeForMatch = useMemo(() => {
+    if (filterPestType === 'ALL') return null;
+    return String(filterPestType).toUpperCase();
+  }, [filterPestType]);
 
   const selectable = useMemo(() => {
     const filtered = inventory.filter(isInsecticideLike);
     return filtered.sort((a, b) => {
+      if (pestTypeForMatch) {
+        const ma = resolveProductMatch(a, pestTypeForMatch);
+        const mb = resolveProductMatch(b, pestTypeForMatch);
+        if (ma !== mb) return ma === 'recommended' ? -1 : 1;
+      }
+
       const na = String(a.nome ?? '').toLocaleLowerCase('pt-BR');
       const nb = String(b.nome ?? '').toLocaleLowerCase('pt-BR');
       return na.localeCompare(nb, 'pt-BR');
     });
-  }, [inventory]);
+  }, [inventory, pestTypeForMatch]);
 
   const effectiveSelectedId = useMemo(() => {
     if (selectedId && selectedId > 0) return selectedId;
@@ -193,6 +233,11 @@ export function BulkInsecticideModal({ open, onClose, plants }: BulkInsecticideM
     if (!effectiveSelectedId) return null;
     return selectable.find((a) => a.id === effectiveSelectedId) ?? null;
   }, [selectable, effectiveSelectedId]);
+
+  const selectedMatch = useMemo(() => {
+    if (!selected || !pestTypeForMatch) return null;
+    return resolveProductMatch(selected, pestTypeForMatch);
+  }, [selected, pestTypeForMatch]);
 
   const infectedPlants = useMemo<InfectedPlant[]>(() => {
     return plants
@@ -227,6 +272,32 @@ export function BulkInsecticideModal({ open, onClose, plants }: BulkInsecticideM
     () => clampFloat(Number(dosePorPlanta), 0.1, 100000, 2),
     [dosePorPlanta]
   );
+
+  const doseRange = useMemo(() => {
+    if (!selected) return { min: null as number | null, max: null as number | null };
+
+    const minRaw = selected.doseMinEmML;
+    const maxRaw = selected.doseMaxEmML;
+    const min = typeof minRaw === 'number' && Number.isFinite(minRaw) ? minRaw : null;
+    const max = typeof maxRaw === 'number' && Number.isFinite(maxRaw) ? maxRaw : null;
+
+    return { min, max };
+  }, [selected]);
+
+  const isDoseForaFaixa = useMemo(() => {
+    const dose = dosePorPlantaClamped;
+    if (!(dose > 0)) return false;
+
+    const abaixoMin = typeof doseRange.min === 'number' ? dose < doseRange.min : false;
+    const acimaMax = typeof doseRange.max === 'number' ? dose > doseRange.max : false;
+    return abaixoMin || acimaMax;
+  }, [dosePorPlantaClamped, doseRange]);
+
+  useEffect(() => {
+    if (!isDoseForaFaixa) {
+      setConfirmDoseForaFaixa(false);
+    }
+  }, [isDoseForaFaixa, effectiveSelectedId]);
 
   const totalEstimado = useMemo(() => {
     return Number((dosePorPlantaClamped * selectedCount).toFixed(2));
@@ -270,6 +341,7 @@ export function BulkInsecticideModal({ open, onClose, plants }: BulkInsecticideM
     setError(null);
     setNotes('');
     setFilterPestType('ALL');
+    setConfirmDoseForaFaixa(false);
 
     try {
       const preset = safeParsePreset(localStorage.getItem(PRESET_KEY));
@@ -389,6 +461,10 @@ export function BulkInsecticideModal({ open, onClose, plants }: BulkInsecticideM
     }
     if (!hasStockEnough) {
       setError('Estoque insuficiente para esse tratamento em lote.');
+      return;
+    }
+    if (isDoseForaFaixa && !confirmDoseForaFaixa) {
+      setError('Dose fora da faixa recomendada. Confirme para continuar.');
       return;
     }
 
@@ -599,12 +675,29 @@ export function BulkInsecticideModal({ open, onClose, plants }: BulkInsecticideM
                   <option value="">Selecione um produto…</option>
                   {selectable.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.nome} — {a.marca}
+                      {pestTypeForMatch
+                        ? `${resolveProductMatch(a, pestTypeForMatch) === 'recommended' ? '✅' : '⚠'} ${a.nome} — ${a.marca}`
+                        : `${a.nome} — ${a.marca}`}
                     </option>
                   ))}
                 </>
               )}
             </select>
+
+            {pestTypeForMatch && selectedMatch && (
+              <div className="mt-2 flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <span className="text-[11px] text-slate-300/90">Match para {pestTypeForMatch}</span>
+                {selectedMatch === 'recommended' ? (
+                  <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
+                    Recomendado
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
+                    Fora do recomendado
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="mt-3">
               <div className="flex items-center justify-between">
@@ -620,6 +713,26 @@ export function BulkInsecticideModal({ open, onClose, plants }: BulkInsecticideM
                 disabled={!canInteract}
                 className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
               />
+
+              <div className="mt-1 text-[11px] text-slate-400/80">
+                Faixa recomendada: <span className="font-semibold text-slate-200">{formatDoseRange(doseRange.min, doseRange.max)}</span>
+              </div>
+
+              {isDoseForaFaixa && (
+                <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-2">
+                  <div className="text-[11px] font-semibold text-amber-200">Dose fora da faixa recomendada para este produto.</div>
+                  <label className="mt-1 inline-flex items-center gap-2 text-[11px] text-amber-100/90">
+                    <input
+                      type="checkbox"
+                      checked={confirmDoseForaFaixa}
+                      onChange={(event) => setConfirmDoseForaFaixa(event.target.checked)}
+                      disabled={!canInteract}
+                      className="h-3.5 w-3.5 accent-amber-400"
+                    />
+                    Confirmo aplicar fora da recomendação
+                  </label>
+                </div>
+              )}
             </div>
 
             <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
@@ -663,7 +776,14 @@ export function BulkInsecticideModal({ open, onClose, plants }: BulkInsecticideM
             type="button"
             onClick={handleAplicar}
             className="rounded-lg bg-[#f39a5c] px-3 py-2 text-xs font-semibold text-[#0B1220] hover:brightness-110 disabled:opacity-60"
-            disabled={!canInteract || !selected || !hasStockEnough || selectedPlantIds.length === 0 || !(dosePorPlantaClamped > 0)}
+            disabled={
+              !canInteract ||
+              !selected ||
+              !hasStockEnough ||
+              selectedPlantIds.length === 0 ||
+              !(dosePorPlantaClamped > 0) ||
+              (isDoseForaFaixa && !confirmDoseForaFaixa)
+            }
           >
             {isSaving ? 'Aplicando...' : 'Aplicar lote'}
           </button>
