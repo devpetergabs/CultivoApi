@@ -10,6 +10,7 @@ import {
   isAditivoOutOfStock,
   syncAditivoStocksFromApi,
   resetAllAditivoStocksOnce,
+  type AditivoStock,
 } from '../utils/aditivoStorage';
 
 type InventarioViewProps = {
@@ -62,7 +63,7 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedAditivo, setSelectedAditivo] = useState<Aditivo | null>(null);
+  const [selectedAditivoId, setSelectedAditivoId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [mostrarColecionaveis, setMostrarColecionaveis] = useState(false);
@@ -144,6 +145,31 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
       .map((x) => x.item);
   }, [aditivos, mostrarColecionaveis, refreshKey]);
 
+  const selectedAditivo = useMemo(() => {
+    if (!selectedAditivoId) return null;
+    return aditivos.find((a) => a.id === selectedAditivoId) ?? null;
+  }, [aditivos, selectedAditivoId]);
+
+  const handleStockSaved = (aditivoId: number, payload: AditivoStock) => {
+    setAditivos((prev) =>
+      prev.map((item) =>
+        item.id === aditivoId
+          ? {
+              ...item,
+              estoque: {
+                tracked: payload.tracked,
+                tipoProduto: payload.tipoProduto,
+                stockMlAtual: payload.stockMlAtual,
+                unidades: payload.unidades,
+                mlFrasco: payload.mlFrasco,
+              },
+            }
+          : item
+      )
+    );
+    setRefreshKey((x) => x + 1);
+  };
+
   useEffect(() => {
     onCountChange?.(visible.length);
   }, [onCountChange, visible.length]);
@@ -222,13 +248,13 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
               return (
                 <div
                   key={a.id}
-                  onClick={() => setSelectedAditivo(a)}
+                  onClick={() => setSelectedAditivoId(a.id)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      setSelectedAditivo(a);
+                      setSelectedAditivoId(a.id);
                     }
                   }}
                   aria-label={`Detalhes do aditivo: ${a.nome}`}
@@ -368,10 +394,11 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
       </div>
 
       <AditivoDetailsModal
-        open={!!selectedAditivo}
+        open={!!selectedAditivoId}
         aditivo={selectedAditivo}
-        onClose={() => setSelectedAditivo(null)}
+        onClose={() => setSelectedAditivoId(null)}
         onUpdated={() => setRefreshKey((x) => x + 1)}
+        onStockSaved={handleStockSaved}
       />
     </div>
   );

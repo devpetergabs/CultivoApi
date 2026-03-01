@@ -18,6 +18,7 @@ type Props = {
   aditivo: Aditivo | null;
   onClose: () => void;
   onUpdated?: () => void;
+  onStockSaved?: (aditivoId: number, payload: AditivoStock) => void;
 };
 
 function classeLabel(value: string): string {
@@ -88,7 +89,7 @@ function pestLabel(code: string): string {
   }
 }
 
-export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props) {
+export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStockSaved }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [iconDataUrl, setIconDataUrl] = useState<string | null>(null);
@@ -122,6 +123,11 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props
     const local = getAditivoStock(aditivo.id);
     const apiStock = aditivo.estoque;
 
+    if (local?.tracked) {
+      setStock(local);
+      return;
+    }
+
     if (apiStock && Boolean(apiStock.tracked)) {
       const payload: AditivoStock = {
         tracked: true,
@@ -132,11 +138,6 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props
       };
       setAditivoStock(aditivo.id, payload);
       setStock(payload);
-      return;
-    }
-
-    if (local?.tracked) {
-      setStock(local);
       return;
     }
 
@@ -241,6 +242,7 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated }: Props
       setAditivoStock(aditivo.id, payload);
       setStock(payload);
       syncAditivoStocksFromApi([{ id: aditivo.id, tipo: aditivo.tipo ?? null, estoque: payload } as any]);
+      onStockSaved?.(aditivo.id, payload);
 
       onUpdated?.();
       onClose();
