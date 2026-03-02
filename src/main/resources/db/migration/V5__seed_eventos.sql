@@ -36,11 +36,11 @@ INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
 VALUES ((SELECT id FROM plantas WHERE nome = 'P7'), 'OBSERVACAO', '2026-02-25 22:25:00', 'planta colocada no vaso e regada com 500ml de agua com 1ml de b52 da advanced nutrients');
 
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
-VALUES ((SELECT id FROM plantas WHERE nome = 'P7'), 'OBSERVACAO', '2026-03-01 22:00:00', 'A plantula perfurou o solo e esta em formato de u invertido, com as folhas ainda fechadas, mas já é possível ver a cor verde');
+VALUES ((SELECT id FROM plantas WHERE nome = 'P7'), 'OBSERVACAO', '2026-03-01 22:00:00', 'A plantula perfurou o solo e esta em formato de U invertido, com as folhas ainda fechadas, mas já é possível ver a cor verde');
 
 -- Observações P8
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
-VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-02-25 09:20:00', 'Inserida para hidratação inicial no copo de germinação');
+VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-02-25 09:20:00', 'Inserida para hidratação inicial no copo de germinação'); 
 
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
 VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-02-25 21:20:00', 'Inserida no papel toalha para germinação');
@@ -49,15 +49,10 @@ INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
 VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-03-01 22:20:00', 'Foi feito a preparação do vaso com substrato preparado( perlita, arroz carbonizado, humus, terra adubada) escoamento com argila expandida e vaso ativado com 2l agua');
 
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
-VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-03-01 22:25:00', 'planta colocada no vaso e regada com 500ml de agua com 1ml de b52 da advanced nutrients');
+VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-03-01 22:25:00', 'planta colocada no vaso regado com 1l de agua com 1ml de b52 e Rhino da advanced nutrients');
 
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
 VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-03-02 22:00:00', 'A plantula perfurou o solo e esta em formato de u invertido, com as folhas ainda fechadas, mas já é possível ver a cor verde');
-
-
-
-
-
 
 
 -- ===== 18/02/2026 - INSETICIDA 22:00 =====
