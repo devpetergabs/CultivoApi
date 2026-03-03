@@ -38,6 +38,9 @@ VALUES ((SELECT id FROM plantas WHERE nome = 'P7'), 'OBSERVACAO', '2026-02-27 22
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
 VALUES ((SELECT id FROM plantas WHERE nome = 'P7'), 'OBSERVACAO', '2026-03-01 22:00:00', 'A plantula perfurou o solo e esta em formato de U invertido, com as folhas ainda fechadas, mas já é possível ver a cor verde');
 
+INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
+VALUES ((SELECT id FROM plantas WHERE nome = 'P7'), 'OBSERVACAO', '2026-03-01 22:00:00', 'A plantula esta vigoroza e firme com verde vibrante e as folhas abertas, mostrando o inicio do crescimento das folhas serrilhadas.');
+
 -- Observações P8
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
 VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-02-27 09:20:00', 'Inserida para hidratação inicial no copo de germinação'); 
@@ -52,7 +55,7 @@ INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
 VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-03-01 22:25:00', 'planta colocada no vaso regado com 1l de agua com 1ml de b52 e Rhino da advanced nutrients');
 
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao)
-VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-03-02 22:00:00', 'A plantula perfurou o solo e esta em formato de u invertido, com as folhas ainda fechadas, mas já é possível ver a cor verde');
+VALUES ((SELECT id FROM plantas WHERE nome = 'P8'), 'OBSERVACAO', '2026-03-02 22:00:00', 'A plantula segue no vaso com copo plastico fazendo de estufa e thermohigrometro com 99% de umidade e temperatura de 25 graus');
 
 
 -- ===== 18/02/2026 - INSETICIDA 22:00 =====
@@ -91,17 +94,6 @@ SELECT
 FROM plantas p
 WHERE p.nome IN ('P1', 'P4', 'P5');
 
--- ===== 22/02/2026 - INSETICIDA 22:00 =====
-INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao, dose_em_ml, idempotency_key)
-SELECT
-  p.id,
-  'INSETICIDA',
-  '2026-02-26 23:00:00',
-  'SPINOSAD 3 mL/L | 2 L aplicados | Consumo total: 6 mL',
-  6.0,
-  CONCAT('seed:inseticida:spinosad:2026-02-26T23:00:', p.nome)
-FROM plantas p
-WHERE p.nome IN ('P1', 'P4', 'P5');
 
 -- ===== 22/02/2026 - REGA água pura 22:30 =====
 INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao, dose_em_ml, idempotency_key)
@@ -114,3 +106,53 @@ SELECT
   CONCAT('seed:rega-agua:2026-02-22T22:30:', p.nome)
 FROM plantas p
 WHERE p.nome IN ('P1', 'P4', 'P5');
+
+-- ===== 26/02/2026 - INSETICIDA 22:00 =====
+INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao, dose_em_ml, idempotency_key)
+SELECT
+  p.id,
+  'INSETICIDA',
+  '2026-02-26 23:00:00',
+  'SPINOSAD 3 mL/L | 2 L aplicados | Consumo total: 6 mL',
+  6.0,
+  CONCAT('seed:inseticida:spinosad:2026-02-26T23:00:', p.nome)
+FROM plantas p
+WHERE p.nome IN ('P1', 'P4', 'P5');
+
+-- ===== 26/02/2026 - REGA água pura 22:30 =====
+INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao, dose_em_ml, idempotency_key)
+SELECT
+  p.id,
+  'REGA_NORMAL',
+  '2026-02-26 22:30:00',
+  'Rega água pura | 1 L',
+  NULL,
+  CONCAT('seed:rega-agua:2026-02-26T22:30:', p.nome)
+FROM plantas p
+WHERE p.nome IN ('P1', 'P4', 'P5');
+
+-- ===== 02/03/2026 - INSETICIDA 22:00 =====
+INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao, dose_em_ml, idempotency_key)
+SELECT
+  p.id,
+  'INSETICIDA',
+  '2026-03-02 22:00:00',
+  'SPINOSAD 3 mL/L | 2 L aplicados | Consumo total: 6 mL',
+  6.0,
+  CONCAT('seed:inseticida:spinosad:2026-03-02T22:00:', p.nome)
+FROM plantas p
+WHERE p.nome IN ('P1', 'P4', 'P5');
+
+-- ===== 02/03/2026 - REGA água pura 22:30 =====
+INSERT INTO planta_eventos (planta_id, tipo, data_evento, descricao, dose_em_ml, idempotency_key)
+SELECT
+  p.id,
+  'REGA_NORMAL',
+  '2026-03-02 22:30:00',
+  'Rega água pura | 1 L',
+  NULL,
+  CONCAT('seed:rega-agua:2026-03-02T22:30:', p.nome)
+FROM plantas p
+WHERE p.nome IN ('P1', 'P4', 'P5');
+
+

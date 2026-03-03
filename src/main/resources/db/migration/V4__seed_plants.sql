@@ -54,7 +54,7 @@ INSERT INTO plantas
  altura, largura, largura_caule, estagio,
  cultivador_id, data_criacao)
 VALUES
-('P7', 'Gorila Z - Auto', 'VINTE_E_UM_L', '2026-02-23', 'FEMEA',
+('P7', 'Gorila Z - Auto', 'VINTE_E_UM_L', '2026-02-25', 'FEMEA',
  0, 0, 0, 'GERMINACAO',
  @cultivador_admin, '2026-02-26');
 
@@ -63,6 +63,6 @@ VALUES
  altura, largura, largura_caule, estagio,
  cultivador_id, data_criacao)
 VALUES
-('P8', 'Black-Berry Kush', 'VINTE_E_UM_L', '2026-02-23', 'FEMEA',
+('P8', 'Black-Berry Kush', 'VINTE_E_UM_L', '2026-02-27', 'FEMEA',
  0, 0, 0, 'GERMINACAO',
  @cultivador_admin, '2026-02-27');
