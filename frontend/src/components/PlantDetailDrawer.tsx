@@ -9,6 +9,8 @@ import { usePokedexStore } from '../store/pokedexStore';
 import { usePlantEvents } from '../hooks/usePlantEvents';
 import { EventTimeline } from './EventTimeline';
 import { PlantStateSummary } from './PlantStateSummary';
+import { useInseticidaAgenda } from '../hooks/useInseticidaAgenda';
+import { InsecticideAgendaPanel } from './InsecticideAgendaPanel';
 
 interface PlantDetailDrawerProps {
   plant: Plant | null;
@@ -32,6 +34,13 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
     pageSize: 80,
     enabled: !!plantId,
   });
+
+  const {
+    agenda,
+    loading: agendaLoading,
+    error: agendaError,
+    refresh: refreshAgenda,
+  } = useInseticidaAgenda(plantId, { enabled: !!plantId });
 
   useEffect(() => {
     if (!plantId) return;
@@ -247,6 +256,18 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             )}
 
             <PlantStateSummary events={events as any} />
+
+            <InsecticideAgendaPanel
+              plantId={plant.id}
+              agenda={agenda}
+              loading={agendaLoading}
+              error={agendaError}
+              onRefresh={refreshAgenda}
+              onEventCreated={() => {
+                refreshEvents();
+                refreshAgenda();
+              }}
+            />
 
             <EventTimeline
               plantId={plant?.id ?? null}

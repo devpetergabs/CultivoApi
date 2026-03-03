@@ -116,6 +116,32 @@ export interface PlantaEvento {
   fimTratamentoEm?: string | null;
 }
 
+export type StatusEventoPlanejado = 'PENDENTE' | 'EXECUTADO' | 'CANCELADO' | 'EXPIRADO' | string;
+
+export interface AgendaPlanejado {
+  id: number;
+  roundIndex: number;
+  scheduledAt: string;
+  status: StatusEventoPlanejado;
+  executedAt?: string | null;
+  eventoExecucaoId?: number | null;
+  doseEmML?: number | null;
+}
+
+export interface AgendaInseticida {
+  plantaId: number;
+  plantaNome: string;
+  tratamentoId: number;
+  produtoNome: string;
+  roundsTotal: number;
+  roundAtual: number;
+  descansoDias: number;
+  inicioEm: string;
+  fimTratamentoEm?: string | null;
+  proximaAplicacaoEm?: string | null;
+  planejados: AgendaPlanejado[];
+}
+
 export interface PlantaEventoPayload {
   tipo: string;
   descricao: string;

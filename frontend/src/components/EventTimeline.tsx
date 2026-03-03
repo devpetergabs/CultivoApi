@@ -14,8 +14,12 @@ type Props = {
 type Filter = 'ALL' | string;
 type ModalMode = 'NONE' | 'CORRECT' | 'REPLACE';
 
-function fmtDateTime(iso: string) {
+function fmtDateTime(iso: string, showTime: boolean) {
   const d = new Date(iso);
+  if (!showTime) {
+    // menos poluição visual: dia/mês. Horário fica acessível via tooltip.
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
   return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -174,6 +178,7 @@ export const EventTimeline: React.FC<Props> = ({
   title = 'Registro de Eventos',
 }) => {
   const [filter, setFilter] = useState<Filter>('ALL');
+  const [showTime, setShowTime] = useState<boolean>(false);
 
   // menu “⋯”
   const [menuOpenFor, setMenuOpenFor] = useState<number | null>(null);
@@ -407,6 +412,15 @@ export const EventTimeline: React.FC<Props> = ({
             ))}
           </select>
 
+          <button
+            type="button"
+            onClick={() => setShowTime((v) => !v)}
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80 hover:bg-white/10"
+            title="Alterna exibição de horário (reduz poluição visual)"
+          >
+            {showTime ? 'Ocultar horário' : 'Mostrar horário'}
+          </button>
+
           {onRefresh && (
             <button
               type="button"
@@ -453,7 +467,18 @@ export const EventTimeline: React.FC<Props> = ({
                               >
                                 {prettyTipo(ev.tipo)}
                               </span>
-                              <span className="text-[11px] text-white/60">{fmtDateTime(ev.dataEvento)}</span>
+                              <span
+                                className="text-[11px] text-white/60"
+                                title={new Date(ev.dataEvento).toLocaleString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              >
+                                {fmtDateTime(ev.dataEvento, showTime)}
+                              </span>
                             </div>
 
                             {ev.descricao && ev.descricao.trim().length > 0 && (

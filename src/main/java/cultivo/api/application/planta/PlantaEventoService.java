@@ -35,11 +35,26 @@ public class PlantaEventoService {
 
     @Autowired
     private ProdutoEstoqueService estoqueService;
+    @Autowired
+    private PlanejamentoTratamentoService planejamentoService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Transactional
     public PlantaEvento criarEvento(Long plantaId, DadosCadastroEvento dados, String idempotencyKey, Usuario usuario) {
+        return criarEventoInternal(plantaId, dados, idempotencyKey, usuario, LocalDateTime.now());
+    }
+
+    /**
+     * Usado por eventos planejados (agenda): cria o evento com data/hora controlada.
+     */
+    @Transactional
+    public PlantaEvento criarEventoComTimestamp(Long plantaId, DadosCadastroEvento dados, String idempotencyKey, Usuario usuario, LocalDateTime when) {
+        if (when == null) when = LocalDateTime.now();
+        return criarEventoInternal(plantaId, dados, idempotencyKey, usuario, when);
+    }
+
+    private PlantaEvento criarEventoInternal(Long plantaId, DadosCadastroEvento dados, String idempotencyKey, Usuario usuario, LocalDateTime when) {
         var plantaOpt = plantaRepository.findById(plantaId);
         if (plantaOpt.isEmpty()) {
             throw new IllegalArgumentException("Planta não encontrada");
@@ -65,9 +80,6 @@ public class PlantaEventoService {
 
         var tipo = TipoEvento.valueOf(dados.tipo());
         Double doseEmML = (tipo == TipoEvento.PRAGA) ? null : dados.doseEmML();
-
-        // 1 timestamp para tudo
-        LocalDateTime when = LocalDateTime.now();
 
         var evento = new PlantaEvento(planta, tipo, when, dados.descricao(), doseEmML);
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -114,7 +126,16 @@ public class PlantaEventoService {
             }
         }
 
-        return eventoRepository.save(evento);
+        var saved = eventoRepository.save(evento);
+
+        // Se for inseticida, sincroniza planejados (agenda) pro tratamento.
+        if (tipo == TipoEvento.INSETICIDA && saved.getTratamento() != null) {
+            try {
+                planejamentoService.syncInseticida(saved.getTratamento(), saved);
+            } catch (Exception ignored) {}
+        }
+
+        return saved;
     }
 
     private void aplicarTratamentoInseticida(Planta planta, PlantaEvento evento, DadosCadastroEvento dados, LocalDateTime when) {
@@ -155,6 +176,12 @@ public class PlantaEventoService {
             if (!t.getProduto().getId().equals(produto.getId())) {
                 t.cancelar("swap produto");
                 tratamentoRepository.save(t);
+
+                // cancela agenda do tratamento antigo (se já existir)
+                try {
+                    planejamentoService.cancelarInseticidaPlanejados(t.getId());
+                } catch (Exception ignored) {}
+
                 tratamento = new PlantaTratamento(planta, produto, TipoTratamento.INSETICIDA, roundsTotal, descansoDias, when);
                 tratamento = tratamentoRepository.save(tratamento);
             } else {

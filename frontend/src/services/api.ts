@@ -12,6 +12,7 @@ import type {
   Page,
   Usuario,
   CultivadorMe,
+  AgendaInseticida,
 } from '../types';
 
 const API_URL = '/api';
@@ -162,6 +163,25 @@ class ApiService {
   async getPlantaEventos(plantaId: number, page = 0, size = 50) {
     const response = await this.axiosInstance.get(`/plantas/${plantaId}/eventos`, { params: { page, size } });
     return response.data; // Page<PlantaEvento>
+  }
+
+  // --- Agenda (Eventos Planejados) ---
+
+  async getAgendaInseticida(plantaId: number): Promise<AgendaInseticida | null> {
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/agenda/inseticida`);
+    return response.data ?? null;
+  }
+
+  async marcarAgendaInseticidaDone(plantaId: number, planejadoId: number): Promise<PlantaEvento> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/agenda/inseticida/planejados/${planejadoId}/done`);
+    return response.data;
+  }
+
+  async downloadAgendaInseticidaIcs(plantaId: number): Promise<Blob> {
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/agenda/inseticida/ics`, {
+      responseType: 'blob',
+    });
+    return response.data;
   }
 
   async equiparPote(
