@@ -70,6 +70,8 @@ function prettyTipo(tipo: string) {
       return 'CRESCIMENTO';
     case 'EVOLUCAO':
       return 'EVOLUÇÃO';
+    case 'PRAGA':
+      return 'PRAGA';
     default:
       // fallback: "FOO_BAR" -> "FOO BAR"
       return (tipo || '').replaceAll('_', ' ').toUpperCase();
@@ -96,6 +98,8 @@ function niceTypeName(tipo: string) {
       return 'Crescimento';
     case 'EVOLUCAO':
       return 'Evolução';
+    case 'PRAGA':
+      return 'Praga';
     default:
       return tipo;
   }
@@ -124,9 +128,47 @@ function typeMeta(tipo: string) {
     case 'EVOLUCAO':
       return { icon: '✨', badge: 'bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-400/20' };
 
+    case 'PRAGA':
+      return { icon: '☣️', badge: 'bg-emerald-600/20 text-emerald-200 border-emerald-400/30' };
+
     default:
       return { icon: '📍', badge: 'bg-slate-500/15 text-slate-200 border-white/10' };
   }
+}
+
+const PEST_TYPE_LABELS: Record<string, string> = {
+  TRIPES: 'Tripes',
+  PULGAO: 'Pulgão',
+  APHID: 'Pulgão',
+  ACARO: 'Ácaro',
+  FUNGUS_GNAT: 'Fungus Gnat',
+  MOSCA_BRANCA: 'Mosca-branca',
+  COCHONILHA: 'Cochonilha',
+  LAGARTA: 'Lagarta',
+  BESOURO: 'Besouro',
+};
+
+const INTENSITY_LABELS: Record<string, string> = {
+  BAIXA: 'Baixa',
+  MEDIA: 'Média',
+  ALTA: 'Alta',
+  CRITICA: 'Crítica',
+};
+
+function formatDescricao(tipo: string, descricao: string): string {
+  if (tipo === 'PRAGA' || descricao.includes('[PEST_SIGNAL]')) {
+    // Formato: [PEST_SIGNAL] type=TRIPES intensity=MEDIA
+    const typeMatch = descricao.match(/type=([\w]+)/);
+    const intensityMatch = descricao.match(/intensity=([\w]+)/);
+    const pestType = typeMatch ? (PEST_TYPE_LABELS[typeMatch[1]] ?? typeMatch[1]) : null;
+    const intensity = intensityMatch ? (INTENSITY_LABELS[intensityMatch[1]] ?? intensityMatch[1]) : null;
+
+    if (pestType && intensity) return `${pestType} — intensidade ${intensity.toLowerCase()}`;
+    if (pestType) return pestType;
+    if (intensity) return `Intensidade ${intensity}`;
+    return 'Sinal de praga detectado';
+  }
+  return descricao;
 }
 
 function defaultDescForEvent(tipo: string, ml: number | null) {
@@ -550,7 +592,7 @@ export const EventTimeline: React.FC<Props> = ({
                             </div>
 
                             {ev.descricao && ev.descricao.trim().length > 0 && (
-                              <div className="mt-1 text-sm text-white/90 whitespace-pre-line">{ev.descricao}</div>
+                              <div className="mt-1 text-sm text-white/90 whitespace-pre-line">{formatDescricao(ev.tipo, ev.descricao)}</div>
                             )}
 
                             {ev.doseEmML != null && (
