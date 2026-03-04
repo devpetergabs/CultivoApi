@@ -292,7 +292,26 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
               />
             </div>
 
-            {derived?.hasData ? (
+            {isEquipment ? (
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                {currentStock.tracked ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="text-[11px] font-semibold text-white/80 tracking-wide uppercase">Quantidade</div>
+                      <div className="text-[11px] font-mono font-semibold text-white">{currentStock.unidades} un.</div>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between">
+                      <div className="text-[11px] font-semibold text-white/80 tracking-wide uppercase">Tamanho</div>
+                      <div className="text-[11px] font-mono font-semibold text-white">{currentStock.mlFrasco || 5} L</div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-[11px] text-[#9fb0c0]">
+                    Quantidade não configurada ainda.
+                  </div>
+                )}
+              </div>
+            ) : derived?.hasData ? (
               <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="flex items-center justify-between">
                   <div className="text-[11px] font-semibold text-white/80 tracking-wide uppercase">Estoque (mL)</div>
@@ -334,16 +353,23 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
                 <div className="text-xs text-[#9fb0c0]">{aditivo.marca}</div>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                  <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Classe</div>
-                  <div className="text-xs font-semibold text-white">{classeLabel(String(aditivo.classe ?? ''))}</div>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                  <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Estágio</div>
-                  <div className="text-xs font-semibold text-white">{estagioLabel(String(aditivo.estagio ?? ''))}</div>
-                </div>
-              </div>
+{(() => {
+                  const hasEstagio = aditivo.estagio && ['VEGETATIVA', 'FLORACAO', 'FINALIZACAO'].includes(String(aditivo.estagio));
+                  return !isEquipment ? (
+                    <div className={`mt-3 grid gap-2 ${hasEstagio ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                        <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Classe</div>
+                        <div className="text-xs font-semibold text-white">{classeLabel(String(aditivo.classe ?? ''))}</div>
+                      </div>
+                      {hasEstagio && (
+                        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Estágio</div>
+                          <div className="text-xs font-semibold text-white">{estagioLabel(String(aditivo.estagio ?? ''))}</div>
+                        </div>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
 
               <div className="mt-3 text-xs text-slate-200/90 leading-relaxed whitespace-pre-wrap">
                 {aditivo.descricao || '—'}
@@ -400,47 +426,77 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
               <div className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3">
                 <div className="text-[11px] font-semibold text-white/80 tracking-wide uppercase">Configurar estoque</div>
 
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Stock atual (mL)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={currentStock.stockMlAtual}
-                      onChange={(e) => setStock({ ...currentStock, stockMlAtual: Number(e.target.value), tracked: true })}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
-                    />
+                {isEquipment ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Quantidade</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={currentStock.unidades}
+                        onChange={(e) => setStock({ ...currentStock, unidades: Number(e.target.value), tracked: true })}
+                        className="mt-1 w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Tamanho (L)</label>
+                      <select
+                        value={currentStock.mlFrasco || 5}
+                        onChange={(e) => setStock({ ...currentStock, mlFrasco: Number(e.target.value), tracked: true })}
+                        className="mt-1 w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+                      >
+                        <option value={5}>5 L</option>
+                        <option value={21}>21 L</option>
+                        <option value={30}>30 L</option>
+                      </select>
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Unidades</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={currentStock.unidades}
-                      onChange={(e) => setStock({ ...currentStock, unidades: Number(e.target.value), tracked: true })}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
-                    />
+                ) : (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Stock atual (mL)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={currentStock.stockMlAtual}
+                        onChange={(e) => setStock({ ...currentStock, stockMlAtual: Number(e.target.value), tracked: true })}
+                        className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Unidades</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={currentStock.unidades}
+                          onChange={(e) => setStock({ ...currentStock, unidades: Number(e.target.value), tracked: true })}
+                          className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">mL por frasco</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={currentStock.mlFrasco}
+                          onChange={(e) => setStock({ ...currentStock, mlFrasco: Number(e.target.value), tracked: true })}
+                          className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+                        />
+                      </div>
+                    </div>
                   </div>
+                )}
 
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">mL por frasco</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={currentStock.mlFrasco}
-                      onChange={(e) => setStock({ ...currentStock, mlFrasco: Number(e.target.value), tracked: true })}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
-                    />
+                {!isEquipment && (
+                  <div className="mt-2 text-[11px] text-[#9fb0c0]">
+                    * Unidades e mL/frasco são apenas metadados (barra/UX). O sistema **não** reabastece sozinho.
                   </div>
-                </div>
-
-                <div className="mt-2 text-[11px] text-[#9fb0c0]">
-                  * Unidades e mL/frasco são apenas metadados (barra/UX). O sistema **não** reabastece sozinho.
-                </div>
+                )}
 
                 {error && <div className="mt-2 text-[11px] text-red-300 font-semibold">{error}</div>}
 

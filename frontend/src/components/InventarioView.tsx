@@ -316,9 +316,11 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                           <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
                             {classeLabel(a.classe)}
                           </span>
-                          <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
-                            {estagioLabel(a.estagio)}
-                          </span>
+                          {a.estagio && ['VEGETATIVA', 'FLORACAO', 'FINALIZACAO'].includes(String(a.estagio)) && (
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
+                              {estagioLabel(a.estagio)}
+                            </span>
+                          )}
                         </>
                       )}
                     </div>
