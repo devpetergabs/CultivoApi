@@ -247,23 +247,50 @@ export function PokedexLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0B1220] text-white overflow-hidden">
-      <header className="relative border-b-4 border-[#6fbf86] bg-gradient-to-b from-[#2b0f0f] to-[#3a1212] px-6 pt-4 pb-3 shrink-0 shadow-2xl">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-[#6fbf86]" />
+      <header className="relative border-b-2 border-[#6fbf86]/60 bg-gradient-to-b from-[#2b0f0f] to-[#3a1212] px-6 shrink-0 shadow-2xl h-16 flex items-center justify-between gap-6">
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#6fbf86]" />
 
-        {/* LINHA SUPERIOR: Logo (esquerda) + Clima (direita) */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="text-3xl animate-float shrink-0">🌱</div>
-            <h1 className="text-xl font-semibold tracking-tight text-white drop-shadow-lg leading-tight">
+        {/* ESQUERDA: Logo + Navegação */}
+        <div className="flex items-center gap-6 min-w-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className="text-2xl animate-float">🌱</span>
+            <span className="text-base font-semibold tracking-tight text-white leading-none">
               POKÉDEX PLANTAS
-            </h1>
+            </span>
           </div>
-          <WeatherBox variant="strip" />
+
+          <div className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 p-0.5 backdrop-blur-md">
+            <button
+              type="button"
+              onClick={() => switchView('POKEDEX')}
+              className={`h-8 px-3 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                activeView === 'POKEDEX'
+                  ? 'bg-[#6fbf86]/20 text-white border border-[#6fbf86]/30 shadow-[0_0_10px_rgba(111,191,134,0.18)]'
+                  : 'text-white/60 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              Pokédex
+            </button>
+            <button
+              type="button"
+              onClick={() => switchView('INVENTARIO')}
+              className={`h-8 px-3 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                activeView === 'INVENTARIO'
+                  ? 'bg-[#e7c35a]/15 text-white border border-[#e7c35a]/25 shadow-[0_0_10px_rgba(231,195,90,0.14)]'
+                  : 'text-white/60 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              Inventário
+            </button>
+          </div>
         </div>
 
-        {/* LINHA INFERIOR: Perfil (esquerda) + Seletor (centro absoluto) */}
-        <div className="relative mt-2 flex items-center">
-          {/* Perfil — esquerda */}
+        {/* DIREITA: Clima + Perfil */}
+        <div className="flex items-center gap-5 shrink-0">
+          <WeatherBox variant="strip" />
+
+          <div className="h-4 w-px bg-white/15" />
+
           <div className="flex items-center gap-2 text-[12px] text-white/70">
             <span>
               Olá,{' '}
@@ -284,37 +311,9 @@ export function PokedexLayout() {
               <span className="text-[11px]">Sair</span>
             </button>
           </div>
-
-          {/* Seletor — centro absoluto */}
-          <div className="absolute left-1/2 -translate-x-1/2 inline-flex items-center rounded-2xl border border-white/10 bg-white/5 p-1 backdrop-blur-md">
-            <button
-              type="button"
-              onClick={() => switchView('POKEDEX')}
-              className={`h-8 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
-                activeView === 'POKEDEX'
-                  ? 'bg-[#6fbf86]/20 text-white border border-[#6fbf86]/30 shadow-[0_0_10px_rgba(111,191,134,0.18)]'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
-              }`}
-              title="Voltar para o Pokédex"
-            >
-              Pokédex
-            </button>
-            <button
-              type="button"
-              onClick={() => switchView('INVENTARIO')}
-              className={`h-8 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
-                activeView === 'INVENTARIO'
-                  ? 'bg-[#e7c35a]/15 text-white border border-[#e7c35a]/25 shadow-[0_0_10px_rgba(231,195,90,0.14)]'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
-              }`}
-              title="Abrir inventário"
-            >
-              Inventário
-            </button>
-          </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#6fbf86]" />
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6fbf86]/40" />
       </header>
 
       <div className="flex-1 overflow-hidden flex flex-col bg-[#0B1220]">
