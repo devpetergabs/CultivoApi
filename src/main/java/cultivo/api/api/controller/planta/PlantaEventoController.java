@@ -185,6 +185,16 @@ public class PlantaEventoController {
         e.softDelete("User removed");
         repository.save(e);
 
+        // Se o usuário apagar o evento de PRAGA (sinal), não pode ficar "infectado" pra sempre.
+        if (e.getTipo() == TipoEvento.PRAGA) {
+            boolean aindaTemSinal = repository.existsByPlantaIdAndTipoAndDeletedAtIsNull(plantaId, TipoEvento.PRAGA);
+            if (!aindaTemSinal) {
+                var p = plantaOpt.get();
+                p.limparPraga();
+                plantaRepository.save(p);
+            }
+        }
+
         return ResponseEntity.noContent().build();
     }
 

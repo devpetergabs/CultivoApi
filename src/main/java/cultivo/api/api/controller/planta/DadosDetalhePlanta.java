@@ -7,6 +7,7 @@ public record DadosDetalhePlanta(
         String nome,
         String strain,
         String especie,
+        Boolean praga,
         Double altura,
         Double largura,
         Double larguraCaule,

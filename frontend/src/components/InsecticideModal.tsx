@@ -140,6 +140,13 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
         idempotencyKey: `pest-signal:${plantId}:${pestType}:${intensity}:${Date.now()}`,
       });
 
+      // atualiza o card imediatamente (sem precisar recarregar lista)
+      try {
+        window.dispatchEvent(new CustomEvent('plant:praga-changed', { detail: { plantId, praga: true } }));
+      } catch {
+        // ignore
+      }
+
       onClose();
     } catch {
       setError('Não foi possível registrar o sinal de praga.');

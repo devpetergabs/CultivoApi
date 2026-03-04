@@ -119,6 +119,9 @@ public class PlantaEventoService {
             }
         } else if (tipo == TipoEvento.PRAGA) {
             // Evento de marcação de praga: não exige produto/rounds e não movimenta estoque.
+            // Estado simples persistido em planta.praga
+            planta.marcarPraga();
+            plantaRepository.save(planta);
         } else {
             // fallback: evento com produtoId único (ex: APLICACAO_ADITIVO)
             if (dados.produtoId() != null && dados.doseEmML() != null && dados.doseEmML() > 0) {
@@ -195,6 +198,12 @@ public class PlantaEventoService {
         // aplica 1 round
         tratamento.registrarAplicacao(when);
         tratamento = tratamentoRepository.save(tratamento);
+
+        // Se concluiu o tratamento, o sinal de praga não pode permanecer ativo.
+        if (tratamento.getStatus() == StatusTratamento.CONCLUIDO) {
+            planta.limparPraga();
+            plantaRepository.save(planta);
+        }
 
         // snapshot no evento
         evento.setProduto(produto);

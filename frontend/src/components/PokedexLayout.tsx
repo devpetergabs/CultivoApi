@@ -67,6 +67,23 @@ export function PokedexLayout() {
     return () => window.removeEventListener('pokedex:new-plant', handler as EventListener);
   }, []);
 
+  // Estado simples de praga (flag): atualiza o card imediatamente sem precisar recarregar lista.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ plantId?: number; praga?: boolean } | undefined>;
+      const plantId = custom?.detail?.plantId;
+      if (typeof plantId !== 'number') return;
+      const praga = Boolean(custom?.detail?.praga);
+
+      const existing = plants.find((p) => p.id === plantId);
+      if (!existing) return;
+      updatePlant({ ...existing, pestActive: praga });
+    };
+
+    window.addEventListener('plant:praga-changed', handler as EventListener);
+    return () => window.removeEventListener('plant:praga-changed', handler as EventListener);
+  }, [plants, updatePlant]);
+
   // Navegação global (ex: BAÚ vindo do menu radial da planta)
   useEffect(() => {
     const handler = (event: Event) => {

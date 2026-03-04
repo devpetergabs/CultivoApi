@@ -69,6 +69,18 @@ export const InsecticideAgendaPanel: React.FC<{
     try {
       const ev = await apiService.marcarAgendaInseticidaDone(plantId, p.id);
       window.dispatchEvent(new CustomEvent('app:toast', { detail: { tone: 'success', message: `Round ${p.roundIndex} marcado como aplicado.` } }));
+
+      // Se foi o último round, o backend já limpa o flag. Atualizamos o card imediatamente.
+      try {
+        const ra = Number((ev as any)?.roundAtual ?? 0);
+        const rt = Number((ev as any)?.roundsTotal ?? 0);
+        if (rt > 0 && ra >= rt) {
+          window.dispatchEvent(new CustomEvent('plant:praga-changed', { detail: { plantId, praga: false } }));
+        }
+      } catch {
+        // ignore
+      }
+
       onEventCreated?.(ev);
       onRefresh?.();
       // atualiza timeline também
@@ -97,6 +109,33 @@ export const InsecticideAgendaPanel: React.FC<{
         </div>
 
         <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={!agenda}
+            onClick={() => {
+              if (!agenda) return;
+              window.dispatchEvent(
+                new CustomEvent('bulk-insecticide:open', {
+                  detail: {
+                    tab: 'AGENDA',
+                    focus: {
+                      produtoNome: agenda.produtoNome,
+                      roundsTotal: agenda.roundsTotal,
+                      descansoDias: agenda.descansoDias,
+                      inicioEm: agenda.inicioEm,
+                    },
+                    sourcePlantId: plantId,
+                  },
+                })
+              );
+            }}
+            className="px-3 py-2 rounded-lg border border-slate-500/30 bg-slate-500/10 text-slate-200 text-xs font-semibold uppercase tracking-[0.06em] hover:bg-slate-500/15 disabled:opacity-40"
+            title="Abrir o modal de lote já focado neste tratamento"
+          >
+            📦 Lote
+          </button>
+
+
           <button
             type="button"
             disabled={!agenda}

@@ -225,7 +225,7 @@ public class PlantaAgendaService {
             throw new IllegalArgumentException("Só é permitido marcar o próximo round pendente (ordem)");
         }
 
-        // Cria evento real com timestamp do planejamento (A: não pede dose)
+        // Cria evento real AGORA (execução) e mantém scheduledAt como referência do planejamento
         var dados = new DadosCadastroEvento(
                 TipoEvento.INSETICIDA.name(),
                 buildDescricaoRound(t, pe),
@@ -238,10 +238,12 @@ public class PlantaAgendaService {
 
         String idempotency = "planned:" + planejadoId;
 
-        PlantaEvento evento = eventoService.criarEventoComTimestamp(plantaId, dados, idempotency, usuario, pe.getScheduledAt());
+        LocalDateTime executedAt = LocalDateTime.now();
+
+        PlantaEvento evento = eventoService.criarEventoComTimestamp(plantaId, dados, idempotency, usuario, executedAt);
 
         // marca planejado executado
-        pe.marcarExecutado(evento, pe.getScheduledAt());
+        pe.marcarExecutado(evento, executedAt);
         if (pe.getDoseEmML() == null && evento.getDoseEmML() != null) {
             pe.setDoseEmML(evento.getDoseEmML());
         }

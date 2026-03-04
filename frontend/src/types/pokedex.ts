@@ -13,6 +13,8 @@ export interface Plant {
   name: string;
   type: PlantType;
   species: PlantSpecies;
+  /** flag simples vindo do backend: planta está com "sinal de praga" ativo */
+  pestActive?: boolean;
   heightCm: number;
   widthCm: number;
   stemWidthCm: number;

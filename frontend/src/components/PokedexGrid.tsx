@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Plant, PlantType } from '../types/pokedex';
 import { BulkInsecticideModal } from './BulkInsecticideModal';
 import { PokedexFiltersBar } from './PokedexFiltersBar';
@@ -35,7 +35,28 @@ export function PokedexGrid({
   hideCannabis,
   onHideCannabisChange,
 }: PokedexGridProps) {
-  const [bulkInsecticideOpen, setBulkInsecticideOpen] = useState(false);
+  const [bulkState, setBulkState] = useState<{
+    open: boolean;
+    initialTab: 'APPLY' | 'AGENDA';
+    focus: any | null;
+    sourcePlantId: number | null;
+  }>({ open: false, initialTab: 'APPLY', focus: null, sourcePlantId: null });
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      const detail = e?.detail ?? {};
+      const tab = detail?.tab === 'AGENDA' ? 'AGENDA' : 'APPLY';
+      setBulkState({
+        open: true,
+        initialTab: tab,
+        focus: detail?.focus ?? null,
+        sourcePlantId: typeof detail?.sourcePlantId === 'number' ? detail.sourcePlantId : null,
+      });
+    };
+
+    window.addEventListener('bulk-insecticide:open', handler as any);
+    return () => window.removeEventListener('bulk-insecticide:open', handler as any);
+  }, []);
 
   const dispatchNewPlant = () => {
     if (typeof window === 'undefined') return;
@@ -54,7 +75,7 @@ export function PokedexGrid({
         onSortChange={onSortChange}
         hideCannabis={hideCannabis}
         onHideCannabisChange={onHideCannabisChange}
-        onOpenBulkInsecticide={() => setBulkInsecticideOpen(true)}
+        onOpenBulkInsecticide={() => setBulkState({ open: true, initialTab: 'APPLY', focus: null, sourcePlantId: null })}
       />
 
       <PokedexCardsGrid
@@ -65,9 +86,12 @@ export function PokedexGrid({
       />
 
       <BulkInsecticideModal
-        open={bulkInsecticideOpen}
-        onClose={() => setBulkInsecticideOpen(false)}
+        open={bulkState.open}
+        onClose={() => setBulkState((s) => ({ ...s, open: false }))}
         plants={plants}
+        initialTab={bulkState.initialTab}
+        agendaFocus={bulkState.focus}
+        sourcePlantId={bulkState.sourcePlantId}
       />
     </div>
   );

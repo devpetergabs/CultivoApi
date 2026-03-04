@@ -1,6 +1,7 @@
 package cultivo.api.infrastructure.persistence.planta;
 
 import cultivo.api.domain.planta.PlantaEvento;
+import cultivo.api.domain.planta.TipoEvento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,4 +17,7 @@ public interface PlantaEventoRepository extends JpaRepository<PlantaEvento, Long
     Page<PlantaEvento> findByPlantaIdOrderByDataEventoDesc(Long plantaId, Pageable paginacao);
 
     Optional<PlantaEvento> findByPlantaIdAndIdempotencyKey(Long plantaId, String idempotencyKey);
+
+    // Estado (sinal): usado para checar se ainda existe algum evento PRAGA ativo (não removido)
+    boolean existsByPlantaIdAndTipoAndDeletedAtIsNull(Long plantaId, TipoEvento tipo);
 }

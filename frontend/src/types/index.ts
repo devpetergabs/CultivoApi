@@ -4,6 +4,9 @@ export interface Planta {
   strain?: string | null;
   especie?: string | null;
 
+  /** flag simples: existe sinal de praga ativo (enquanto durar o tratamento) */
+  praga?: boolean;
+
   altura: number;
   largura: number;
   larguraCaule: number;

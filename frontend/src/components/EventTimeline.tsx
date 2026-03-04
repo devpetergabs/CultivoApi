@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { PlantaEvento } from '../types/index';
 import { apiService } from '../services/api';
 
@@ -12,6 +12,7 @@ type Props = {
 };
 
 type Filter = 'ALL' | string;
+type Scope = 'ACTIONS' | 'GROWTH' | 'ALL';
 type ModalMode = 'NONE' | 'CORRECT' | 'REPLACE';
 
 function fmtDateTime(iso: string, showTime: boolean) {
@@ -34,6 +35,10 @@ function labelForDay(key: string) {
   if (key === today) return 'Hoje';
   if (key === y) return 'Ontem';
   return key;
+}
+
+function isGrowthType(tipo: string) {
+  return tipo === 'CRESCIMENTO' || tipo === 'EVOLUCAO';
 }
 
 function isWaterLike(tipo: string) {
@@ -177,6 +182,7 @@ export const EventTimeline: React.FC<Props> = ({
   loading,
   title = 'Registro de Eventos',
 }) => {
+  const [scope, setScope] = useState<Scope>('ACTIONS');
   const [filter, setFilter] = useState<Filter>('ALL');
   const [showTime, setShowTime] = useState<boolean>(false);
 
@@ -201,16 +207,32 @@ export const EventTimeline: React.FC<Props> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  
+  const scoped = useMemo(() => {
+    if (scope === 'ALL') return events;
+    if (scope === 'GROWTH') return events.filter((e) => isGrowthType(e.tipo));
+    // ACTIONS
+    return events.filter((e) => !isGrowthType(e.tipo));
+  }, [events, scope]);
+
   const tipos = useMemo(() => {
     const set = new Set<string>();
-    events.forEach((e) => set.add(e.tipo));
+    scoped.forEach((e) => set.add(e.tipo));
     return Array.from(set).sort();
-  }, [events]);
+  }, [scoped]);
 
   const filtered = useMemo(() => {
-    if (filter === 'ALL') return events;
-    return events.filter((e) => e.tipo === filter);
-  }, [events, filter]);
+    if (filter === 'ALL') return scoped;
+    return scoped.filter((e) => e.tipo === filter);
+  }, [scoped, filter]);
+
+  
+  useEffect(() => {
+    if (filter === 'ALL') return;
+    const exists = tipos.includes(String(filter));
+    if (!exists) setFilter('ALL');
+  }, [scope, filter, tipos]);
+
 
   const grouped = useMemo(() => {
     const map = new Map<string, PlantaEvento[]>();
@@ -399,6 +421,39 @@ export const EventTimeline: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
+            <button
+              type="button"
+              onClick={() => setScope('ACTIONS')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide transition ${
+                scope === 'ACTIONS' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
+              }`}
+              title="Ações do dia a dia (menos poluição)"
+            >
+              Ações
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope('GROWTH')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide transition ${
+                scope === 'GROWTH' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
+              }`}
+              title="Crescimento / Evolução"
+            >
+              Cresc.
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope('ALL')}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide transition ${
+                scope === 'ALL' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
+              }`}
+              title="Tudo"
+            >
+              Tudo
+            </button>
+          </div>
+
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as Filter)}

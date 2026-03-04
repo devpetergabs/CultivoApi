@@ -26,6 +26,10 @@ public class Planta {
         if (especie != null) this.especie = especie;
     }
 
+    // --- estado: sinal de praga ---
+    public void marcarPraga() { this.praga = true; }
+    public void limparPraga() { this.praga = false; }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -66,6 +70,13 @@ public class Planta {
 
     @Column(name = "data_floracao")
     private LocalDate dataFloracao;
+
+    /**
+     * Estado simples: true quando há sinal de praga ativo.
+     * (Persistido na tabela plantas via Flyway V12__planta_praga_flag.sql)
+     */
+    @Column(name = "praga", nullable = false)
+    private Boolean praga = false;
 
     private Boolean ativo;
 
@@ -117,6 +128,8 @@ public class Planta {
         this.level = 1;
         this.xp = 0;
         this.pontosDisponiveis = 0;
+
+        this.praga = false;
 
         this.ativo = true;
         this.dataCriacao = LocalDate.now();

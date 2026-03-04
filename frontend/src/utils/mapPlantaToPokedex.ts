@@ -34,6 +34,7 @@ export function mapPlantaToPokedexPlant(
     name: planta.nome,
     type,
     species,
+    pestActive: Boolean(planta.praga),
     heightCm: planta.altura,
     widthCm: planta.largura,
     stemWidthCm: planta.larguraCaule,

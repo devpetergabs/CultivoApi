@@ -72,6 +72,9 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
   // ✅ Glow só quando estiver em FLORAÇÃO (não veg/germa)
   const isFloweringStage = String(plant.type).startsWith('FLORACAO');
 
+  // ☣ Estado de praga ativo (flag simples do backend)
+  const pestActive = Boolean((plant as any).pestActive);
+
   const [nextWaterType, setNextWaterType] = useState<'A' | 'B'>('A');
   const [stockVersion, setStockVersion] = useState(0);
 
@@ -386,13 +389,25 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
           ${
             isEpic
               ? 'border-[#e7c35a] shadow-epic-halo ring-1 ring-[#e7c35a]/25 bg-gradient-to-br from-[#1b180f] to-[#0B1220]'
+              : pestActive
+              ? 'border-lime-300/70 shadow-[0_0_18px_rgba(163,230,53,0.18)] ring-1 ring-lime-300/20 bg-gradient-to-br from-[#0f1f18] to-[#0B1220]'
               : isSelected
               ? 'border-[#6fbf86] shadow-[0_0_14px_rgba(111,191,134,0.22)] ring-1 ring-[#6fbf86]/28 bg-gradient-to-br from-[#111A2E] to-[#0B1220]'
               : 'border-[rgba(255,255,255,0.12)] hover:border-[#6fbf86]/70 hover:shadow-[0_0_14px_rgba(111,191,134,0.18)] bg-gradient-to-br from-[#111A2E]/80 to-[#0B1220]/80'
           }
+          ${pestActive && isSelected ? 'outline outline-1 outline-emerald-300/20' : ''}
           ${growthModalOpen ? 'cursor-default' : 'cursor-pointer'}
         `}
       >
+        {/* ☣ overlay radioativo (sutil) */}
+        {pestActive && !isEpic && (
+          <>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-lime-400/10 via-emerald-400/5 to-transparent" />
+            <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl opacity-60 animate-[pulse_3.6s_ease-in-out_infinite]" />
+            <div className="pointer-events-none absolute -right-10 -bottom-10 h-48 w-48 rounded-full bg-emerald-400/8 blur-2xl opacity-60 animate-[pulse_4.2s_ease-in-out_infinite]" />
+          </>
+        )}
+
         <div className="p-4 h-full flex flex-col pb-6">
           {/* ID */}
           <div className="absolute top-3 left-3 z-40 bg-black/50 rounded px-2.5 py-1 border border-[#7BD389]/50 backdrop-blur-sm">
@@ -407,6 +422,16 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               <span className="text-[11px] font-semibold text-[#e6f1ff] font-mono tracking-wide">
                 ⏰ {age}d
               </span>
+            </div>
+          )}
+
+          {/* ☣ Badge de praga (estado ativo) */}
+          {pestActive && !isEpic && (
+            <div
+              className={`absolute ${age !== null ? 'top-10' : 'top-3'} right-3 z-40 rounded px-2.5 py-1 border border-lime-300/40 bg-black/55 backdrop-blur-sm`}
+              title="Sinal de praga ativo"
+            >
+              <span className="text-[11px] font-semibold text-lime-200 font-mono tracking-wide">☣ PRAGA</span>
             </div>
           )}
 
