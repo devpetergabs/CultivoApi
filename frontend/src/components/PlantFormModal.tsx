@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Plant, PlantType } from '../types/pokedex';
 import { apiService } from '../services/api';
 import { mapPlantaToPokedexPlant } from '../utils/mapPlantaToPokedex';
+import { PokedexModal } from './ui/PokedexModal';
 import {
   DEFAULT_STRAINS,
   brDateToIso,
@@ -231,45 +232,29 @@ export function PlantFormModal({
   const isCannabis = species === 'CANNABIS';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div
-        className="w-[420px] max-w-[92vw] rounded-xl border border-[#6fbf86]/20 bg-gradient-to-b from-[#101a2b] to-[#0B1220] p-4 shadow-[0_12px_30px_rgba(9,15,25,0.5)]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-white tracking-tight">
-              {mode === 'create' ? 'Nova planta' : 'Editar planta'}
-            </h3>
-            <p className="text-xs text-[#9fb0c0] font-normal">
-              {mode === 'create' ? 'Cria uma nova entrada na Pokédex.' : 'Atualiza os dados da planta selecionada.'}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-white/80 hover:text-white text-xl transition-colors font-semibold"
-            aria-label="Fechar"
-          >
-            ✕
-          </button>
-        </div>
-
-        <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Nome</label>
+    <PokedexModal
+      open={true}
+      onClose={onClose}
+      title={mode === 'create' ? 'Nova planta' : 'Editar planta'}
+      subtitle={mode === 'create' ? 'Cria uma nova entrada na Pokédex.' : 'Atualiza os dados da planta selecionada.'}
+      widthClass="w-full max-w-[420px]"
+    >
+        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Nome</label>
         <input
           type="text"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+          className="mt-1 w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
         />
 
         {/* ✅ ESPÉCIE */}
         <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
           <div>
-            <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Espécie</label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Espécie</label>
             <select
               value={species}
               onChange={(e) => setSpecies(coerceSpecies(e.target.value))}
-              className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+              className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
             >
               <option value="CANNABIS">Cannabis 🌿</option>
               <option value="ROSEIRA">Roseira 🌹</option>
@@ -279,7 +264,7 @@ export function PlantFormModal({
 
           {/* ✅ STRAIN/VARIEDADE */}
           <div>
-            <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               {isCannabis ? 'Strain' : 'Variedade'}
             </label>
 
@@ -297,7 +282,7 @@ export function PlantFormModal({
                     setIsAddingStrain(false);
                     setStrain(v);
                   }}
-                  className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                  className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
                 >
                   {strains.map((s) => (
                     <option key={s} value={s}>
@@ -314,11 +299,11 @@ export function PlantFormModal({
                       value={customStrainInput}
                       onChange={(event) => setCustomStrainInput(event.target.value)}
                       placeholder="Nova strain"
-                      className="flex-1 rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                      className="flex-1 rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
                     />
                     <button
                       onClick={addCustomStrain}
-                      className="rounded-lg border-2 border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-[#6fbf86]/60 hover:shadow-[0_0_12px_rgba(111,191,134,0.12)] transition"
+                      className="rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-400/40 hover:bg-white/5 transition"
                       type="button"
                     >
                       Adicionar
@@ -332,7 +317,7 @@ export function PlantFormModal({
                 value={strain}
                 onChange={(e) => setStrain(e.target.value)}
                 placeholder={species === 'ROSEIRA' ? 'Ex: Roseira-anã' : 'Ex: Variedade X'}
-                className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
               />
             )}
           </div>
@@ -340,11 +325,11 @@ export function PlantFormModal({
 
         <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
           <div>
-            <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Estágio</label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Estágio</label>
             <select
               value={stage}
               onChange={(event) => setStage(event.target.value as any)}
-              className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+              className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
             >
               <option value="GERMINACAO">Germinação</option>
               <option value="VEGETATIVO">Vegetativo</option>
@@ -356,11 +341,11 @@ export function PlantFormModal({
           </div>
 
           <div>
-            <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Tamanho do vaso</label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Tamanho do vaso</label>
             <select
               value={pot}
               onChange={(event) => setPot(event.target.value as any)}
-              className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+              className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
             >
               <option value="CINCO_L">5 L</option>
               <option value="VINTE_E_UM_L">21 L</option>
@@ -371,60 +356,60 @@ export function PlantFormModal({
 
         <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
           <div>
-            <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Altura (cm)</label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Altura (cm)</label>
             <input
               type="number"
               value={stage === 'GERMINACAO' ? 0 : height}
               onChange={(event) => setHeight(Number(event.target.value))}
-              className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-2 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+              className="w-full rounded-lg border border-white/10 bg-[#080B14] px-2 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
               disabled={stage === 'GERMINACAO'}
             />
           </div>
 
           <div>
-            <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Largura (cm)</label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Largura (cm)</label>
             <input
               type="number"
               value={stage === 'GERMINACAO' ? 0 : width}
               onChange={(event) => setWidth(Number(event.target.value))}
-              className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-2 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+              className="w-full rounded-lg border border-white/10 bg-[#080B14] px-2 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
               disabled={stage === 'GERMINACAO'}
             />
           </div>
 
           <div>
-            <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Caule (cm)</label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Caule (cm)</label>
             <input
               type="number"
               value={stage === 'GERMINACAO' ? 0 : stemWidth}
               onChange={(event) => setStemWidth(Number(event.target.value))}
-              className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-2 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+              className="w-full rounded-lg border border-white/10 bg-[#080B14] px-2 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
               disabled={stage === 'GERMINACAO'}
             />
           </div>
         </div>
 
         {mode === 'edit' && (
-          <div className="mt-4 rounded-lg border border-[#6fbf86]/20 bg-[#111A2E]/40 p-3">
-            <div className="text-xs font-medium text-[#6fbf86] uppercase tracking-[0.06em] mb-2">Campos completos</div>
+          <div className="mt-4 rounded-lg border border-white/10 bg-white/5 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Campos completos</div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="col-span-2">
-                <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Data de germinação</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Data de germinação</label>
                 <input
                   type="date"
                   value={germinacaoIso}
                   onChange={(event) => setGerminacaoIso(event.target.value)}
-                  className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                  className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
                 />
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Sexo</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Sexo</label>
                 <select
                   value={sexo}
                   onChange={(event) => setSexo(event.target.value as any)}
-                  className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                  className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
                 >
                   <option value="">(não definido)</option>
                   <option value="FEMEA">Fêmea</option>
@@ -434,22 +419,22 @@ export function PlantFormModal({
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Data sexagem</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Data sexagem</label>
                 <input
                   type="date"
                   value={sexagemIso}
                   onChange={(event) => setSexagemIso(event.target.value)}
-                  className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                  className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
                 />
               </div>
 
               <div className="col-span-2">
-                <label className="block font-medium text-slate-300 uppercase tracking-[0.06em] mb-1">Data início floração</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Data início floração</label>
                 <input
                   type="date"
                   value={floracaoIso}
                   onChange={(event) => setFloracaoIso(event.target.value)}
-                  className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-xs text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+                  className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
                 />
               </div>
             </div>
@@ -461,7 +446,7 @@ export function PlantFormModal({
         <div className="mt-4 grid grid-cols-2 gap-3">
           <button
             onClick={onClose}
-            className="py-2 rounded-lg font-semibold uppercase tracking-[0.06em] transition-all text-xs border-2 bg-[#0B1220]/60 text-slate-200 border-slate-600 hover:border-[#6fbf86]/60"
+            className="py-2 rounded-lg font-semibold uppercase tracking-widest text-xs border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 transition"
             type="button"
           >
             Cancelar
@@ -470,17 +455,16 @@ export function PlantFormModal({
           <button
             onClick={handleSubmit}
             disabled={isSaving}
-            className={`py-2 rounded-lg font-semibold uppercase tracking-[0.06em] transition-all text-xs border-2 ${
+            className={`py-2 rounded-lg font-semibold uppercase tracking-widest text-xs transition-all ${
               isSaving
-                ? 'bg-[#0B1220]/60 text-slate-400 border-slate-700 cursor-not-allowed opacity-70'
-                : 'bg-[#7a1f1f] text-white border-[#7a1f1f] hover:bg-[#8c2626] shadow-[0_0_10px_rgba(122,31,31,0.22)]'
+                ? 'bg-emerald-400/50 text-[#080B14]/70 cursor-not-allowed opacity-70'
+                : 'bg-emerald-400 text-[#080B14] hover:bg-emerald-300'
             }`}
             type="button"
           >
             {isSaving ? 'Salvando…' : mode === 'create' ? 'Criar' : 'Salvar'}
           </button>
         </div>
-      </div>
-    </div>
+    </PokedexModal>
   );
 }

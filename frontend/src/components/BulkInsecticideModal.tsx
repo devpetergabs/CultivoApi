@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { PokedexModal } from './ui/PokedexModal';
 import { apiService } from '../services/api';
 import type { Aditivo, AgendaInseticida, AgendaPlanejado, PlantaEvento } from '../types';
 import type { Plant } from '../types/pokedex';
@@ -1099,70 +1099,45 @@ export function BulkInsecticideModal({
     return list;
   }, [roundsTotalClamped, descansoDiasClamped]);
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="w-[740px] max-w-[96vw] rounded-2xl bg-[#080B14] border border-white/5 shadow-2xl overflow-y-auto max-h-[90vh]"
-        onMouseDown={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Inseticida em lote"
+  const tabPills = (
+    <div className="flex rounded-lg bg-white/5 p-0.5 gap-0.5">
+      <button
+        type="button"
+        onClick={() => setActiveTab('APPLY')}
+        className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+          activeTab === 'APPLY'
+            ? 'bg-[#f39a5c]/10 text-[#f39a5c]'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
       >
-        {/* ── HEADER ── */}
-        <div className="px-5 pt-5 pb-4 border-b border-white/5 flex items-start justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-semibold text-white">Inseticida em Lote</h3>
-            <p className="mt-0.5 text-xs text-slate-400">
-              Um tratamento por planta. Aplique em lote e gerencie rounds na agenda.
-            </p>
-          </div>
+        Aplicar lote
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab('AGENDA');
+          refreshAgendas();
+        }}
+        className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+          activeTab === 'AGENDA'
+            ? 'bg-[#f39a5c]/10 text-[#f39a5c]'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        Agenda do lote
+      </button>
+    </div>
+  );
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Tab pills */}
-            <div className="flex rounded-lg bg-white/5 p-0.5 gap-0.5">
-              <button
-                type="button"
-                onClick={() => setActiveTab('APPLY')}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
-                  activeTab === 'APPLY'
-                    ? 'bg-[#f39a5c]/10 text-[#f39a5c]'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Aplicar lote
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('AGENDA');
-                  refreshAgendas();
-                }}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
-                  activeTab === 'AGENDA'
-                    ? 'bg-[#f39a5c]/10 text-[#f39a5c]'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Agenda do lote
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:border-white/20 transition-all duration-150"
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-
-        <div className="p-5">
+  return (
+    <PokedexModal
+      open={open}
+      onClose={onClose}
+      title="Inseticida em Lote"
+      subtitle="Um tratamento por planta. Aplique em lote e gerencie rounds na agenda."
+      widthClass="w-[740px] max-w-[96vw]"
+      headerActions={tabPills}
+    >
           {/* ── APPLY TAB ── */}
           {activeTab === 'APPLY' && (
             <>
@@ -1636,9 +1611,6 @@ export function BulkInsecticideModal({
               </div>
             </>
           )}
-        </div>
-      </div>
-    </div>,
-    document.body
+    </PokedexModal>
   );
 }
