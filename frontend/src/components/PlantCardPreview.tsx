@@ -549,10 +549,10 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               type="button"
               aria-label="Regar A: água pura"
               title="Regar A (água pura)"
-              className={`relative overflow-hidden w-9 h-9 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-[1.06] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
+              className={`relative overflow-hidden w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 focus-visible:outline-none ${
                 nextWaterType === 'A'
-                  ? 'ring-2 ring-emerald-400 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,.28)] animate-[pulse_3s_ease-in-out_infinite]'
-                  : 'opacity-50 grayscale-[0.2] hover:opacity-80'
+                  ? 'bg-black/60 border-emerald-400/60 shadow-[0_0_10px_rgba(16,185,129,.25)] hover:shadow-[0_0_16px_rgba(16,185,129,.5)] hover:border-emerald-400'
+                  : 'bg-black/60 border-white/15 opacity-50 hover:opacity-75'
               }`}
               onClick={async (event) => {
                 event.preventDefault();
@@ -581,14 +581,14 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               type="button"
               aria-label="Regar B: água aditivada"
               title="Regar B (água aditivada)"
-              className={`relative overflow-hidden w-9 h-9 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-[1.06] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 ${
+              className={`relative overflow-hidden w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 focus-visible:outline-none ${
                 nextWaterType === 'B'
                   ? mixStockFlags.hasEmpty
-                    ? 'ring-2 ring-red-400 bg-red-500/10 shadow-[0_0_12px_rgba(248,113,113,.24)] animate-[pulse_3s_ease-in-out_infinite] opacity-60 cursor-not-allowed'
+                    ? 'bg-black/60 border-red-400/60 shadow-[0_0_10px_rgba(248,113,113,.2)] opacity-60 cursor-not-allowed'
                     : mixStockFlags.hasLow
-                    ? 'ring-2 ring-amber-300 bg-amber-500/10 shadow-[0_0_12px_rgba(251,191,36,.20)] animate-[pulse_3s_ease-in-out_infinite]'
-                    : 'ring-2 ring-purple-400 bg-purple-500/10 shadow-[0_0_12px_rgba(168,85,247,.30)] animate-[pulse_3s_ease-in-out_infinite]'
-                  : 'opacity-50 grayscale-[0.2] hover:opacity-80'
+                    ? 'bg-black/60 border-amber-300/60 shadow-[0_0_10px_rgba(251,191,36,.2)] hover:shadow-[0_0_16px_rgba(251,191,36,.45)] hover:border-amber-300'
+                    : 'bg-black/60 border-purple-400/60 shadow-[0_0_10px_rgba(168,85,247,.25)] hover:shadow-[0_0_16px_rgba(168,85,247,.5)] hover:border-purple-400'
+                  : 'bg-black/60 border-white/15 opacity-50 hover:opacity-75'
               }`}
               onClick={async (event) => {
                 event.preventDefault();
@@ -623,50 +623,54 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
 
           {/* Stats */}
           <div className="pt-3 border-t border-white/10">
-            <div className="space-y-2 pr-8">
+            <div className="space-y-2 pr-10">
               {/* ALTURA */}
-              <div className="flex items-center gap-2 text-[11px]">
-                <span className="w-7 shrink-0 text-slate-400 font-medium tracking-[0.08em]">ALT</span>
-                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      plant.heightCm > 180
-                        ? 'bg-gradient-to-r from-[#e7c35a] via-[#f2dd9b] to-[#d9a441] shadow-[0_0_7px_rgba(231,195,90,0.25)]'
-                        : 'bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)]'
-                    }`}
-                    style={{ width: `${Math.min((plant.heightCm / 180) * 100, 100) * 0.75}%` }}
-                  />
+              {plant.heightCm > 0 && (
+                <div className="flex items-center gap-2 text-[11px]">
+                  <span className="w-7 shrink-0 text-slate-400 font-medium tracking-[0.08em]">ALT</span>
+                  <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        plant.heightCm > 180
+                          ? 'bg-gradient-to-r from-[#e7c35a] via-[#f2dd9b] to-[#d9a441] shadow-[0_0_7px_rgba(231,195,90,0.25)]'
+                          : 'bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)]'
+                      }`}
+                      style={{ width: `${Math.min((plant.heightCm / 180) * 100, 100) * 0.75}%` }}
+                    />
+                  </div>
+                  <span className={`shrink-0 pl-1 font-semibold ${plant.heightCm > 180 ? 'text-[#e7c35a]' : 'text-emerald-200'}`}>
+                    {plant.heightCm}cm
+                  </span>
                 </div>
-                <span className={`shrink-0 w-10 text-right font-semibold ${plant.heightCm > 180 ? 'text-[#e7c35a]' : 'text-emerald-200'}`}>
-                  {plant.heightCm}cm
-                </span>
-              </div>
+              )}
 
               {/* LARGURA */}
-              <div className="flex items-center gap-2 text-[11px]">
-                <span className="w-7 shrink-0 text-slate-400 font-medium tracking-[0.08em]">LAR</span>
-                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                  <div
-                    className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
-                    style={{ width: `${Math.min((plant.widthCm / 120) * 100, 100) * 0.75}%` }}
-                  />
+              {plant.widthCm > 0 && (
+                <div className="flex items-center gap-2 text-[11px]">
+                  <span className="w-7 shrink-0 text-slate-400 font-medium tracking-[0.08em]">LAR</span>
+                  <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
+                      style={{ width: `${Math.min((plant.widthCm / 120) * 100, 100) * 0.75}%` }}
+                    />
+                  </div>
+                  <span className="shrink-0 pl-1 text-emerald-200 font-semibold">{plant.widthCm}cm</span>
                 </div>
-                <span className="shrink-0 w-10 text-right text-emerald-200 font-semibold">{plant.widthCm}cm</span>
-              </div>
+              )}
 
               {/* CAULE */}
-              <div className="flex items-center gap-2 text-[11px]">
-                <span className="w-7 shrink-0 text-slate-400 font-medium tracking-[0.08em]">CAU</span>
-                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                  <div
-                    className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
-                    style={{ width: `${Math.min(((plant.stemWidthCm ?? 0) / 20) * 100, 100) * 0.75}%` }}
-                  />
+              {plant.stemWidthCm ? (
+                <div className="flex items-center gap-2 text-[11px]">
+                  <span className="w-7 shrink-0 text-slate-400 font-medium tracking-[0.08em]">CAU</span>
+                  <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
+                      style={{ width: `${Math.min((plant.stemWidthCm / 20) * 100, 100) * 0.75}%` }}
+                    />
+                  </div>
+                  <span className="shrink-0 pl-1 text-emerald-200 font-semibold">{plant.stemWidthCm}cm</span>
                 </div>
-                <span className="shrink-0 w-10 text-right text-emerald-200 font-semibold">
-                  {plant.stemWidthCm ? `${plant.stemWidthCm}cm` : '--'}
-                </span>
-              </div>
+              ) : null}
             </div>
           </div>
         </div>
