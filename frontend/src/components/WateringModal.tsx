@@ -9,7 +9,6 @@ import {
   saveWateringMix,
   type StoredWateringMixItem,
 } from '../utils/wateringMixStorage';
-import { deductAditivoStockMl } from '../utils/aditivoStorage';
 
 interface WateringModalProps {
   open: boolean;
@@ -21,7 +20,10 @@ interface WateringModalProps {
 
 export function WateringModal({ open, onClose, plantId, plantName, plantStage }: WateringModalProps) {
   const [wateringType, setWateringType] = useState<'NORMAL' | 'ADITIVADA'>('NORMAL');
-  const [volumeLiters, setVolumeLiters] = useState(1);
+
+  // ✅ Agora a UI trabalha em mL (backend já recebe doseEmML)
+  const [volumeMl, setVolumeMl] = useState(1000);
+
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,9 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
   const [mix, setMix] = useState<StoredWateringMixItem[]>([]);
 
   const volumeKey = useMemo(() => `plant:${plantId}:watering-volume-ml`, [plantId]);
+
+  // conversão só pra cálculos e preview
+  const volumeLiters = Math.max(0, Number.isFinite(volumeMl) ? volumeMl : 0) / 1000;
 
   useEffect(() => {
     if (!open) return;
@@ -60,7 +65,7 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
     if (!stored) return;
     const parsed = Number(stored);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
-    setVolumeLiters(Math.max(0.1, parsed / 1000));
+    setVolumeMl(Math.max(10, Math.round(parsed)));
   }, [open, volumeKey]);
 
   useEffect(() => {
@@ -73,9 +78,10 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
   if (!open || typeof document === 'undefined') return null;
 
   const handleSave = async () => {
-    const safeVolume = Number.isFinite(volumeLiters) ? volumeLiters : 0;
-    if (safeVolume <= 0) {
-      setError('Informe um volume maior que 0.');
+    const safeMl = Number.isFinite(volumeMl) ? Math.round(volumeMl) : 0;
+
+    if (safeMl <= 0) {
+      setError('Informe um volume maior que 0 mL.');
       return;
     }
 
@@ -90,19 +96,28 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
     setIsSaving(true);
     setError(null);
     try {
-      localStorage.setItem(volumeKey, String(Math.round(safeVolume * 1000)));
-      const baseDescription = notes.trim().length > 0 ? notes.trim() : `Rega: ${safeVolume}L`;
+      // ✅ Persistimos em mL (igual a chave já sugere)
+      localStorage.setItem(volumeKey, String(safeMl));
+
+      // descrição default agora fica “Rega (água pura): 600mL”
+      const defaultDesc =
+        wateringType === 'ADITIVADA'
+          ? `Rega (aditivada): ${safeMl}mL`
+          : `Rega (água pura): ${safeMl}mL`;
+
+      const baseDescription = notes.trim().length > 0 ? notes.trim() : defaultDesc;
       let description = baseDescription;
 
       if (wateringType === 'ADITIVADA') {
+        // doseMl = dose por litro (ml/L). total = dose * litros
         const selectedEntries = mix
           .filter((item) => item.doseMl > 0)
           .map((item) => {
             const label = item.marca ? `${item.nome} (${item.marca})` : item.nome;
-            // Corrige o cálculo: dose total = dose por litro * volume
-            const totalMl = Math.round(item.doseMl * safeVolume);
+            const totalMl = Math.round(item.doseMl * volumeLiters);
             return `${label} ${totalMl}ml`;
           });
+
         if (selectedEntries.length > 0) {
           description = `${baseDescription} + ${selectedEntries.join(', ')}`;
         }
@@ -111,9 +126,8 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
       await apiService.createPlantaEvento(plantId, {
         tipo: wateringType === 'ADITIVADA' ? 'MODELO_ADITIVADO' : 'MODELO_NORMAL',
         descricao: description,
-        doseEmML: Math.round(safeVolume * 1000),
+        doseEmML: safeMl,
       });
-
 
       if (wateringType === 'ADITIVADA') {
         // Apenas salva o mix, não deduz estoque aqui.
@@ -174,15 +188,25 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
           </button>
         </div>
 
-        <label className="mt-3 block text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Volume (L)</label>
-        <input
-          type="number"
-          min={0.1}
-          step={0.1}
-          value={volumeLiters}
-          onChange={(event) => setVolumeLiters(Number(event.target.value))}
-          className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
-        />
+        {/* ✅ Volume agora em mL */}
+        <div className="mt-3 flex items-end justify-between gap-2">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Volume (mL)</label>
+            <input
+              type="number"
+              min={10}
+              step={10}
+              value={volumeMl}
+              onChange={(event) => setVolumeMl(Number(event.target.value))}
+              className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
+            />
+          </div>
+
+          <div className="pb-1 text-right">
+            <div className="text-[11px] text-white/50">≈</div>
+            <div className="text-xs font-semibold text-white/80">{volumeLiters.toFixed(2)} L</div>
+          </div>
+        </div>
 
         {wateringType === 'ADITIVADA' && (
           <div className="mt-3">
@@ -203,7 +227,6 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
               <div className="mt-2 flex flex-wrap gap-2">
                 {mix.map((item) => {
                   const label = item.marca ? `${item.nome} (${item.marca})` : item.nome;
-                  // Corrige o cálculo: dose total = dose por litro * volume
                   const totalMl = Math.round(item.doseMl * volumeLiters);
                   return (
                     <span
@@ -259,30 +282,34 @@ export function WateringModal({ open, onClose, plantId, plantName, plantStage }:
           <button
             type="button"
             onClick={handleSave}
-            className="rounded-lg bg-[#6fbf86] px-3 py-2 text-xs font-semibold text-[#0B1220] hover:brightness-110"
+            className="rounded-lg bg-[#6fbf86]/90 px-3 py-2 text-xs font-semibold text-[#0B1220] hover:brightness-110 disabled:opacity-60"
             disabled={isSaving}
           >
-            {isSaving ? 'Salvando...' : 'Salvar'}
+            {isSaving ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
 
+        {toolboxOpen && (
         <AditivosToolbox
           open={toolboxOpen}
-          plantStage={plantStage}
-          plantId={plantId}
-          initialSelected={mix}
           onClose={() => setToolboxOpen(false)}
-          onApply={(selected) => {
-            setMix(selected);
-            if (selected.length === 0) {
+          plantId={plantId}
+          plantStage={plantStage}
+          initialSelected={mix}
+          onApply={(next) => {
+            setMix(next);
+            saveWateringMix(plantId, next);
+
+            // se zerar o mix, volta pra NORMAL
+            if (next.length === 0) {
               clearWateringMix(plantId);
               setWateringType('NORMAL');
-              return;
+            } else {
+              setWateringType('ADITIVADA');
             }
-            saveWateringMix(plantId, selected);
-            setWateringType('ADITIVADA');
           }}
-        />
+  />
+)}
       </div>
     </div>,
     document.body

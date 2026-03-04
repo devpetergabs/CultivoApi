@@ -1,24 +1,17 @@
 package cultivo.api.infrastructure.config;
 
 import cultivo.api.domain.cultivador.Cultivador;
-import cultivo.api.domain.planta.Planta;
-import cultivo.api.domain.planta.PlantaFoto;
-import cultivo.api.domain.planta.TamanhVaso;
-import cultivo.api.domain.planta.EstagioPlanta;
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
-import cultivo.api.infrastructure.persistence.planta.PlantaFotoRepository;
-import cultivo.api.infrastructure.persistence.planta.PlantaRepository;
 import cultivo.api.infrastructure.persistence.usuario.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
-import java.util.Base64;
-
 @Component
+@ConditionalOnProperty(prefix = "app.data-initializer", name = "enabled", havingValue = "true")
 public class DataInitializer implements CommandLineRunner {
 
     @Autowired
@@ -28,36 +21,31 @@ public class DataInitializer implements CommandLineRunner {
     private CultivadorRepository cultivadorRepository;
 
     @Autowired
-    private PlantaRepository plantaRepository;
-
-    @Autowired
-    private PlantaFotoRepository plantaFotoRepository;
-
-    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) throws Exception {
-        Usuario usuario = garantirUsuarioAdmin();
+        Usuario usuario = garantirUsuarioDev();
         Cultivador cultivador = garantirCultivador(usuario);
-        // garantirPlantaDemo(cultivador); // Removido: não criar planta demo
     }
 
-    private Usuario garantirUsuarioAdmin() {
-        final String login = "devpetergabs@gmail.com";
+    private Usuario garantirUsuarioDev() {
+        // Mantém alinhado com o seed do Flyway (V2__seeds_usuarios_cultivadores.sql)
+        // OBS: por padrão o initializer fica DESLIGADO (app.data-initializer.enabled=false)
+        final String login = "gabriel.dev420@gmail.com";
         final String senha = "Tonton1107@";
 
         Usuario usuario = usuarioRepository.findByLogin(login);
         if (usuario == null) {
-            usuario = new Usuario("Gabriel", login, passwordEncoder.encode(senha), "ROLE_ADMIN");
+            usuario = new Usuario("Gabriel P", login, passwordEncoder.encode(senha), "ROLE_USER");
             usuarioRepository.save(usuario);
-            System.out.println("✅ Usuário admin criado: " + login);
+            System.out.println("✅ Usuário user criado: " + login);
             return usuario;
         }
 
         boolean alterou = false;
-        if (usuario.getRole() == null || usuario.getRole().isBlank() || !usuario.getRole().equals("ROLE_ADMIN")) {
-            usuario.atualizarRole("ROLE_ADMIN");
+        if (usuario.getRole() == null || usuario.getRole().isBlank() || !usuario.getRole().equals("ROLE_USER")) {
+            usuario.atualizarRole("ROLE_USER");
             alterou = true;
         }
         if (usuario.getNome() == null || usuario.getNome().isBlank()) {
@@ -65,15 +53,13 @@ public class DataInitializer implements CommandLineRunner {
             alterou = true;
         }
 
-        // Ambiente de dev: garantir que a senha informada sempre funcione
-        usuario.atualizarSenha(passwordEncoder.encode(senha));
-        alterou = true;
+        // Não sobrescreve senha automaticamente (evita "doideira" de login e seed)
 
         if (alterou) {
             usuarioRepository.save(usuario);
-            System.out.println("✅ Usuário atualizado para admin: " + login);
+            System.out.println("✅ Usuário atualizado para user: " + login);
         } else {
-            System.out.println("✅ Usuário admin já existe: " + login);
+            System.out.println("✅ Usuário user já existe: " + login);
         }
         return usuario;
     }
@@ -85,9 +71,9 @@ public class DataInitializer implements CommandLineRunner {
             return cultivador;
         }
 
-        cultivador = new Cultivador(usuario, "(11) 99999-9999");
+        cultivador = new Cultivador(usuario, "(11) 94543-3507");
         cultivadorRepository.save(cultivador);
-        System.out.println("✅ Cultivador criado para o usuário admin");
+        System.out.println("✅ Cultivador criado para o usuário user: ID " + cultivador.getId() + ", Usuário ID " + usuario.getId() + ", Telefone " + cultivador.getTelefone());
         return cultivador;
     }
 

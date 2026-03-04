@@ -1,1 +1,0 @@
-ALTER TABLE aditivos ADD COLUMN estagio VARCHAR(50);

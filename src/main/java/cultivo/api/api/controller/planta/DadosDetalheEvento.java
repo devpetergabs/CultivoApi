@@ -8,6 +8,15 @@ public record DadosDetalheEvento(
         String tipo,
         LocalDateTime dataEvento,
         String descricao,
-        Double doseEmML
+        Double doseEmML,
+
+        // --- Produto/Tratamento (para UI rápida) ---
+        Long produtoId,
+        Long tratamentoId,
+        Integer roundAtual,
+        Integer roundsTotal,
+        Integer descansoDias,
+        LocalDateTime proximaAplicacaoEm,
+        LocalDateTime fimTratamentoEm
 ) {
 }

@@ -5,6 +5,7 @@ export const MOCK_PLANTS: Plant[] = [
     id: 1,
     name: 'P1',
     type: 'FLORACAO_AVANCADA',
+    species: 'CANNABIS',
     heightCm: 200,
     widthCm: 90,
     stemWidthCm: 9.5,
@@ -17,11 +18,13 @@ export const MOCK_PLANTS: Plant[] = [
     sexo: 'FEMEA',
     dataSexagem: '18/10/2025',
     dataFloracao: '30/10/2025',
+    level: 1,
   },
   {
     id: 2,
     name: 'P2',
     type: 'FLORACAO_INICIAL',
+    species: 'CANNABIS',
     heightCm: 75,
     widthCm: 48,
     stemWidthCm: 10,
@@ -34,5 +37,6 @@ export const MOCK_PLANTS: Plant[] = [
     sexo: 'FEMEA',
     dataSexagem: '14/12/2025',
     dataFloracao: '21/12/2025',
+    level: 1,
   }
 ];

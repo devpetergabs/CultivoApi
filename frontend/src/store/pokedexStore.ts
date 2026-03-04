@@ -1,5 +1,27 @@
 import { create } from 'zustand';
-import type { PokedexStore, PlantType, Plant } from '../types/pokedex';
+import type { PokedexStore, Plant } from '../types/pokedex';
+
+const STORAGE_KEY_HIDE_CANNABIS = 'pokedex:hideCannabis';
+
+function readBooleanStorage(key: string, fallback: boolean) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return raw === 'true';
+  } catch {
+    return fallback;
+  }
+}
+
+function writeBooleanStorage(key: string, value: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, value ? 'true' : 'false');
+  } catch {
+    // ignore
+  }
+}
 
 export const usePokedexStore = create<PokedexStore>((set, get) => ({
   plants: [],
@@ -8,11 +30,18 @@ export const usePokedexStore = create<PokedexStore>((set, get) => ({
   selectedType: null,
   sortBy: 'id',
 
+  hideCannabis: readBooleanStorage(STORAGE_KEY_HIDE_CANNABIS, false),
+
   setPlants: (plants) => set({ plants }),
   setSelectedPlant: (id) => set({ selectedPlantId: id }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSelectedType: (type) => set({ selectedType: type }),
   setSortBy: (sort) => set({ sortBy: sort }),
+
+  setHideCannabis: (hide) => {
+    writeBooleanStorage(STORAGE_KEY_HIDE_CANNABIS, hide);
+    set({ hideCannabis: hide });
+  },
 
   addPlant: (plant: Plant) =>
     set((state) => ({ plants: [...state.plants, plant] })),
@@ -29,9 +58,12 @@ export const usePokedexStore = create<PokedexStore>((set, get) => ({
     })),
 
   filteredPlants: () => {
-    const { plants, searchQuery, selectedType, sortBy } = get();
+    const { plants, searchQuery, selectedType, sortBy, hideCannabis } = get();
 
     let filtered = plants.filter((plant) => {
+      const matchesSpecies =
+        !hideCannabis || String(plant.species).toUpperCase() !== 'CANNABIS';
+
       const matchesSearch =
         searchQuery === '' ||
         plant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -40,10 +72,9 @@ export const usePokedexStore = create<PokedexStore>((set, get) => ({
 
       const matchesType = selectedType === null || plant.type === selectedType;
 
-      return matchesSearch && matchesType;
+      return matchesSpecies && matchesSearch && matchesType;
     });
 
-    // Sort
     filtered.sort((a, b) => {
       if (sortBy === 'id') return a.id - b.id;
       if (sortBy === 'widthCm') return b.widthCm - a.widthCm;
@@ -55,4 +86,3 @@ export const usePokedexStore = create<PokedexStore>((set, get) => ({
     return filtered;
   },
 }));
-

@@ -12,9 +12,21 @@ import type {
   Page,
   Usuario,
   CultivadorMe,
+  AgendaInseticida,
 } from '../types';
 
 const API_URL = '/api';
+
+// Eventos globais (UI)
+// - app:toast -> { message: string; tone?: 'success' | 'warning' | 'error' }
+function emitToast(detail: { message: string; tone?: 'success' | 'warning' | 'error' }) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent('app:toast', { detail }));
+  } catch {
+    // noop
+  }
+}
 
 class ApiService {
   private axiosInstance: AxiosInstance;
@@ -24,6 +36,41 @@ class ApiService {
     this.axiosInstance = axios.create({
       baseURL: API_URL,
     });
+
+    // Interceptor global: transforma o “404 silencioso” (não-proprietário) em feedback visível.
+    // - Backend antigo: retorna 404 para ações em plantas de terceiros
+    // - Backend novo (se você mudar): pode retornar 403
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        const status: number | undefined = error?.response?.status;
+        const method: string | undefined = error?.config?.method;
+
+        // Só em mutações (POST/PUT/PATCH/DELETE). GET 404 é válido (recurso não encontrado).
+        const isMutation = typeof method === 'string' && method.toLowerCase() !== 'get';
+
+        if (isMutation && (status === 403 || status === 404)) {
+          const serverMsg =
+            typeof error?.response?.data === 'string'
+              ? error.response.data
+              : error?.response?.data?.message;
+
+          emitToast({
+            tone: 'warning',
+            message: serverMsg || 'Você não é o proprietário desta planta.',
+          });
+        }
+
+        if (status === 401) {
+          emitToast({
+            tone: 'warning',
+            message: 'Sessão expirada ou credenciais inválidas. Faça login novamente.',
+          });
+        }
+
+        return Promise.reject(error);
+      }
+    );
   }
 
   setCredentials(login: string, senha: string) {
@@ -103,6 +150,10 @@ class ApiService {
         tipo: payload.tipo,
         descricao: payload.descricao,
         doseEmML: payload.doseEmML ?? null,
+        produtoId: payload.produtoId ?? null,
+        roundsTotal: payload.roundsTotal ?? null,
+        descansoDias: payload.descansoDias ?? null,
+        consumos: payload.consumos ?? null,
       },
       { headers }
     );
@@ -112,7 +163,55 @@ class ApiService {
   async getPlantaEventos(plantaId: number, page = 0, size = 50) {
     const response = await this.axiosInstance.get(`/plantas/${plantaId}/eventos`, { params: { page, size } });
     return response.data; // Page<PlantaEvento>
-    }
+  }
+
+  // --- Agenda (Eventos Planejados) ---
+
+  async getAgendaInseticida(plantaId: number): Promise<AgendaInseticida | null> {
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/agenda/inseticida`);
+    return response.data ?? null;
+  }
+
+  async marcarAgendaInseticidaDone(plantaId: number, planejadoId: number): Promise<PlantaEvento> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/agenda/inseticida/planejados/${planejadoId}/done`);
+    return response.data;
+  }
+
+  async downloadAgendaInseticidaIcs(plantaId: number): Promise<Blob> {
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/agenda/inseticida/ics`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  async equiparPote(
+    plantaId: number,
+    payload: { produtoId: number; corHex?: string | null; skinId?: string | null; apelido?: string | null }
+  ): Promise<any> {
+    const response = await this.axiosInstance.put(`/plantas/${plantaId}/equipamentos/pote`, {
+      produtoId: payload.produtoId,
+      corHex: payload.corHex ?? null,
+      skinId: payload.skinId ?? null,
+      apelido: payload.apelido ?? null,
+    });
+    return response.data;
+  }
+
+  async deletePlantaEvento(plantaId: number, eventoId: number): Promise<void> {
+    await this.axiosInstance.delete(`/plantas/${plantaId}/eventos/${eventoId}`);
+  }
+
+  async patchPlantaEvento(
+    plantaId: number,
+    eventoId: number,
+    payload: { descricao?: string | null; doseEmML?: number | null }
+  ): Promise<PlantaEvento> {
+    const response = await this.axiosInstance.patch(`/plantas/${plantaId}/eventos/${eventoId}`, {
+      descricao: payload.descricao ?? null,
+      doseEmML: typeof payload.doseEmML === 'number' ? payload.doseEmML : null,
+    });
+    return response.data;
+  }
 
   async createPlantaFoto(
     plantaId: number,
@@ -129,6 +228,15 @@ class ApiService {
 
   async getPlantaAditivos(plantaId: number, page: number = 0, size: number = 100): Promise<any> {
     const response = await this.axiosInstance.get(`/plantas/${plantaId}/aditivos`, { params: { page, size } });
+    return response.data;
+  }
+
+  async updateProdutoEstoque(produtoId: number, payload: { stockMlAtual?: number | null; unidades?: number | null; mlFrasco?: number | null }): Promise<any> {
+    const response = await this.axiosInstance.put(`/estoque/produtos/${produtoId}`, {
+      stockMlAtual: typeof payload.stockMlAtual === 'number' ? payload.stockMlAtual : payload.stockMlAtual ?? null,
+      unidades: typeof payload.unidades === 'number' ? payload.unidades : payload.unidades ?? null,
+      mlFrasco: typeof payload.mlFrasco === 'number' ? payload.mlFrasco : payload.mlFrasco ?? null,
+    });
     return response.data;
   }
 

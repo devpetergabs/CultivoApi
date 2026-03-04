@@ -1,6 +1,8 @@
 package cultivo.api.api.controller.planta;
 
 import cultivo.api.domain.planta.PlantaAditivo;
+import cultivo.api.domain.usuario.Usuario;
+import cultivo.api.infrastructure.security.AccessControl;
 import cultivo.api.infrastructure.persistence.aditivo.AditivoRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaAditivoRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaRepository;
@@ -8,7 +10,9 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -28,10 +32,19 @@ public class PlantaAditivoController {
     @PostMapping
     public ResponseEntity<DadosDetalhePlantaAditivo> cadastrar(@PathVariable Long plantaId, 
                                                                 @Valid @RequestBody DadosCadastroPlantaAditivo dados,
+                                                                @AuthenticationPrincipal Usuario usuario,
                                                                 UriComponentsBuilder uri) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         var planta = plantaRepository.findById(plantaId);
         if (planta.isEmpty()) {
             return ResponseEntity.badRequest().build();
+        }
+
+        if (!AccessControl.canWritePlanta(usuario, planta.get())) {
+            return ResponseEntity.notFound().build();
         }
 
         var aditivo = aditivoRepository.findById(dados.aditivoId());
@@ -50,7 +63,20 @@ public class PlantaAditivoController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<DadosDetalhePlantaAditivo>> listar(@PathVariable Long plantaId, Pageable paginacao) {
+    public ResponseEntity<?> listar(
+            @PathVariable Long plantaId,
+            @AuthenticationPrincipal Usuario usuario,
+            Pageable paginacao
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canReadPlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var page = repository.findByPlantaId(plantaId, paginacao)
             .map(pa -> new DadosDetalhePlantaAditivo(pa.getId(), pa.getPlanta().getNome(),
                 pa.getAditivo().getNome(), pa.getAditivo().getMarca(),
@@ -59,7 +85,20 @@ public class PlantaAditivoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DadosDetalhePlantaAditivo> detalhar(@PathVariable Long plantaId, @PathVariable Long id) {
+    public ResponseEntity<?> detalhar(
+            @PathVariable Long plantaId,
+            @PathVariable Long id,
+            @AuthenticationPrincipal Usuario usuario
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canReadPlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var plantaAditivo = repository.findById(id);
         if (plantaAditivo.isEmpty() || !plantaAditivo.get().getPlanta().getId().equals(plantaId)) {
             return ResponseEntity.notFound().build();
@@ -73,7 +112,20 @@ public class PlantaAditivoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long plantaId, @PathVariable Long id) {
+    public ResponseEntity<Void> deletar(
+            @PathVariable Long plantaId,
+            @PathVariable Long id,
+            @AuthenticationPrincipal Usuario usuario
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canWritePlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var plantaAditivo = repository.findById(id);
         if (plantaAditivo.isEmpty() || !plantaAditivo.get().getPlanta().getId().equals(plantaId)) {
             return ResponseEntity.notFound().build();

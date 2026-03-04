@@ -1,6 +1,8 @@
 package cultivo.api.api.controller.planta;
 
 import cultivo.api.domain.planta.PlantaFoto;
+import cultivo.api.domain.usuario.Usuario;
+import cultivo.api.infrastructure.security.AccessControl;
 import cultivo.api.infrastructure.persistence.planta.PlantaFotoRepository;
 import cultivo.api.infrastructure.persistence.planta.PlantaRepository;
 import jakarta.validation.Valid;
@@ -11,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -29,10 +32,19 @@ public class PlantaFotoController {
     @PostMapping
     public ResponseEntity<DadosDetalhePlantaFoto> cadastrar(@PathVariable Long plantaId,
                                                              @Valid @RequestBody DadosCadastroPlantaFoto dados,
+                                                             @AuthenticationPrincipal Usuario usuario,
                                                              UriComponentsBuilder uri) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         var planta = plantaRepository.findById(plantaId);
         if (planta.isEmpty()) {
             return ResponseEntity.badRequest().build();
+        }
+
+        if (!AccessControl.canWritePlanta(usuario, planta.get())) {
+            return ResponseEntity.notFound().build();
         }
 
         var imagemBytes = Base64.getDecoder().decode(dados.imagemBase64());
@@ -46,7 +58,20 @@ public class PlantaFotoController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<DadosDetalhePlantaFoto>> listar(@PathVariable Long plantaId, Pageable paginacao) {
+    public ResponseEntity<?> listar(
+            @PathVariable Long plantaId,
+            @AuthenticationPrincipal Usuario usuario,
+            Pageable paginacao
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canReadPlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var page = repository.findByPlantaId(plantaId, paginacao)
                 .map(f -> new DadosDetalhePlantaFoto(f.getId(), f.getPlanta().getNome(),
                         f.getContentType(), f.getDescricao(), f.getDataUpload()));
@@ -54,7 +79,20 @@ public class PlantaFotoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DadosDetalhePlantaFoto> detalhar(@PathVariable Long plantaId, @PathVariable Long id) {
+    public ResponseEntity<?> detalhar(
+            @PathVariable Long plantaId,
+            @PathVariable Long id,
+            @AuthenticationPrincipal Usuario usuario
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canReadPlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var foto = repository.findById(id);
         if (foto.isEmpty() || !foto.get().getPlanta().getId().equals(plantaId)) {
             return ResponseEntity.notFound().build();
@@ -67,7 +105,20 @@ public class PlantaFotoController {
     }
 
     @GetMapping("/{id}/imagem")
-    public ResponseEntity<byte[]> visualizarImagem(@PathVariable Long plantaId, @PathVariable Long id) {
+    public ResponseEntity<?> visualizarImagem(
+            @PathVariable Long plantaId,
+            @PathVariable Long id,
+            @AuthenticationPrincipal Usuario usuario
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canReadPlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var foto = repository.findById(id);
         if (foto.isEmpty() || !foto.get().getPlanta().getId().equals(plantaId)) {
             return ResponseEntity.notFound().build();
@@ -82,7 +133,20 @@ public class PlantaFotoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long plantaId, @PathVariable Long id) {
+    public ResponseEntity<Void> deletar(
+            @PathVariable Long plantaId,
+            @PathVariable Long id,
+            @AuthenticationPrincipal Usuario usuario
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var plantaOpt = plantaRepository.findById(plantaId);
+        if (plantaOpt.isEmpty() || !AccessControl.canWritePlanta(usuario, plantaOpt.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var foto = repository.findById(id);
         if (foto.isEmpty() || !foto.get().getPlanta().getId().equals(plantaId)) {
             return ResponseEntity.notFound().build();

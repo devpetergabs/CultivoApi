@@ -1,18 +1,18 @@
 export type AditivoStock = {
-  tenhoEmEstoque: boolean;
-  // mL por frasco
-  mlFrasco: number;
-  // quantidade de frascos
+  /**
+   * Se existe registro de estoque no backend (produto "rastreado").
+   * Quando o estoque zera, continua tracked=true (não volta a "não rastreado").
+   */
+  tracked: boolean;
+  tipoProduto: string | null;
+  stockMlAtual: number;
+  // metadados (não reabastecem automaticamente)
   unidades: number;
-  // estoque total real do produto (mL)
-  estoqueMl: number;
-  // capacidade inicial (mlFrasco * unidades) usada como denominador estável da barra
-  capacidadeInicialMl?: number;
-  importanceStars?: number;
+  mlFrasco: number;
 };
 
 const ICON_PREFIX = 'pokedex:aditivo:icon:';
-const STOCK_PREFIX = 'pokedex:aditivo:stock:';
+const STOCK_PREFIX = 'pokedex:produto:estoque:';
 
 const MAX_ICON_FILE_BYTES = 300 * 1024;
 
@@ -31,13 +31,6 @@ function normalizeNumber(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(parsed)) return 0;
   return Math.max(0, parsed);
-}
-
-function normalizeBoolean(value: unknown, fallback: boolean): boolean {
-  if (typeof value === 'boolean') return value;
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return fallback;
 }
 
 export function getAditivoIconKey(id: number): string {
@@ -62,7 +55,7 @@ export function setAditivoIcon(id: number, dataUrl: string): void {
   try {
     localStorage.setItem(getAditivoIconKey(id), dataUrl);
   } catch {
-    // ignore storage quota errors for now
+    // ignore storage quota errors
   }
 }
 
@@ -77,14 +70,18 @@ export function validateIconFile(file: File): string | null {
   return null;
 }
 
+/**
+ * Cache local: SEMPRE começa "sem estoque".
+ * A fonte real pode ser o backend, mas nós NÃO criamos estoque automaticamente no cliente.
+ * Só existe estoque quando o usuário rastrear (tracked=true) via UI.
+ */
 export function getAditivoStock(id: number): AditivoStock {
   const fallback: AditivoStock = {
-    tenhoEmEstoque: true,
-    mlFrasco: 0,
+    tracked: false,
+    tipoProduto: null,
+    stockMlAtual: 0,
     unidades: 0,
-    estoqueMl: 0,
-    capacidadeInicialMl: undefined,
-    importanceStars: 3,
+    mlFrasco: 0,
   };
 
   if (typeof window === 'undefined') return fallback;
@@ -94,41 +91,79 @@ export function getAditivoStock(id: number): AditivoStock {
     const parsed = safeParseJson<Record<string, unknown>>(raw);
     if (!parsed) return fallback;
 
-    // Backward compatibility:
-    // - Old fields: quantidadeUnidades, volumeAtualMl, volumeTotalMl
-    // - New fields: unidades, mlFrasco, estoqueMl
-    const unidades =
-      normalizeNumber(parsed.unidades) || normalizeNumber(parsed.quantidadeUnidades);
-    const mlFrasco =
-      normalizeNumber(parsed.mlFrasco) || normalizeNumber(parsed.volumeAtualMl);
+    const tracked = Boolean(parsed.tracked);
 
-    const manualTotal = normalizeNumber((parsed as any).estoqueMl);
-    const legacyTotal = normalizeNumber((parsed as any).volumeTotalMl);
-    const computed = unidades > 0 && mlFrasco > 0 ? unidades * mlFrasco : 0;
-    const estoqueMl = manualTotal > 0 ? manualTotal : legacyTotal > 0 ? legacyTotal : computed;
-
-    const capacidadeInicialMl = normalizeNumber((parsed as any).capacidadeInicialMl);
+    // ✅ Se não está tracked, tratamos como "não existe estoque"
+    if (!tracked) return fallback;
 
     return {
-      tenhoEmEstoque: normalizeBoolean(parsed.tenhoEmEstoque, true),
-      unidades,
-      mlFrasco,
-      estoqueMl,
-      capacidadeInicialMl: capacidadeInicialMl > 0 ? capacidadeInicialMl : undefined,
-      importanceStars: normalizeNumber(parsed.importanceStars) || 3,
+      tracked: true,
+      tipoProduto: (typeof parsed.tipoProduto === 'string' ? parsed.tipoProduto : null) as string | null,
+      stockMlAtual: normalizeNumber(parsed.stockMlAtual),
+      unidades: normalizeNumber(parsed.unidades),
+      mlFrasco: normalizeNumber(parsed.mlFrasco),
     };
   } catch {
     return fallback;
   }
 }
 
+/**
+ * ✅ Regra do MVP:
+ * - tracked=false => NÃO salva no localStorage (remove)
+ * - tracked=true  => salva e notifica UI
+ */
 export function setAditivoStock(id: number, payload: AditivoStock): void {
   if (typeof window === 'undefined') return;
+
   try {
+    if (!payload?.tracked) {
+      localStorage.removeItem(getAditivoStockKey(id));
+      window.dispatchEvent(new CustomEvent(ADITIVO_STOCK_UPDATED_EVENT, { detail: { id } }));
+      return;
+    }
+
     localStorage.setItem(getAditivoStockKey(id), JSON.stringify(payload));
     window.dispatchEvent(new CustomEvent(ADITIVO_STOCK_UPDATED_EVENT, { detail: { id } }));
   } catch {
-    // ignore storage quota errors for now
+    // ignore storage errors
+  }
+}
+
+/**
+ * ✅ IMPORTANTÍSSIMO:
+ * NÃO criar estoque automaticamente ao abrir o app.
+ *
+ * Esse sync agora só atualiza itens que já estão tracked localmente.
+ * Ou seja: se o usuário nunca "ativou estoque" daquele produto,
+ * ele continua sem estoque no inventário.
+ */
+export function syncAditivoStocksFromApi(items: Array<{ id: number; tipo?: string | null; estoque?: any }>): void {
+  if (typeof window === 'undefined') return;
+
+  for (const item of items) {
+    if (!item || typeof item.id !== 'number') continue;
+    const est = item.estoque;
+    if (!est) continue;
+
+    // ✅ só sincroniza se já existir local e estiver tracked
+    const current = getAditivoStock(item.id);
+    if (!current.tracked) continue;
+
+    const payload: AditivoStock = {
+      tracked: true,
+      tipoProduto:
+        (typeof est.tipoProduto === 'string'
+          ? est.tipoProduto
+          : typeof item.tipo === 'string'
+            ? item.tipo
+            : current.tipoProduto) ?? null,
+      stockMlAtual: normalizeNumber(est.stockMlAtual ?? current.stockMlAtual),
+      unidades: normalizeNumber(est.unidades ?? current.unidades),
+      mlFrasco: normalizeNumber(est.mlFrasco ?? current.mlFrasco),
+    };
+
+    setAditivoStock(item.id, payload);
   }
 }
 
@@ -141,25 +176,18 @@ export type StockDerived = {
 };
 
 export function getDerivedStock(stock: AditivoStock): StockDerived {
-  const hasData =
-    stock.mlFrasco > 0 || stock.unidades > 0 || stock.estoqueMl > 0 || stock.tenhoEmEstoque === false;
+  const hasData = stock.tracked;
 
-  const capacidadeBase =
-    typeof stock.capacidadeInicialMl === 'number' && stock.capacidadeInicialMl > 0
-      ? stock.capacidadeInicialMl
-      : stock.mlFrasco > 0 && stock.unidades > 0
-      ? stock.mlFrasco * stock.unidades
-      : 0;
+  const capacidadeMl = stock.unidades > 0 && stock.mlFrasco > 0 ? stock.unidades * stock.mlFrasco : 0;
+  const estoqueMl = stock.stockMlAtual;
 
-  const estoque = stock.estoqueMl;
-
-  const isEmpty = hasData && (stock.tenhoEmEstoque === false || estoque <= 0);
-  const isLow = hasData && !isEmpty && estoque <= 200;
+  const isEmpty = hasData && estoqueMl <= 0;
+  const isLow = hasData && !isEmpty && estoqueMl <= 200;
 
   return {
     hasData,
-    capacidadeMl: capacidadeBase,
-    estoqueMl: estoque,
+    capacidadeMl,
+    estoqueMl,
     isEmpty,
     isLow,
   };
@@ -175,19 +203,39 @@ export function deductAditivoStockMl(id: number, usedMl: number): AditivoStock {
   const stock = getAditivoStock(id);
   const derived = getDerivedStock(stock);
 
-  // If there's no stock data configured yet, we still allow deduction, but treat base as current estoqueMl.
-  const current = derived.hasData ? stock.estoqueMl : stock.estoqueMl;
-  const next = Math.max(0, current - Math.max(0, normalizeNumber(usedMl)));
+  // Só debita se o produto estiver rastreado
+  if (!derived.hasData) return stock;
 
-  const hasData = derived.hasData || stock.mlFrasco > 0 || stock.unidades > 0 || next > 0;
+  const next = Math.max(0, derived.estoqueMl - Math.max(0, normalizeNumber(usedMl)));
 
   const nextStock: AditivoStock = {
     ...stock,
-    estoqueMl: next,
-    // When it hits 0, mark as not in stock.
-    tenhoEmEstoque: hasData && next === 0 ? false : stock.tenhoEmEstoque,
+    stockMlAtual: next,
+    tracked: true,
   };
 
   setAditivoStock(id, nextStock);
   return nextStock;
+}
+
+/**
+ * ✅ Utilitário opcional: limpa TODOS os estoques 1x (pra resetar sujeira antiga)
+ * Chame no App.tsx ou InventoryPage, só durante desenvolvimento/migração.
+ */
+export function resetAllAditivoStocksOnce(version = 'v1'): void {
+  if (typeof window === 'undefined') return;
+
+  const flag = `pokedex:stocks-reset:${version}`;
+  try {
+    if (localStorage.getItem(flag)) return;
+
+    const keys = Object.keys(localStorage);
+    for (const k of keys) {
+      if (k.startsWith(STOCK_PREFIX)) localStorage.removeItem(k);
+    }
+
+    localStorage.setItem(flag, '1');
+  } catch {
+    // ignore
+  }
 }

@@ -22,6 +22,14 @@ public class Planta {
     public void setLargura(Double largura) { this.largura = largura; }
     public void setLarguraCaule(Double larguraCaule) { this.larguraCaule = larguraCaule; }
 
+    public void setEspecie(EspeciePlanta especie) {
+        if (especie != null) this.especie = especie;
+    }
+
+    // --- estado: sinal de praga ---
+    public void marcarPraga() { this.praga = true; }
+    public void limparPraga() { this.praga = false; }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -32,6 +40,10 @@ public class Planta {
 
     private String nome;
     private String strain;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "especie")
+    private EspeciePlanta especie = EspeciePlanta.CANNABIS;
 
     @Column(name = "data_germinacao")
     private LocalDate dataGerminacao;
@@ -59,15 +71,20 @@ public class Planta {
     @Column(name = "data_floracao")
     private LocalDate dataFloracao;
 
+    /**
+     * Estado simples: true quando há sinal de praga ativo.
+     * (Persistido na tabela plantas via Flyway V12__planta_praga_flag.sql)
+     */
+    @Column(name = "praga", nullable = false)
+    private Boolean praga = false;
+
     private Boolean ativo;
 
     @Column(name = "data_criacao")
     private LocalDate dataCriacao;
 
     // --- RPG fields (Flyway V18) ---
-    // alinhado com DEFAULT 1 do banco
     private Integer level = 1;
-
     private Integer xp = 0;
 
     @Column(name = "pontos_disponiveis")
@@ -86,6 +103,7 @@ public class Planta {
     ) {
         this.nome = nome;
         this.strain = strain;
+        this.especie = EspeciePlanta.CANNABIS;
 
         if (estagio == EstagioPlanta.GERMINACAO && dataGerminacao == null) {
             this.dataGerminacao = LocalDate.now();
@@ -110,6 +128,8 @@ public class Planta {
         this.level = 1;
         this.xp = 0;
         this.pontosDisponiveis = 0;
+
+        this.praga = false;
 
         this.ativo = true;
         this.dataCriacao = LocalDate.now();

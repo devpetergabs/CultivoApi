@@ -12,11 +12,9 @@ import { PlantFormModal } from './PlantFormModal';
 import type { PlantType } from '../types/pokedex';
 import { getPlantStageLabel } from './TypeBadge';
 import { potLitersToEnum } from '../utils/plantFormUtils';
-import chestClosed from '../assets/bau.png';
-import chestOpen from '../assets/bau-aberto.png';
 
 export function PokedexLayout() {
-  const { cultivador } = useAuth();
+  const { cultivador, usuario } = useAuth();
   const {
     plants,
     selectedPlantId,
@@ -27,6 +25,8 @@ export function PokedexLayout() {
     setSelectedType,
     sortBy,
     setSortBy,
+    hideCannabis,
+    setHideCannabis,
     addPlant,
     updatePlant,
     removePlant,
@@ -57,11 +57,8 @@ export function PokedexLayout() {
     .filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
 
   useEffect(() => {
-    if (selectedPlantId === null) {
-      document.body.style.overflow = 'auto';
-    } else {
-      document.body.style.overflow = 'hidden';
-    }
+    if (selectedPlantId === null) document.body.style.overflow = 'auto';
+    else document.body.style.overflow = 'hidden';
   }, [selectedPlantId]);
 
   useEffect(() => {
@@ -69,6 +66,52 @@ export function PokedexLayout() {
     window.addEventListener('pokedex:new-plant', handler as EventListener);
     return () => window.removeEventListener('pokedex:new-plant', handler as EventListener);
   }, []);
+
+  // Estado simples de praga (flag): atualiza o card imediatamente sem precisar recarregar lista.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ plantId?: number; praga?: boolean } | undefined>;
+      const plantId = custom?.detail?.plantId;
+      if (typeof plantId !== 'number') return;
+      const praga = Boolean(custom?.detail?.praga);
+
+      const existing = plants.find((p) => p.id === plantId);
+      if (!existing) return;
+      updatePlant({ ...existing, pestActive: praga });
+    };
+
+    window.addEventListener('plant:praga-changed', handler as EventListener);
+    return () => window.removeEventListener('plant:praga-changed', handler as EventListener);
+  }, [plants, updatePlant]);
+
+  // Navegação global (ex: BAÚ vindo do menu radial da planta)
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ view?: 'POKEDEX' | 'INVENTARIO' } | undefined>;
+      const view = custom?.detail?.view;
+      if (!view) return;
+      switchView(view);
+    };
+
+    window.addEventListener('pokedex:switch-view', handler as EventListener);
+    return () => window.removeEventListener('pokedex:switch-view', handler as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeView]);
+
+  // Fallback: caso algum lugar dispare pedido de delete via evento (deixa robusto)
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ plantId?: number }>;
+      const plantId = custom?.detail?.plantId;
+      if (!plantId) return;
+
+      const plant = plants.find((p) => p.id === plantId) || null;
+      if (plant) setDeletePlant(plant);
+    };
+
+    window.addEventListener('pokedex:request-delete', handler as EventListener);
+    return () => window.removeEventListener('pokedex:request-delete', handler as EventListener);
+  }, [plants]);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -100,7 +143,7 @@ export function PokedexLayout() {
     const load = async () => {
       try {
         const response = await apiService.getPlantasListagem(0, 500);
-        const list = response?.content ?? response;
+        const list = (response as any)?.content ?? response;
         const plantas = Array.isArray(list) ? list : [];
         const mapped = plantas.map((planta: any) =>
           mapPlantaToPokedexPlant(planta, {
@@ -135,8 +178,10 @@ export function PokedexLayout() {
       await apiService.deletePlanta(deletePlant.id);
       removePlant(deletePlant.id);
       setDeletePlant(null);
-    } catch {
-      setDeleteError('Não foi possível excluir a planta.');
+    } catch (err) {
+      const status = (err as any)?.response?.status;
+      if (status === 403 || status === 404) setDeleteError('Você não é o proprietário desta planta.');
+      else setDeleteError('Não foi possível excluir a planta.');
     } finally {
       setIsDeleting(false);
     }
@@ -165,12 +210,15 @@ export function PokedexLayout() {
         name: cultivador?.usuarioNome ?? null,
         phone: cultivador?.telefone ?? null,
       });
+
       updatePlant(mapped);
       setLevelUpPlant(null);
       setLevelUpCurrentStage(null);
       setLevelUpNextStage(null);
-    } catch {
-      setLevelUpError('Não foi possível evoluir a planta.');
+    } catch (err) {
+      const status = (err as any)?.response?.status;
+      if (status === 403 || status === 404) setLevelUpError('Você não é o proprietário desta planta.');
+      else setLevelUpError('Não foi possível evoluir a planta.');
     } finally {
       setIsLevelingUp(false);
     }
@@ -199,51 +247,73 @@ export function PokedexLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0B1220] text-white overflow-hidden">
-      {/* ═══════════════════════════════════════════════════════════════════════════
-          HEADER - Pokédex Device Frame
-          ═══════════════════════════════════════════════════════════════════════════ */}
       <header className="relative border-b-4 border-[#6fbf86] bg-gradient-to-b from-[#2b0f0f] to-[#3a1212] px-6 py-5 shrink-0 shadow-2xl">
         <div className="absolute top-0 left-0 right-0 h-1 bg-[#6fbf86]" />
 
-        <div className="flex justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <WeatherBox />
-            <div className="text-3xl animate-float">🌱</div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">POKÉDEX PLANTAS</h1>
-                <button
-                  type="button"
-                  onClick={() => switchView(activeView === 'POKEDEX' ? 'INVENTARIO' : 'POKEDEX')}
-                  className="group relative h-10 w-10 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 transition-colors"
-                  aria-label={activeView === 'POKEDEX' ? 'Abrir inventário' : 'Voltar para pokédex'}
-                  title={activeView === 'POKEDEX' ? 'Inventário' : 'Pokédex'}
-                >
-                  <img
-                    src={activeView === 'POKEDEX' ? chestClosed : chestOpen}
-                    alt=""
-                    className="h-6 w-6 object-contain mx-auto"
-                  />
-                  <span className="pointer-events-none absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-[0_0_10px_rgba(111,191,134,0.22)]" />
-                </button>
+        {/* Linha 1: marca + usuário + contador */}
+        <div className="flex items-start justify-between gap-6">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="text-3xl animate-float shrink-0">🌱</div>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg leading-tight">
+                POKÉDEX PLANTAS
+              </h1>
+
+              <div className="mt-1 text-[12px] text-white/70">
+                <span>Olá, </span>
+                <span className="font-semibold text-white">{usuario?.nome ?? cultivador?.usuarioNome ?? '—'}</span>
+                <span className="text-white/40"> {cultivador?.usuarioLogin ? `(@${cultivador.usuarioLogin})` : ''}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-[#6fbf86] text-[#0B1220] rounded-full px-4 py-2 font-semibold border-2 border-[#0B1220]/80 shadow-lg">
+          <div className="bg-[#6fbf86] text-[#0B1220] rounded-full px-4 py-2 font-semibold border-2 border-[#0B1220]/80 shadow-lg shrink-0">
             <div className="text-center">
-              <div className="text-xl font-semibold">{activeView === 'POKEDEX' ? plants.length : inventoryCount}</div>
-              <div className="text-xs font-medium uppercase tracking-[0.12em]">{activeView === 'POKEDEX' ? 'PLANTAS' : 'ADITIVOS'}</div>
+              <div className="text-xl font-semibold">
+                {activeView === 'POKEDEX' ? plants.length : inventoryCount}
+              </div>
+              <div className="text-xs font-medium uppercase tracking-[0.12em]">
+                {activeView === 'POKEDEX' ? 'PLANTAS' : 'INVENTÁRIO'}
+              </div>
             </div>
+          </div>
+        </div>
+
+        {/* Linha 2: clima + navegação */}
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <WeatherBox compact className="max-w-full" />
+
+          <div className="inline-flex items-center rounded-2xl border border-white/10 bg-white/5 p-1 backdrop-blur-md">
+            <button
+              type="button"
+              onClick={() => switchView('POKEDEX')}
+              className={`h-9 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                activeView === 'POKEDEX'
+                  ? 'bg-[#6fbf86]/20 text-white border border-[#6fbf86]/30 shadow-[0_0_10px_rgba(111,191,134,0.18)]'
+                  : 'text-white/70 hover:text-white hover:bg-white/10'
+              }`}
+              title="Voltar para o Pokédex"
+            >
+              Pokédex
+            </button>
+            <button
+              type="button"
+              onClick={() => switchView('INVENTARIO')}
+              className={`h-9 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                activeView === 'INVENTARIO'
+                  ? 'bg-[#e7c35a]/15 text-white border border-[#e7c35a]/25 shadow-[0_0_10px_rgba(231,195,90,0.14)]'
+                  : 'text-white/70 hover:text-white hover:bg-white/10'
+              }`}
+              title="Abrir inventário"
+            >
+              Inventário
+            </button>
           </div>
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#6fbf86]" />
       </header>
 
-      {/* ═══════════════════════════════════════════════════════════════════════════
-          MAIN CONTENT - Grid Area
-          ═══════════════════════════════════════════════════════════════════════════ */}
       <div className="flex-1 overflow-hidden flex flex-col bg-[#0B1220]">
         {activeView === 'POKEDEX' ? (
           <PokedexGrid
@@ -254,12 +324,10 @@ export function PokedexLayout() {
             onSearchChange={setSearchQuery}
             selectedType={selectedType}
             onTypeChange={setSelectedType}
-            sortBy={
-              sortBy === "stemWidthCm"
-                ? "id"
-                : sortBy
-            }
+            sortBy={sortBy}
             onSortChange={setSortBy}
+            hideCannabis={hideCannabis}
+            onHideCannabisChange={setHideCannabis}
           />
         ) : (
           <InventarioView onCountChange={setInventoryCount} />
@@ -304,9 +372,10 @@ export function PokedexLayout() {
         />
       )}
 
+      {/* ✅ MODAL DELETE (isso aqui estava faltando no seu arquivo atual) */}
       {activeView === 'POKEDEX' && deletePlant && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60"
           onClick={() => {
             if (!isDeleting) setDeletePlant(null);
           }}
@@ -322,6 +391,7 @@ export function PokedexLayout() {
                   Confirme para excluir <span className="font-semibold text-white">{deletePlant.name}</span>.
                 </p>
               </div>
+
               <button
                 onClick={() => {
                   if (!isDeleting) setDeletePlant(null);
@@ -345,6 +415,7 @@ export function PokedexLayout() {
               >
                 Cancelar
               </button>
+
               <button
                 onClick={confirmDelete}
                 disabled={isDeleting}
@@ -362,9 +433,10 @@ export function PokedexLayout() {
         </div>
       )}
 
+      {/* ✅ MODAL EVOLUIR (também estava faltando) */}
       {activeView === 'POKEDEX' && levelUpPlant && levelUpCurrentStage && levelUpNextStage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60"
           onClick={() => {
             if (!isLevelingUp) {
               setLevelUpPlant(null);
@@ -403,6 +475,7 @@ export function PokedexLayout() {
               >
                 Cancelar
               </button>
+
               <button
                 type="button"
                 onClick={confirmLevelUp}

@@ -5,10 +5,12 @@ import { TypeBadge } from './TypeBadge';
 import { StatBar } from './StatBar';
 import { usePokedexStore } from '../store/pokedexStore';
 
-// ✅ NOVO: eventos (visão de estado por timeline)
+// ✅ eventos
 import { usePlantEvents } from '../hooks/usePlantEvents';
 import { EventTimeline } from './EventTimeline';
 import { PlantStateSummary } from './PlantStateSummary';
+import { useInseticidaAgenda } from '../hooks/useInseticidaAgenda';
+import { InsecticideAgendaPanel } from './InsecticideAgendaPanel';
 
 interface PlantDetailDrawerProps {
   plant: Plant | null;
@@ -21,7 +23,6 @@ interface PlantDetailDrawerProps {
 export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete }: PlantDetailDrawerProps) {
   const { setSelectedPlant } = usePokedexStore();
 
-  // ✅ Hooks precisam ser chamados SEMPRE, mesmo quando plant == null
   const plantId = plant?.id ?? null;
 
   const {
@@ -34,7 +35,13 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
     enabled: !!plantId,
   });
 
-  // ✅ Live refresh: quando um evento é criado no card, atualiza a timeline do drawer
+  const {
+    agenda,
+    loading: agendaLoading,
+    error: agendaError,
+    refresh: refreshAgenda,
+  } = useInseticidaAgenda(plantId, { enabled: !!plantId });
+
   useEffect(() => {
     if (!plantId) return;
 
@@ -49,7 +56,6 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
     return () => window.removeEventListener('plant:event-created', handler as EventListener);
   }, [plantId, refreshEvents]);
 
-  // ✅ Agora pode retornar; os hooks já foram chamados
   if (!plant) return null;
 
   const currentIndex = allPlants.findIndex((p) => p.id === plant.id);
@@ -57,50 +63,35 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
   const canGoPrev = currentIndex > 0;
 
   const handleNext = () => {
-    if (canGoNext) {
-      setSelectedPlant(allPlants[currentIndex + 1].id);
-    }
+    if (canGoNext) setSelectedPlant(allPlants[currentIndex + 1].id);
   };
 
   const handlePrev = () => {
-    if (canGoPrev) {
-      setSelectedPlant(allPlants[currentIndex - 1].id);
-    }
+    if (canGoPrev) setSelectedPlant(allPlants[currentIndex - 1].id);
   };
 
-  // Calculate age in days from germination date
   const calculateAge = (date: string | null) => {
     if (!date) return null;
-
     const parts = date.split('/');
     if (parts.length !== 3) return null;
-
     const germinationDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
     if (isNaN(germinationDate.getTime())) return null;
-
     const today = new Date();
     const diffMs = today.getTime() - germinationDate.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    return diffDays;
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
   };
 
-  // Format date - converts DD/MM/YYYY to valid Date
   const formatDate = (date: string | null) => {
     if (!date) return '⚠️ UNDEF';
-
     const parts = date.split('/');
     if (parts.length !== 3) return '⚠️ INVÁLIDA';
-
     const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
     if (isNaN(d.getTime())) return '⚠️ INVÁLIDA';
-
     return d.toLocaleDateString('pt-BR');
   };
 
   return (
     <AnimatePresence>
-      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -109,7 +100,6 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
         className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
       />
 
-      {/* Drawer - slides from right with Pokédex styling */}
       <motion.div
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
@@ -117,9 +107,9 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className="fixed right-0 top-0 h-full w-full md:w-[520px] z-50 overflow-y-auto border-l-4 border-[#7BD389]/35 bg-gradient-to-b from-[#111A2E] to-[#0B1220] shadow-2xl"
       >
-        {/* Header */}
         <div className="sticky top-0 z-50 bg-gradient-to-r from-[#2b0f0f] to-[#3a1212] border-b-4 border-[#6fbf86] px-6 py-4 flex justify-between items-center shadow-lg">
           <h2 className="text-lg font-semibold text-white uppercase tracking-tight">📊 POKÉDEX</h2>
+
           <div className="flex items-center gap-2">
             <button
               onClick={onEdit}
@@ -130,15 +120,24 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             >
               ✎
             </button>
+
+            {/* ✅ aqui é o fix */}
             <button
-              onClick={onDelete}
-              className="h-9 w-9 rounded-lg border-2 border-slate-500/60 bg-transparent text-slate-100/90 transition-all hover:text-red-300 hover:border-red-500/60 hover:shadow-[0_0_12px_rgba(239,68,68,0.18)] disabled:opacity-50"
-              aria-label="Excluir"
-              disabled={!onDelete}
               type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onDelete) {
+                  onDelete();
+                  return;
+                }
+                window.dispatchEvent(new CustomEvent('pokedex:request-delete', { detail: { plantId: plant.id } }));
+              }}
+              className="h-9 w-9 rounded-lg border-2 border-slate-500/60 bg-transparent text-slate-100/90 transition-all hover:text-red-300 hover:border-red-500/60 hover:shadow-[0_0_12px_rgba(239,68,68,0.18)]"
+              aria-label="Excluir"
             >
               ✕
             </button>
+
             <button
               onClick={onClose}
               className="h-9 w-9 rounded-lg border-2 border-slate-500/60 bg-transparent text-slate-100/90 transition-all hover:text-[#6fbf86] hover:border-[#6fbf86]/60 hover:shadow-[0_0_12px_rgba(111,191,134,0.18)] disabled:opacity-50"
@@ -151,7 +150,6 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
         </div>
 
         <div className="p-6 space-y-5">
-          {/* ID and Name */}
           <div className="space-y-3">
             <div className="text-xs font-medium text-[#6fbf86]/70 font-mono uppercase tracking-[0.06em]">
               #{plant.id.toString().padStart(3, '0')} — POKÉDEX
@@ -160,14 +158,12 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             <TypeBadge type={plant.type} size="lg" />
           </div>
 
-          {/* Image Area - Large display */}
           <div className="rounded-xl p-8 border-2 border-[#6fbf86]/25 bg-gradient-to-b from-[#1a1f2e] to-[#0B1220] text-center shadow-[0_0_16px_rgba(111,191,134,0.10)]">
             <div className="text-8xl animate-float drop-shadow-xl" style={{ textShadow: '0 0 18px rgba(123, 211, 137, 0.25)' }}>
               {plant.imageUrl}
             </div>
           </div>
 
-          {/* Stats Section */}
           <div
             className={`space-y-4 rounded-xl p-5 border-2 backdrop-blur-sm ${
               plant.heightCm > 180
@@ -192,7 +188,6 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             </div>
           </div>
 
-          {/* Details Section */}
           <div className="space-y-3 rounded-xl p-5 border-2 border-[#7BD389]/20 bg-[#111A2E]/60 backdrop-blur-sm">
             <h3 className="text-xs font-medium text-[#7BD389] uppercase tracking-wider">📋 DETALHES</h3>
 
@@ -253,7 +248,6 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             </div>
           </div>
 
-          {/* ✅ Estado derivado de eventos + Timeline */}
           <div className="space-y-3">
             {eventsError && (
               <div className="rounded-xl p-3 border border-red-500/30 bg-red-500/10 text-red-200 text-xs">
@@ -263,7 +257,20 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
 
             <PlantStateSummary events={events as any} />
 
+            <InsecticideAgendaPanel
+              plantId={plant.id}
+              agenda={agenda}
+              loading={agendaLoading}
+              error={agendaError}
+              onRefresh={refreshAgenda}
+              onEventCreated={() => {
+                refreshEvents();
+                refreshAgenda();
+              }}
+            />
+
             <EventTimeline
+              plantId={plant?.id ?? null}
               events={events as any}
               loading={eventsLoading}
               onRefresh={refreshEvents}
@@ -271,7 +278,6 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             />
           </div>
 
-          {/* Navigation Buttons */}
           <div className="grid grid-cols-2 gap-3 border-t border-[rgba(255,255,255,0.12)] pt-5">
             <button
               onClick={handlePrev}
@@ -297,7 +303,6 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
             </button>
           </div>
 
-          {/* Keyboard hints */}
           <div className="text-xs text-[#7BD389]/45 text-center space-y-1 pb-4 font-mono border-t border-[rgba(255,255,255,0.12)] pt-4">
             <div className="font-medium text-[#7BD389]/65">[ESC] FECHAR | [←→] NAVEGAR</div>
             <div className="text-[#7BD389]/35">

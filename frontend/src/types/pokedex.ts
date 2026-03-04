@@ -1,22 +1,33 @@
-export type PlantType = 'GERMINACAO' | 'VEGETATIVO' | 'FLORACAO_INICIAL' | 'FLORACAO_MEDIA' | 'FLORACAO_AVANCADA' | 'FINALIZACAO';
+export type PlantType =
+  | 'GERMINACAO'
+  | 'VEGETATIVO'
+  | 'FLORACAO_INICIAL'
+  | 'FLORACAO_MEDIA'
+  | 'FLORACAO_AVANCADA'
+  | 'FINALIZACAO';
+
+export type PlantSpecies = 'CANNABIS' | 'ROSEIRA' | 'OUTRA' | string;
 
 export interface Plant {
   id: number;
   name: string;
   type: PlantType;
-  heightCm: number;       // altura (cm)
-  widthCm: number;        // largura (cm)
-  stemWidthCm: number;    // largura do caule (cm)
-  variant: string;        // strain/variety name
-  potLiters: number;      // tamanho do vaso (liters)
-  imageUrl: string;       // emoji or URL
-  growerName: string;     // nome do cultivador
-  growerPhone?: string;   // telefone do cultivador (opcional)
-  germinationDate: string | null; // data de germinação (dd/mm/yyyy)
-  sexo?: string | null;   // sexo da planta (FEMEA, MACHO, HERMAFRODITA)
-  dataSexagem?: string | null; // data da sexagem (dd/mm/yyyy)
-  dataFloracao?: string | null; // data de início da floração (dd/mm/yyyy)
-  level: number; // nível de crescimento
+  species: PlantSpecies;
+  /** flag simples vindo do backend: planta está com "sinal de praga" ativo */
+  pestActive?: boolean;
+  heightCm: number;
+  widthCm: number;
+  stemWidthCm: number;
+  variant: string;
+  potLiters: number;
+  imageUrl: string;
+  growerName: string;
+  growerPhone?: string;
+  germinationDate: string | null;
+  sexo?: string | null;
+  dataSexagem?: string | null;
+  dataFloracao?: string | null;
+  level: number;
 }
 
 export interface PokedexStore {
@@ -26,11 +37,15 @@ export interface PokedexStore {
   selectedType: PlantType | null;
   sortBy: 'id' | 'widthCm' | 'heightCm' | 'stemWidthCm';
 
+  hideCannabis: boolean;
+
   setPlants: (plants: Plant[]) => void;
   setSelectedPlant: (id: number | null) => void;
   setSearchQuery: (query: string) => void;
   setSelectedType: (type: PlantType | null) => void;
   setSortBy: (sort: 'id' | 'widthCm' | 'heightCm' | 'stemWidthCm') => void;
+  setHideCannabis: (hide: boolean) => void;
+
   addPlant: (plant: Plant) => void;
   updatePlant: (plant: Plant) => void;
   removePlant: (plantId: number) => void;

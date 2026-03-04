@@ -1,5 +1,5 @@
 import type { Planta } from '../types';
-import type { Plant, PlantType } from '../types/pokedex';
+import type { Plant, PlantType, PlantSpecies } from '../types/pokedex';
 
 const VASO_LITERS: Record<string, number> = {
   CINCO_L: 5,
@@ -26,16 +26,21 @@ export function mapPlantaToPokedexPlant(
   const type = (planta.estagio || 'GERMINACAO') as PlantType;
   const potLiters = VASO_LITERS[planta.tamanhoVaso] ?? 0;
 
+  const species = (String((planta as any).especie || 'CANNABIS').toUpperCase() as PlantSpecies) || 'CANNABIS';
+  const imageUrl = species === 'ROSEIRA' ? '🌹' : '🌿';
+
   return {
     id: planta.id,
     name: planta.nome,
     type,
+    species,
+    pestActive: Boolean(planta.praga),
     heightCm: planta.altura,
     widthCm: planta.largura,
     stemWidthCm: planta.larguraCaule,
     variant: planta.strain ?? '',
     potLiters,
-    imageUrl: '🌿',
+    imageUrl,
     growerName: grower?.name || DEFAULT_GROWER_NAME,
     growerPhone: grower?.phone || DEFAULT_GROWER_PHONE,
     germinationDate: formatIsoDateToBr((planta as any).dataGerminacao),

@@ -3,7 +3,6 @@ import type { Aditivo } from '../types';
 import type { PlantType } from '../types/pokedex';
 import { apiService } from '../services/api';
 import type { StoredWateringMixItem } from '../utils/wateringMixStorage';
-import { getAditivoStock, ADITIVO_STOCK_UPDATED_EVENT } from '../utils/aditivoStorage';
 import { EstoqueBox } from './EstoqueBox';
 
 type ToolboxProps = {
@@ -122,6 +121,27 @@ export function AditivosToolbox({
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchAditivos = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await apiService.getAditivos(0, 500);
+      const list = (response as any)?.content ?? response;
+      const items = Array.isArray(list) ? (list as Aditivo[]) : [];
+      setAllAditivos(items);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      if (status === 401 || status === 403) {
+        setError('Você precisa estar logado para ver o inventário.');
+      } else {
+        setError('Não foi possível carregar os aditivos do inventário.');
+      }
+      setAllAditivos([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const [allAditivos, setAllAditivos] = useState<Aditivo[]>([]);
 
   const [draft, setDraft] = useState<Record<number, StoredWateringMixItem>>({});
@@ -140,67 +160,68 @@ export function AditivosToolbox({
     setQuery('');
     setError(null);
 
-    let active = true;
-    setIsLoading(true);
-    apiService
-      .getAditivos(0, 500)
-      .then((response) => {
-        const list = (response as any)?.content ?? response;
-        const items = Array.isArray(list) ? (list as Aditivo[]) : [];
-        if (!active) return;
-        setAllAditivos(items);
-      })
-      .catch((e: any) => {
-        if (!active) return;
-        const status = e?.response?.status;
-        if (status === 401 || status === 403) {
-          setError('Você precisa estar logado para ver o inventário.');
-        } else {
-          setError('Não foi possível carregar os aditivos do inventário.');
-        }
-        setAllAditivos([]);
-      })
-      .finally(() => {
-        if (!active) return;
-        setIsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
+    void fetchAditivos();
   }, [open, initialSelected, plantId]);
 
-  // Only show aditivos with enough stock for the desired dose (volume)
+  // Estoque pode mudar após registrar evento (rega aditivada / inseticida).
+  // Quando isso acontecer, recarrega o catálogo enquanto o modal estiver aberto.
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => {
+      void fetchAditivos();
+    };
+    window.addEventListener('PRODUTO_ESTOQUE_UPDATED', handler);
+    return () => window.removeEventListener('PRODUTO_ESTOQUE_UPDATED', handler);
+  }, [open]);
+
+  // Se um item estiver selecionado no MIX mas ele sumiu do catálogo,
+  // removemos automaticamente do draft para evitar "seleção fantasma".
+  // IMPORTANT: este modal também é usado para montar MODELO (MODELO_ADITIVADO) e não consome estoque.
+  // Por isso NÃO removemos por falta de estoque; apenas se o item não existir mais.
+  useEffect(() => {
+    if (!open) return;
+    if (!allAditivos || allAditivos.length === 0) return;
+
+    const existingIds = new Set(
+      allAditivos
+        .filter((a) => String(a.tipo ?? 'ADITIVO').toUpperCase() === 'ADITIVO')
+        .map((a) => a.id)
+    );
+
+    setDraft((prev) => {
+      let changed = false;
+      const next: Record<number, StoredWateringMixItem> = {};
+      for (const [key, item] of Object.entries(prev)) {
+        const id = Number(key);
+        if (existingIds.has(id)) {
+          next[id] = item;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [open, allAditivos]);
+
+  // Lista de aditivos para MODELO: não filtrar por estoque.
   const filtered = useMemo(() => {
     const q = normalizeText(query);
-    const base = q
+    const baseRaw = q
       ? allAditivos.filter((a) => {
           const hay = `${a.nome} ${a.marca}`;
           return normalizeText(hay).includes(q);
         })
       : allAditivos;
 
-    // Get the current desired volume in mL from localStorage (same as WateringModal)
-    let desiredVolumeMl = 1000;
-    if (typeof window !== 'undefined') {
-      try {
-        const key = `plant:${plantId}:watering-volume-ml`;
-        const stored = localStorage.getItem(key);
-        const parsed = stored ? Number(stored) : NaN;
-        if (Number.isFinite(parsed) && parsed > 0) desiredVolumeMl = Math.round(parsed);
-      } catch {}
-    }
+    // Este modal é do MIX (rega aditivada). Não deve listar INSETICIDA/VASO.
+    const base = baseRaw.filter((a) => String(a.tipo ?? 'ADITIVO').toUpperCase() === 'ADITIVO');
 
-    // Only show aditivos with enough stock for the desired dose (dosePadraoEmML * desiredVolumeMl/1000)
+    // Regra do produto: aqui devem aparecer somente itens realmente em estoque.
+    // (O modelo usa catálogo do inventário; se está 0ml, não deve poluir a lista.)
     const filteredByStock = base.filter((a) => {
-      // Always show if already selected (to allow user to remove)
-      if (draft[a.id]) return true;
-      const stock = getAditivoStock(a.id);
-      const estoque = stock.estoqueMl;
-      const dose = typeof a.dosePadraoEmML === 'number' && a.dosePadraoEmML > 0 ? a.dosePadraoEmML : 1;
-      // Dose is per L, so multiply by desired volume in L
-      const totalDose = dose * (desiredVolumeMl / 1000);
-      return estoque >= totalDose;
+      const tracked = Boolean(a.estoque?.tracked);
+      const stock = Number(a.estoque?.stockMlAtual ?? 0);
+      return tracked && Number.isFinite(stock) && stock > 0;
     });
 
     const relRank = (r: Relevance) => (r === 'match' ? 0 : r === 'neutral' ? 1 : 2);
@@ -295,7 +316,7 @@ export function AditivosToolbox({
           ) : error ? (
             <div className="mt-3 text-sm text-red-300">{error}</div>
           ) : filtered.length === 0 ? (
-            <div className="mt-3 text-sm text-[#9fb0c0]">Nenhum aditivo encontrado.</div>
+            <div className="mt-3 text-sm text-[#9fb0c0]">Nenhum aditivo em estoque para uso.</div>
           ) : (
             <div className="mt-3 max-h-[46vh] overflow-auto rounded-lg border border-white/10 bg-black/20">
               <div className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-3 py-2 text-[11px] font-semibold text-slate-300/80 uppercase tracking-[0.06em] bg-[#0B1220]/80 backdrop-blur border-b border-white/10">
@@ -325,7 +346,7 @@ export function AditivosToolbox({
                       : '—';
                   const desc = briefDescription(a.descricao);
 
-                  const stockML = getAditivoStock(a.id).estoqueMl;
+                  const stockML = Math.max(0, Math.round(a.estoque?.stockMlAtual ?? 0));
                   return (
                     <div
                       key={a.id}

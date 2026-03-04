@@ -2,6 +2,7 @@ import { useContext } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { Login } from './pages/Login';
 import { Pokedex } from './pages/Pokedex';
+import { AppToastCenter } from './components/AppToastCenter';
 import './App.css';
 
 function AppContent() {
@@ -16,6 +17,7 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
+      <AppToastCenter />
       <AppContent />
     </AuthProvider>
   );

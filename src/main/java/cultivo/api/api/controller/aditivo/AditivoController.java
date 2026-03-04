@@ -1,16 +1,26 @@
 package cultivo.api.api.controller.aditivo;
 
 import cultivo.api.application.aditivo.ClassificadorAditivoService;
+import cultivo.api.application.estoque.ProdutoEstoqueService;
 import cultivo.api.domain.aditivo.ClasseAditivo;
 import cultivo.api.domain.aditivo.Aditivo;
+import cultivo.api.domain.aditivo.TipoProduto;
+import cultivo.api.domain.usuario.Usuario;
+import cultivo.api.domain.estoque.ProdutoEstoque;
 import cultivo.api.infrastructure.persistence.aditivo.AditivoRepository;
+import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/aditivos")
@@ -21,6 +31,22 @@ public class AditivoController {
 
     @Autowired
     private ClassificadorAditivoService classificadorAditivoService;
+
+    @Autowired
+    private CultivadorRepository cultivadorRepository;
+
+    @Autowired
+    private ProdutoEstoqueService estoqueService;
+
+    private DadosEstoqueProduto toEstoqueDto(ProdutoEstoque e) {
+        if (e == null) return null;
+        // Defesa dupla: garante que o JSON nunca venha com null em campos numéricos.
+        Double stock = e.getStockMlAtual() != null ? e.getStockMlAtual() : 0.0;
+        Integer unidades = e.getUnidades() != null ? e.getUnidades() : 0;
+        Integer mlFrasco = e.getMlFrasco() != null ? e.getMlFrasco() : 0;
+        String tipo = (e.getTipoProduto() != null) ? e.getTipoProduto().toString() : null;
+        return new DadosEstoqueProduto(true, tipo, stock, unidades, mlFrasco);
+    }
 
     @PostMapping
     public ResponseEntity<Aditivo> cadastrar(@Valid @RequestBody DadosCadastroAditivo dados, UriComponentsBuilder uri) {
@@ -34,38 +60,147 @@ public class AditivoController {
         return ResponseEntity.created(uriBuilder).body(aditivo);
     }
 
+    /**
+     * Catálogo do jogo (com estoque por cultivador).
+     *
+     * Observação: continua em /aditivos por compatibilidade com o front.
+     */
     @GetMapping
-    public ResponseEntity<Page<Aditivo>> listar(Pageable paginacao) {
+    public ResponseEntity<?> listar(
+            @AuthenticationPrincipal Usuario usuario,
+            Pageable paginacao
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var cultivador = cultivadorRepository.findByUsuarioId(usuario.getId());
+        if (cultivador == null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
         var page = repository.findAll(paginacao);
-        return ResponseEntity.ok(page);
+        var ids = page.getContent().stream().map(Aditivo::getId).toList();
+        var estoqueMap = estoqueService.mapByProdutoId(cultivador.getId(), ids);
+
+        List<DadosAditivoCatalogo> content = page.getContent().stream().map(a -> {
+            var estoque = estoqueMap.get(a.getId());
+
+            // IMPORTANT (MVP):
+            // - Se NÃO existe registro em `cultivador_produtos_estoque`, retornamos `estoque = null`.
+            //   Isso evita o front tratar um "não rastreado" como um estoque 0 e sobrescrever
+            //   o cache local (localStorage) com `tracked=false` em listas antigas.
+            // - Se existir registro, retornamos os valores reais e `tracked=true`.
+            DadosEstoqueProduto estoqueDto = toEstoqueDto(estoque);
+
+            return new DadosAditivoCatalogo(
+                    a.getId(),
+                    a.getNome(),
+                    a.getMarca(),
+                    a.getDescricao(),
+                    a.getEstagio(),
+                    a.getClasse(),
+                    a.getDosePadraoEmML(),
+                    a.getAtivo(),
+                    a.getTipo() != null ? a.getTipo().toString() : null,
+                    a.getCapacidadeLitros(),
+                    a.getRoundsRecomendados(),
+                    a.getDescansoDiasRecomendados(),
+                    a.getDoseMinEmML(),
+                    a.getDoseMaxEmML(),
+                    a.getPragasEfetivas(),
+                    estoqueDto
+            );
+        }).toList();
+
+        Page<DadosAditivoCatalogo> dtoPage = new PageImpl<>(content, paginacao, page.getTotalElements());
+        return ResponseEntity.ok(dtoPage);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Aditivo> detalhar(@PathVariable Long id) {
-        var aditivo = repository.findById(id);
-        return aditivo.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<?> detalhar(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Usuario usuario
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var cultivador = cultivadorRepository.findByUsuarioId(usuario.getId());
+        if (cultivador == null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
+        var aditivoOpt = repository.findById(id);
+        if (aditivoOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var a = aditivoOpt.get();
+        var estoqueOpt = estoqueService.findByCultivadorAndProduto(cultivador.getId(), id);
+        // Sem registro => estoque = null (front decide via cache/localStorage).
+        var estoqueDto = estoqueOpt.map(this::toEstoqueDto).orElse(null);
+
+        var dto = new DadosAditivoCatalogo(
+                a.getId(),
+                a.getNome(),
+                a.getMarca(),
+                a.getDescricao(),
+                a.getEstagio(),
+                a.getClasse(),
+                a.getDosePadraoEmML(),
+                a.getAtivo(),
+                a.getTipo() != null ? a.getTipo().toString() : null,
+                a.getCapacidadeLitros(),
+                a.getRoundsRecomendados(),
+                a.getDescansoDiasRecomendados(),
+                a.getDoseMinEmML(),
+                a.getDoseMaxEmML(),
+                a.getPragasEfetivas(),
+                estoqueDto
+        );
+
+        return ResponseEntity.ok(dto);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Aditivo> atualizar(@PathVariable Long id, @Valid @RequestBody DadosAtualizacaoAditivo dados) {
+    public ResponseEntity<?> atualizar(@PathVariable Long id, @Valid @RequestBody DadosAtualizacaoAditivo dados) {
         var aditivo = repository.findById(id);
         if (aditivo.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        
+
         var aditivoExistente = aditivo.get();
-        if (dados.nome() != null) {
-            aditivoExistente = new Aditivo(id, dados.nome(), 
-                    dados.marca() != null ? dados.marca() : aditivoExistente.getMarca(),
-                    dados.descricao() != null ? dados.descricao() : "",
-                    dados.estagio() != null ? dados.estagio() : aditivoExistente.getEstagio(),
-                    dados.classe() != null ? dados.classe() : aditivoExistente.getClasse(),
-                    dados.dosePadraoEmML() != null ? dados.dosePadraoEmML() : aditivoExistente.getDosePadraoEmML(),
-                    aditivoExistente.getAtivo());
-            repository.save(aditivoExistente);
+
+        // tipo é opcional; se não vier, preserva.
+        TipoProduto tipo = null;
+        try {
+            if (dados.tipo() != null) {
+                tipo = TipoProduto.valueOf(dados.tipo());
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            aditivoExistente.atualizarDados(
+                    dados.nome(),
+                    dados.marca(),
+                    dados.descricao(),
+                    dados.estagio(),
+                    dados.classe(),
+                    dados.dosePadraoEmML(),
+                    tipo,
+                    dados.capacidadeLitros(),
+                    dados.roundsRecomendados(),
+                    dados.descansoDiasRecomendados(),
+                    dados.doseMinEmML(),
+                    dados.doseMaxEmML(),
+                    dados.pragasEfetivas()
+            );
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
         }
-        
+
+        repository.save(aditivoExistente);
         return ResponseEntity.ok(aditivoExistente);
     }
 
@@ -75,11 +210,11 @@ public class AditivoController {
         if (aditivo.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        
+
         var aditivoExistente = aditivo.get();
         aditivoExistente.desativar();
         repository.save(aditivoExistente);
-        
+
         return ResponseEntity.noContent().build();
     }
 }

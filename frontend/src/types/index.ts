@@ -2,17 +2,25 @@ export interface Planta {
   id: number;
   nome: string;
   strain?: string | null;
+  especie?: string | null;
+
+  /** flag simples: existe sinal de praga ativo (enquanto durar o tratamento) */
+  praga?: boolean;
+
   altura: number;
   largura: number;
   larguraCaule: number;
   tamanhoVaso: string;
   estagio: string;
+
   sexo?: string | null;
   dataSexagem?: string | null;
   dataFloracao?: string | null;
+
   ativo: boolean;
   dataGerminacao: string | null;
   dataCriacao: string;
+
   level?: number;
   xp?: number;
   pontosDisponiveis?: number;
@@ -21,7 +29,7 @@ export interface Planta {
 export interface PlantaCompleta extends Planta {
   cultivadorId: number;
   cultivadorNome: string;
-  cultivivadorLogin?: string | null;
+  cultivadorLogin?: string | null;
   cultivadorTelefone: string;
   cultivadorAtivo: boolean;
   aditivos: PlantaAditivo[];
@@ -35,6 +43,14 @@ export interface PlantaAditivo {
   aditivoDescricao: string;
   estagio: string;
   doseEmML: number;
+}
+
+export interface ProdutoEstoque {
+  tracked: boolean;
+  tipoProduto: string | null;
+  stockMlAtual: number;
+  unidades: number;
+  mlFrasco: number;
 }
 
 export interface Aditivo {
@@ -54,6 +70,16 @@ export interface Aditivo {
     | string;
   dosePadraoEmML: number | null;
   ativo: boolean;
+
+  // --- produto (MVP: mesma API) ---
+  tipo?: 'ADITIVO' | 'INSETICIDA' | 'VASO' | 'OUTRO' | string;
+  estoque?: ProdutoEstoque;
+  capacidadeLitros?: number | null;
+  roundsRecomendados?: number | null;
+  descansoDiasRecomendados?: number | null;
+  doseMinEmML?: number | null;
+  doseMaxEmML?: number | null;
+  pragasEfetivas?: string | null;
 }
 
 export interface Page<T> {
@@ -82,26 +108,80 @@ export interface PlantaEvento {
   dataEvento: string;
   descricao: string | null;
   doseEmML: number | null;
+
+  // --- inseticida/tratamento ---
+  produtoId?: number | null;
+  tratamentoId?: number | null;
+  roundAtual?: number | null;
+  roundsTotal?: number | null;
+  descansoDias?: number | null;
+  proximaAplicacaoEm?: string | null;
+  fimTratamentoEm?: string | null;
+}
+
+export type StatusEventoPlanejado = 'PENDENTE' | 'EXECUTADO' | 'CANCELADO' | 'EXPIRADO' | string;
+
+export interface AgendaPlanejado {
+  id: number;
+  roundIndex: number;
+  scheduledAt: string;
+  status: StatusEventoPlanejado;
+  executedAt?: string | null;
+  eventoExecucaoId?: number | null;
+  doseEmML?: number | null;
+}
+
+export interface AgendaInseticida {
+  plantaId: number;
+  plantaNome: string;
+  tratamentoId: number;
+  produtoNome: string;
+  roundsTotal: number;
+  roundAtual: number;
+  descansoDias: number;
+  inicioEm: string;
+  fimTratamentoEm?: string | null;
+  proximaAplicacaoEm?: string | null;
+  planejados: AgendaPlanejado[];
 }
 
 export interface PlantaEventoPayload {
   tipo: string;
   descricao: string;
   doseEmML?: number | null;
-
-  // opcional: evita duplicação por double click/retry
+  produtoId?: number | null;
+  consumos?: Array<{ produtoId: number; consumoEmML: number }>;
+  roundsTotal?: number | null;
+  descansoDias?: number | null;
   idempotencyKey?: string;
 }
 
+
+
+export interface PlantaEquipamento {
+  id: number;
+  slot: 'POT' | string;
+  produtoId: number;
+  produtoNome: string;
+  produtoTipo: string;
+  capacidadeLitros?: number | null;
+  corHex?: string | null;
+  skinId?: string | null;
+  apelido?: string | null;
+  equipadoEm?: string | null;
+}
 export interface PlantaCreatePayload {
   cultivadorId: number;
   nome: string;
   strain?: string | null;
+  especie?: string | null;
+
   altura: number;
   largura: number;
   larguraCaule: number;
   tamanhoVaso: string;
   estagio: string;
+
   dataGerminacao?: string | null;
   sexo?: string | null;
   dataSexagem?: string | null;
@@ -111,11 +191,14 @@ export interface PlantaCreatePayload {
 export interface PlantaCreateMePayload {
   nome: string;
   strain?: string | null;
+  especie?: string | null;
+
   altura: number;
   largura: number;
   larguraCaule: number;
   tamanhoVaso: string;
   estagio: string;
+
   dataGerminacao?: string | null;
   sexo?: string | null;
   dataSexagem?: string | null;
@@ -125,12 +208,16 @@ export interface PlantaCreateMePayload {
 export interface PlantaUpdatePayload {
   nome: string;
   strain?: string | null;
+  especie?: string | null;
+
   dataGerminacao?: string | null;
   altura?: number | null;
   largura?: number | null;
   larguraCaule?: number | null;
+
   tamanhoVaso: string;
   estagio?: string | null;
+
   sexo?: string | null;
   dataSexagem?: string | null;
   dataFloracao?: string | null;

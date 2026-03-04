@@ -7,6 +7,8 @@ public record DadosDetalhePlantaCompleta(
         Long id,
         String nome,
         String strain,
+        String especie,
+        Boolean praga,
         Double altura,
         Double largura,
         Double larguraCaule,
@@ -24,5 +26,4 @@ public record DadosDetalhePlantaCompleta(
         String cultivadorTelefone,
         Boolean cultivadorAtivo,
         List<DadosDetalhePlantaAditivo> aditivos
-) {
-}
+) {}

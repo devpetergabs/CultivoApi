@@ -60,6 +60,7 @@ function getNextStage(stage: PlantType): PlantType | null {
 
 export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPreviewProps) {
   const [growthModalOpen, setGrowthModalOpen] = useState(false);
+  const [bucketFx, setBucketFx] = useState<{ variant: 'A' | 'B'; key: number } | null>(null);
 
   const age = calculateAge(plant.germinationDate);
   const isEpic = plant.heightCm > 180;
@@ -70,6 +71,9 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
 
   // ✅ Glow só quando estiver em FLORAÇÃO (não veg/germa)
   const isFloweringStage = String(plant.type).startsWith('FLORACAO');
+
+  // ☣ Estado de praga ativo (flag simples do backend)
+  const pestActive = Boolean((plant as any).pestActive);
 
   const [nextWaterType, setNextWaterType] = useState<'A' | 'B'>('A');
   const [stockVersion, setStockVersion] = useState(0);
@@ -226,6 +230,13 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
   const registerWateringEvent = async (variant: 'A' | 'B') => {
     const ml = getStoredVolumeMl();
 
+    // Aura arcana (feedback imediato)
+    try {
+      const k = Date.now();
+      setBucketFx({ variant, key: k });
+      window.setTimeout(() => setBucketFx((cur) => (cur?.key === k ? null : cur)), 720);
+    } catch {}
+
     const doWaterNormal = async () => {
       try {
         await apiService.createPlantaEvento(plant.id, {
@@ -239,6 +250,8 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
         persistNextWaterType('B');
       } catch (err) {
         console.error('[ERRO REGISTRO REGA]', err);
+        const status = (err as any)?.response?.status;
+        if (status === 403 || status === 404) return; // toast global (não-proprietário)
         showToast('Falha ao registrar rega', 'error');
       }
     };
@@ -269,14 +282,24 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
 
       const doWaterAditivada = async () => {
         try {
+          const itemsToConsume = mix.items as Array<{ id: number; doseMl: number }>;
+          const consumos = itemsToConsume
+            .map((item) => {
+              const volumeLiters = ml / 1000;
+              const totalMl = Math.round(item.doseMl * volumeLiters);
+              return { produtoId: item.id, consumoEmML: totalMl };
+            })
+            .filter((c) => Number.isFinite(c.consumoEmML) && c.consumoEmML > 0);
+
           await apiService.createPlantaEvento(plant.id, {
             tipo: 'REGA_ADITIVADA',
             descricao: `Rega (água aditivada): ${ml}mL + ${mixDescription}`,
             doseEmML: ml,
+            consumos,
           });
 
-          const itemsToDeduct = mix.items as Array<{ id: number; doseMl: number }>;
-          for (const item of itemsToDeduct) {
+          // Deduz cache local (somente espelho) após sucesso da API
+          for (const item of itemsToConsume) {
             if (Number.isFinite(item.doseMl) && item.doseMl > 0) {
               const volumeLiters = ml / 1000;
               const totalMl = Math.round(item.doseMl * volumeLiters);
@@ -284,11 +307,18 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
             }
           }
 
+          // Força outras telas/modais a recarregarem estoque do backend.
+          try {
+            window.dispatchEvent(new Event('PRODUTO_ESTOQUE_UPDATED'));
+          } catch {}
+
           showToast('Rega aditivada registrada', 'success');
           setNextWaterType('A');
           persistNextWaterType('A');
         } catch (err) {
           console.error('[ERRO REGISTRO REGA]', err);
+          const status = (err as any)?.response?.status;
+          if (status === 403 || status === 404) return; // toast global (não-proprietário)
           showToast('Falha ao registrar rega', 'error');
         }
       };
@@ -359,13 +389,25 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
           ${
             isEpic
               ? 'border-[#e7c35a] shadow-epic-halo ring-1 ring-[#e7c35a]/25 bg-gradient-to-br from-[#1b180f] to-[#0B1220]'
+              : pestActive
+              ? 'border-lime-300/70 shadow-[0_0_18px_rgba(163,230,53,0.18)] ring-1 ring-lime-300/20 bg-gradient-to-br from-[#0f1f18] to-[#0B1220]'
               : isSelected
               ? 'border-[#6fbf86] shadow-[0_0_14px_rgba(111,191,134,0.22)] ring-1 ring-[#6fbf86]/28 bg-gradient-to-br from-[#111A2E] to-[#0B1220]'
               : 'border-[rgba(255,255,255,0.12)] hover:border-[#6fbf86]/70 hover:shadow-[0_0_14px_rgba(111,191,134,0.18)] bg-gradient-to-br from-[#111A2E]/80 to-[#0B1220]/80'
           }
+          ${pestActive && isSelected ? 'outline outline-1 outline-emerald-300/20' : ''}
           ${growthModalOpen ? 'cursor-default' : 'cursor-pointer'}
         `}
       >
+        {/* ☣ overlay radioativo (sutil) */}
+        {pestActive && !isEpic && (
+          <>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-lime-400/10 via-emerald-400/5 to-transparent" />
+            <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl opacity-60 animate-[pulse_3.6s_ease-in-out_infinite]" />
+            <div className="pointer-events-none absolute -right-10 -bottom-10 h-48 w-48 rounded-full bg-emerald-400/8 blur-2xl opacity-60 animate-[pulse_4.2s_ease-in-out_infinite]" />
+          </>
+        )}
+
         <div className="p-4 h-full flex flex-col pb-6">
           {/* ID */}
           <div className="absolute top-3 left-3 z-40 bg-black/50 rounded px-2.5 py-1 border border-[#7BD389]/50 backdrop-blur-sm">
@@ -380,6 +422,16 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               <span className="text-[11px] font-semibold text-[#e6f1ff] font-mono tracking-wide">
                 ⏰ {age}d
               </span>
+            </div>
+          )}
+
+          {/* ☣ Badge de praga (estado ativo) */}
+          {pestActive && !isEpic && (
+            <div
+              className={`absolute ${age !== null ? 'top-10' : 'top-3'} right-3 z-40 rounded px-2.5 py-1 border border-lime-300/40 bg-black/55 backdrop-blur-sm`}
+              title="Sinal de praga ativo"
+            >
+              <span className="text-[11px] font-semibold text-lime-200 font-mono tracking-wide">☣ PRAGA</span>
             </div>
           )}
 
@@ -498,7 +550,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                   type="button"
                   aria-label="Regar A: água pura"
                   title="Regar A (água pura)"
-                  className={`w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
+                  className={`relative overflow-hidden w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
                     nextWaterType === 'A'
                       ? 'ring-2 ring-emerald-400 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,.28)] animate-[pulse_3s_ease-in-out_infinite]'
                       : 'opacity-50 grayscale-[0.2] hover:opacity-80'
@@ -509,6 +561,19 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                     await registerWateringEvent('A');
                   }}
                 >
+                  {bucketFx?.variant === 'A' && (
+                    <motion.span
+                      key={`fxA:${bucketFx.key}`}
+                      className="pointer-events-none absolute inset-0 rounded-full"
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      animate={{ opacity: [0, 0.85, 0], scale: [0.6, 1.25, 1.55] }}
+                      transition={{ duration: 0.7, ease: 'easeOut' }}
+                      style={{
+                        background:
+                          'radial-gradient(circle at 35% 30%, rgba(16,185,129,0.55) 0%, rgba(16,185,129,0.18) 35%, rgba(0,0,0,0) 70%)',
+                      }}
+                    />
+                  )}
                   <img src={baldeAgua} alt="" className="h-10 w-10 object-contain" />
                 </button>
 
@@ -517,7 +582,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                   type="button"
                   aria-label="Regar B: água aditivada"
                   title="Regar B (água aditivada)"
-                  className={`w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 ${
+                  className={`relative overflow-hidden w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 ${
                     nextWaterType === 'B'
                       ? mixStockFlags.hasEmpty
                         ? 'ring-2 ring-red-400 bg-red-500/10 shadow-[0_0_12px_rgba(248,113,113,.24)] animate-[pulse_3s_ease-in-out_infinite] opacity-60 cursor-not-allowed'
@@ -534,6 +599,19 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                   }}
                   disabled={mixStockFlags.hasEmpty}
                 >
+                  {bucketFx?.variant === 'B' && (
+                    <motion.span
+                      key={`fxB:${bucketFx.key}`}
+                      className="pointer-events-none absolute inset-0 rounded-full"
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      animate={{ opacity: [0, 0.9, 0], scale: [0.6, 1.28, 1.6] }}
+                      transition={{ duration: 0.75, ease: 'easeOut' }}
+                      style={{
+                        background:
+                          'radial-gradient(circle at 40% 35%, rgba(168,85,247,0.55) 0%, rgba(236,72,153,0.18) 40%, rgba(0,0,0,0) 72%)',
+                      }}
+                    />
+                  )}
                   <img src={baldeMistico} alt="" className="h-10 w-10 object-contain" />
                 </button>
 
