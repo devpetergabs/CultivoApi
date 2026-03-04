@@ -117,15 +117,15 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
   return (
     <>
       {/* Root ancorado: evita “torto” quando o componente cai em um pai não-positionado */}
-      <div ref={rootRef} className="absolute bottom-5 right-4 z-30">
+      <div ref={rootRef} className="absolute bottom-2 right-2 z-30">
         <button
           type="button"
           ref={fabRef}
           onClick={handleOpen}
-          className="h-10 w-10 rounded-full bg-transparent text-[#0b1220] flex items-center justify-center shadow-[0_0_10px_rgba(111,191,134,0.26)] border border-transparent hover:scale-105 hover:shadow-[0_0_12px_rgba(111,191,134,0.32)] transition-transform transition-shadow"
+          className="h-9 w-9 rounded-full bg-transparent text-[#0b1220] flex items-center justify-center shadow-[0_0_10px_rgba(111,191,134,0.26)] border border-transparent hover:scale-105 hover:shadow-[0_0_12px_rgba(111,191,134,0.32)] transition-transform transition-shadow"
           aria-label="Acoes rapidas da planta"
         >
-          <img src={cannabisIcon} alt="Cannabis" className="h-[30px] w-[30px] object-contain" />
+          <img src={cannabisIcon} alt="Cannabis" className="h-[28px] w-[28px] object-contain" />
         </button>
 
         {isOpen && (

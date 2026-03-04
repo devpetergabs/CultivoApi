@@ -5,6 +5,7 @@ import type { PlantType } from '../types/pokedex';
 import { TypeBadge } from './TypeBadge';
 import { PlantQuickActions } from './PlantQuickActions';
 import { GrowthModal } from './GrowthModal';
+import { CrescerAction } from './actions/CrescerAction';
 import { apiService } from '../services/api';
 import baldeAgua from '../assets/balde-agua.png';
 import baldeMistico from '../assets/balde-mistico.png';
@@ -436,7 +437,7 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
           )}
 
           {/* HERO */}
-          <div className="relative flex items-center justify-center h-32 mb-4 rounded-lg border border-white/10 bg-gradient-to-b from-[#172232] to-[#0B1220] overflow-hidden group-hover:border-[#6fbf86]/25 transition-colors">
+          <div className="relative flex items-center justify-center h-32 mb-2 rounded-lg border border-white/10 bg-gradient-to-b from-[#172232] to-[#0B1220] overflow-hidden group-hover:border-[#6fbf86]/25 transition-colors">
             {/* specular highlight */}
             <div className="pointer-events-none absolute -top-10 -left-10 h-28 w-28 rounded-full bg-white/10 blur-2xl opacity-25 group-hover:opacity-35 transition-opacity" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-25" />
@@ -478,20 +479,16 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
             </motion.div>
           </div>
 
-          {/* Header */}
-          <div className="mb-3">
-            <h3 className="font-semibold text-slate-100 text-base tracking-wide line-clamp-2 group-hover:text-[#A7E5B2] transition-colors">
+          {/* ── ROW 1: Plant name  ←→  Stage badge ── */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h3 className="font-semibold text-slate-100 text-base tracking-wide line-clamp-1 group-hover:text-[#A7E5B2] transition-colors min-w-0 flex-1">
               {plant.name}
             </h3>
-            {/* ✅ sem repetir strain aqui — fica só no HERO */}
-          </div>
-
-          {/* Type + Actions */}
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
+            <div className="shrink-0">
               <TypeBadge
                 type={plant.type}
-                size="md"
+                size="sm"
+                mode="rpg"
                 action={
                   nextStage ? (
                     <span
@@ -536,148 +533,139 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
                 }
               />
             </div>
+          </div>
 
-            <div className="relative flex flex-col items-center gap-2 ml-2 pl-3">
-              <div className="absolute left-0 top-1 bottom-1 bg-gradient-to-b from-transparent via-white/10 to-transparent w-[1px]" />
-
-              <span className="text-[10px] tracking-wide uppercase text-emerald-200 bg-white/5 border border-white/10 rounded-md px-2 py-0.5">
-                PRÓXIMA: {nextWaterType === 'A' ? 'ÁGUA' : 'ADITIVADA'}
+          {/* ── ROW 2: Watering strip — label + both bucket buttons ── */}
+          <div className="flex items-center gap-2 mb-3 rounded-lg bg-white/[0.03] border border-white/10 px-2.5 py-1.5">
+            <span className="flex-1 text-[10px] tracking-wide font-medium text-slate-400">
+              💧 PRÓXIMA:{' '}
+              <span className={nextWaterType === 'B' ? 'text-purple-300' : 'text-emerald-300'}>
+                {nextWaterType === 'A' ? 'Água' : 'Aditivada'}
               </span>
+            </span>
 
-              <div className="flex items-center gap-2">
-                {/* BALDE A */}
-                <button
-                  type="button"
-                  aria-label="Regar A: água pura"
-                  title="Regar A (água pura)"
-                  className={`relative overflow-hidden w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
-                    nextWaterType === 'A'
-                      ? 'ring-2 ring-emerald-400 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,.28)] animate-[pulse_3s_ease-in-out_infinite]'
-                      : 'opacity-50 grayscale-[0.2] hover:opacity-80'
-                  }`}
-                  onClick={async (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    await registerWateringEvent('A');
+            {/* BALDE A */}
+            <button
+              type="button"
+              aria-label="Regar A: água pura"
+              title="Regar A (água pura)"
+              className={`relative overflow-hidden w-9 h-9 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-[1.06] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${
+                nextWaterType === 'A'
+                  ? 'ring-2 ring-emerald-400 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,.28)] animate-[pulse_3s_ease-in-out_infinite]'
+                  : 'opacity-50 grayscale-[0.2] hover:opacity-80'
+              }`}
+              onClick={async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                await registerWateringEvent('A');
+              }}
+            >
+              {bucketFx?.variant === 'A' && (
+                <motion.span
+                  key={`fxA:${bucketFx.key}`}
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: [0, 0.85, 0], scale: [0.6, 1.25, 1.55] }}
+                  transition={{ duration: 0.7, ease: 'easeOut' }}
+                  style={{
+                    background:
+                      'radial-gradient(circle at 35% 30%, rgba(16,185,129,0.55) 0%, rgba(16,185,129,0.18) 35%, rgba(0,0,0,0) 70%)',
                   }}
-                >
-                  {bucketFx?.variant === 'A' && (
-                    <motion.span
-                      key={`fxA:${bucketFx.key}`}
-                      className="pointer-events-none absolute inset-0 rounded-full"
-                      initial={{ opacity: 0, scale: 0.6 }}
-                      animate={{ opacity: [0, 0.85, 0], scale: [0.6, 1.25, 1.55] }}
-                      transition={{ duration: 0.7, ease: 'easeOut' }}
-                      style={{
-                        background:
-                          'radial-gradient(circle at 35% 30%, rgba(16,185,129,0.55) 0%, rgba(16,185,129,0.18) 35%, rgba(0,0,0,0) 70%)',
-                      }}
-                    />
-                  )}
-                  <img src={baldeAgua} alt="" className="h-10 w-10 object-contain" />
-                </button>
+                />
+              )}
+              <img src={baldeAgua} alt="" className="w-full h-full object-contain p-0.5" />
+            </button>
 
-                {/* BALDE B */}
-                <button
-                  type="button"
-                  aria-label="Regar B: água aditivada"
-                  title="Regar B (água aditivada)"
-                  className={`relative overflow-hidden w-12 h-12 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 ${
-                    nextWaterType === 'B'
-                      ? mixStockFlags.hasEmpty
-                        ? 'ring-2 ring-red-400 bg-red-500/10 shadow-[0_0_12px_rgba(248,113,113,.24)] animate-[pulse_3s_ease-in-out_infinite] opacity-60 cursor-not-allowed'
-                        : mixStockFlags.hasLow
-                        ? 'ring-2 ring-amber-300 bg-amber-500/10 shadow-[0_0_12px_rgba(251,191,36,.20)] animate-[pulse_3s_ease-in-out_infinite]'
-                        : 'ring-2 ring-purple-400 bg-purple-500/10 shadow-[0_0_12px_rgba(168,85,247,.30)] animate-[pulse_3s_ease-in-out_infinite]'
-                      : 'opacity-50 grayscale-[0.2] hover:opacity-80'
-                  }`}
-                  onClick={async (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (mixStockFlags.hasEmpty) return;
-                    await registerWateringEvent('B');
+            {/* BALDE B */}
+            <button
+              type="button"
+              aria-label="Regar B: água aditivada"
+              title="Regar B (água aditivada)"
+              className={`relative overflow-hidden w-9 h-9 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-[1.06] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 ${
+                nextWaterType === 'B'
+                  ? mixStockFlags.hasEmpty
+                    ? 'ring-2 ring-red-400 bg-red-500/10 shadow-[0_0_12px_rgba(248,113,113,.24)] animate-[pulse_3s_ease-in-out_infinite] opacity-60 cursor-not-allowed'
+                    : mixStockFlags.hasLow
+                    ? 'ring-2 ring-amber-300 bg-amber-500/10 shadow-[0_0_12px_rgba(251,191,36,.20)] animate-[pulse_3s_ease-in-out_infinite]'
+                    : 'ring-2 ring-purple-400 bg-purple-500/10 shadow-[0_0_12px_rgba(168,85,247,.30)] animate-[pulse_3s_ease-in-out_infinite]'
+                  : 'opacity-50 grayscale-[0.2] hover:opacity-80'
+              }`}
+              onClick={async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (mixStockFlags.hasEmpty) return;
+                await registerWateringEvent('B');
+              }}
+              disabled={mixStockFlags.hasEmpty}
+            >
+              {bucketFx?.variant === 'B' && (
+                <motion.span
+                  key={`fxB:${bucketFx.key}`}
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: [0, 0.9, 0], scale: [0.6, 1.28, 1.6] }}
+                  transition={{ duration: 0.75, ease: 'easeOut' }}
+                  style={{
+                    background:
+                      'radial-gradient(circle at 40% 35%, rgba(168,85,247,0.55) 0%, rgba(236,72,153,0.18) 40%, rgba(0,0,0,0) 72%)',
                   }}
-                  disabled={mixStockFlags.hasEmpty}
-                >
-                  {bucketFx?.variant === 'B' && (
-                    <motion.span
-                      key={`fxB:${bucketFx.key}`}
-                      className="pointer-events-none absolute inset-0 rounded-full"
-                      initial={{ opacity: 0, scale: 0.6 }}
-                      animate={{ opacity: [0, 0.9, 0], scale: [0.6, 1.28, 1.6] }}
-                      transition={{ duration: 0.75, ease: 'easeOut' }}
-                      style={{
-                        background:
-                          'radial-gradient(circle at 40% 35%, rgba(168,85,247,0.55) 0%, rgba(236,72,153,0.18) 40%, rgba(0,0,0,0) 72%)',
-                      }}
-                    />
-                  )}
-                  <img src={baldeMistico} alt="" className="h-10 w-10 object-contain" />
-                </button>
+                />
+              )}
+              <img src={baldeMistico} alt="" className="w-full h-full object-contain p-0.5" />
+            </button>
 
-                {/* CRESCER */}
-                <button
-                  type="button"
-                  className="ml-1 px-3 py-2 rounded bg-[#232d3a] text-[#e7c35a] text-xs font-bold border border-[#e7c35a]/30 hover:bg-[#e7c35a] hover:text-[#232d3a] transition-all"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setGrowthModalOpen(true);
-                  }}
-                >
-                  Crescer
-                </button>
-              </div>
-            </div>
+            {/* divider */}
+            <div className="w-px self-stretch bg-white/10 mx-0.5" />
+
+            {/* CRESCER */}
+            <CrescerAction onClick={() => setGrowthModalOpen(true)} />
           </div>
 
           {/* Stats */}
-          <div className="flex-1 space-y-2 pt-3 border-t border-white/10">
-            {/* ALTURA */}
-            <div className="flex items-center text-[11px]">
-              <span className="w-10 text-slate-400 font-medium tracking-[0.08em]">ALT</span>
-              <div className="flex-1 mx-2 max-w-[225px] h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    plant.heightCm > 180
-                      ? 'bg-gradient-to-r from-[#e7c35a] via-[#f2dd9b] to-[#d9a441] shadow-[0_0_7px_rgba(231,195,90,0.25)]'
-                      : 'bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)]'
-                  }`}
-                  style={{ width: `${Math.min((plant.heightCm / 180) * 100, 100) * 0.75}%` }}
-                />
+          <div className="pt-3 border-t border-white/10">
+            <div className="space-y-2 pr-8">
+              {/* ALTURA */}
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="w-7 shrink-0 text-slate-400 font-medium tracking-[0.08em]">ALT</span>
+                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      plant.heightCm > 180
+                        ? 'bg-gradient-to-r from-[#e7c35a] via-[#f2dd9b] to-[#d9a441] shadow-[0_0_7px_rgba(231,195,90,0.25)]'
+                        : 'bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)]'
+                    }`}
+                    style={{ width: `${Math.min((plant.heightCm / 180) * 100, 100) * 0.75}%` }}
+                  />
+                </div>
+                <span className={`shrink-0 w-10 text-right font-semibold ${plant.heightCm > 180 ? 'text-[#e7c35a]' : 'text-emerald-200'}`}>
+                  {plant.heightCm}cm
+                </span>
               </div>
-              <div
-                className={`w-16 text-right font-semibold ${
-                  plant.heightCm > 180 ? 'text-[#e7c35a]' : 'text-emerald-200'
-                }`}
-              >
-                {plant.heightCm}cm
-              </div>
-            </div>
 
-            {/* LARGURA */}
-            <div className="flex items-center text-[11px]">
-              <span className="w-10 text-slate-400 font-medium tracking-[0.08em]">LAR</span>
-              <div className="flex-1 mx-2 max-w-[225px] h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                <div
-                  className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
-                  style={{ width: `${Math.min((plant.widthCm / 120) * 100, 100) * 0.75}%` }}
-                />
+              {/* LARGURA */}
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="w-7 shrink-0 text-slate-400 font-medium tracking-[0.08em]">LAR</span>
+                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
+                    style={{ width: `${Math.min((plant.widthCm / 120) * 100, 100) * 0.75}%` }}
+                  />
+                </div>
+                <span className="shrink-0 w-10 text-right text-emerald-200 font-semibold">{plant.widthCm}cm</span>
               </div>
-              <div className="w-16 text-right text-emerald-200 font-semibold">{plant.widthCm}cm</div>
-            </div>
 
-            {/* CAULE */}
-            <div className="flex items-center text-[11px]">
-              <span className="w-10 text-slate-400 font-medium tracking-[0.08em]">CAULE</span>
-              <div className="flex-1 mx-2 max-w-[225px] h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                <div
-                  className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
-                  style={{ width: `${Math.min(((plant.stemWidthCm ?? 0) / 20) * 100, 100) * 0.75}%` }}
-                />
-              </div>
-              <div className="w-16 text-right text-emerald-200 font-semibold">
-                {plant.stemWidthCm ? `${plant.stemWidthCm}cm` : '--'}
+              {/* CAULE */}
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="w-7 shrink-0 text-slate-400 font-medium tracking-[0.08em]">CAU</span>
+                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] shadow-[0_0_6px_rgba(111,191,134,0.18)] transition-all duration-300"
+                    style={{ width: `${Math.min(((plant.stemWidthCm ?? 0) / 20) * 100, 100) * 0.75}%` }}
+                  />
+                </div>
+                <span className="shrink-0 w-10 text-right text-emerald-200 font-semibold">
+                  {plant.stemWidthCm ? `${plant.stemWidthCm}cm` : '--'}
+                </span>
               </div>
             </div>
           </div>
