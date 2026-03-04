@@ -74,7 +74,8 @@ export function PokedexFiltersBar({
   onHideCannabisChange,
   onOpenBulkInsecticide,
 }: PokedexFiltersBarProps) {
-  const [showFilters, setShowFilters] = useState(true);
+  // 🔒 Requisito: filtros sempre começam desativados ao abrir a tela.
+  const [showFilters, setShowFilters] = useState(false);
 
   return (
     <div className="sticky top-0 z-50 isolate pokedex-card-frame p-5 space-y-4 border-cyan-500/20">
