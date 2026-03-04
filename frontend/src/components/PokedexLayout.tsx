@@ -14,7 +14,7 @@ import { getPlantStageLabel } from './TypeBadge';
 import { potLitersToEnum } from '../utils/plantFormUtils';
 
 export function PokedexLayout() {
-  const { cultivador, usuario } = useAuth();
+  const { cultivador, usuario, logout } = useAuth();
   const {
     plants,
     selectedPlantId,
@@ -247,47 +247,50 @@ export function PokedexLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0B1220] text-white overflow-hidden">
-      <header className="relative border-b-4 border-[#6fbf86] bg-gradient-to-b from-[#2b0f0f] to-[#3a1212] px-6 py-5 shrink-0 shadow-2xl">
+      <header className="relative border-b-4 border-[#6fbf86] bg-gradient-to-b from-[#2b0f0f] to-[#3a1212] px-6 pt-4 pb-3 shrink-0 shadow-2xl">
         <div className="absolute top-0 left-0 right-0 h-1 bg-[#6fbf86]" />
 
-        {/* Linha 1: marca + usuário + contador */}
-        <div className="flex items-start justify-between gap-6">
-          <div className="flex items-start gap-3 min-w-0">
+        {/* LINHA SUPERIOR: Logo (esquerda) + Clima (direita) */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="text-3xl animate-float shrink-0">🌱</div>
-            <div className="min-w-0">
-              <h1 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg leading-tight">
-                POKÉDEX PLANTAS
-              </h1>
-
-              <div className="mt-1 text-[12px] text-white/70">
-                <span>Olá, </span>
-                <span className="font-semibold text-white">{usuario?.nome ?? cultivador?.usuarioNome ?? '—'}</span>
-                <span className="text-white/40"> {cultivador?.usuarioLogin ? `(@${cultivador.usuarioLogin})` : ''}</span>
-              </div>
-            </div>
+            <h1 className="text-xl font-semibold tracking-tight text-white drop-shadow-lg leading-tight">
+              POKÉDEX PLANTAS
+            </h1>
           </div>
-
-          <div className="bg-[#6fbf86] text-[#0B1220] rounded-full px-4 py-2 font-semibold border-2 border-[#0B1220]/80 shadow-lg shrink-0">
-            <div className="text-center">
-              <div className="text-xl font-semibold">
-                {activeView === 'POKEDEX' ? plants.length : inventoryCount}
-              </div>
-              <div className="text-xs font-medium uppercase tracking-[0.12em]">
-                {activeView === 'POKEDEX' ? 'PLANTAS' : 'INVENTÁRIO'}
-              </div>
-            </div>
-          </div>
+          <WeatherBox variant="strip" />
         </div>
 
-        {/* Linha 2: clima + navegação */}
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <WeatherBox compact className="max-w-full" />
+        {/* LINHA INFERIOR: Perfil (esquerda) + Seletor (centro absoluto) */}
+        <div className="relative mt-2 flex items-center">
+          {/* Perfil — esquerda */}
+          <div className="flex items-center gap-2 text-[12px] text-white/70">
+            <span>
+              Olá,{' '}
+              <span className="font-semibold text-white">{usuario?.nome ?? cultivador?.usuarioNome ?? '—'}</span>
+            </span>
+            <span className="text-white/20">·</span>
+            <button
+              type="button"
+              onClick={logout}
+              title="Sair da conta"
+              className="flex items-center gap-1 text-white/40 transition-colors duration-150 hover:text-red-400"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span className="text-[11px]">Sair</span>
+            </button>
+          </div>
 
-          <div className="inline-flex items-center rounded-2xl border border-white/10 bg-white/5 p-1 backdrop-blur-md">
+          {/* Seletor — centro absoluto */}
+          <div className="absolute left-1/2 -translate-x-1/2 inline-flex items-center rounded-2xl border border-white/10 bg-white/5 p-1 backdrop-blur-md">
             <button
               type="button"
               onClick={() => switchView('POKEDEX')}
-              className={`h-9 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+              className={`h-8 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
                 activeView === 'POKEDEX'
                   ? 'bg-[#6fbf86]/20 text-white border border-[#6fbf86]/30 shadow-[0_0_10px_rgba(111,191,134,0.18)]'
                   : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -299,7 +302,7 @@ export function PokedexLayout() {
             <button
               type="button"
               onClick={() => switchView('INVENTARIO')}
-              className={`h-9 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+              className={`h-8 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
                 activeView === 'INVENTARIO'
                   ? 'bg-[#e7c35a]/15 text-white border border-[#e7c35a]/25 shadow-[0_0_10px_rgba(231,195,90,0.14)]'
                   : 'text-white/70 hover:text-white hover:bg-white/10'
