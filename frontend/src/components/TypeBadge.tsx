@@ -25,13 +25,26 @@ const TYPE_CONFIG: Record<
     // "Gênese"
     labelRpg: 'G\u00EAnese',
   },
-  VEGETATIVO: {
-    bgGradient: 'from-emerald-600/30 to-emerald-700/30',
-    borderColor: 'border-emerald-400/70',
+  VEGETATIVO_INICIAL: {
+    bgGradient: 'from-lime-600/30 to-lime-700/30',
+    borderColor: 'border-lime-400/70',
+    emoji: '🌿',
+    label: 'Vegetativo Inicial',
+    labelRpg: 'Veg. I',
+  },
+  VEGETATIVO_MEDIO: {
+    bgGradient: 'from-green-600/30 to-green-700/30',
+    borderColor: 'border-green-400/70',
     emoji: '🍃',
-    label: 'Vegetativo',
-    // "Vigor"
-    labelRpg: 'Vigor',
+    label: 'Vegetativo Médio',
+    labelRpg: 'Veg. II',
+  },
+  VEGETATIVO_AVANCADO: {
+    bgGradient: 'from-emerald-600/30 to-teal-700/30',
+    borderColor: 'border-emerald-300/70',
+    emoji: '🌳',
+    label: 'Vegetativo Avançado',
+    labelRpg: 'Veg. III',
   },
   FLORACAO_INICIAL: {
     bgGradient: 'from-rose-600/30 to-rose-700/30',

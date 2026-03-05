@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Aditivo } from '../types';
 import { apiService } from '../services/api';
 import { AditivoDetailsModal } from './AditivoDetailsModal';
+import { getInventoryLogoSrc } from '../assets/inventary-logo/inventoryLogoMap';
 import {
   ADITIVO_STOCK_UPDATED_EVENT,
   getAditivoIcon,
@@ -16,6 +17,134 @@ import {
 type InventarioViewProps = {
   onCountChange?: (count: number) => void;
 };
+
+const inventoryAlphaCache = new Map<string, string>();
+
+function InventoryLogoImage({
+  src,
+  alt,
+  className,
+  enableAlphaAssist,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  enableAlphaAssist: boolean;
+}) {
+  const [renderSrc, setRenderSrc] = useState(src);
+
+  useEffect(() => {
+    if (!enableAlphaAssist) {
+      setRenderSrc(src);
+      return;
+    }
+
+    const cached = inventoryAlphaCache.get(src);
+    if (cached) {
+      setRenderSrc(cached);
+      return;
+    }
+
+    let cancelled = false;
+    const image = new Image();
+    image.src = src;
+
+    image.onload = () => {
+      if (cancelled) return;
+      try {
+        const maxDimension = 192;
+        const naturalWidth = image.naturalWidth || image.width;
+        const naturalHeight = image.naturalHeight || image.height;
+        const scale = Math.min(1, maxDimension / naturalWidth, maxDimension / naturalHeight);
+        const width = Math.max(1, Math.round(naturalWidth * scale));
+        const height = Math.max(1, Math.round(naturalHeight * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+
+        if (!context) {
+          inventoryAlphaCache.set(src, src);
+          setRenderSrc(src);
+          return;
+        }
+
+        context.drawImage(image, 0, 0, width, height);
+        const imageData = context.getImageData(0, 0, width, height);
+        const pixels = imageData.data;
+
+        let opaquePixels = 0;
+        let nearWhiteOpaquePixels = 0;
+
+        for (let index = 0; index < pixels.length; index += 4) {
+          const red = pixels[index];
+          const green = pixels[index + 1];
+          const blue = pixels[index + 2];
+          const alpha = pixels[index + 3];
+
+          if (alpha <= 245) continue;
+          opaquePixels += 1;
+
+          const maxChannel = Math.max(red, green, blue);
+          const minChannel = Math.min(red, green, blue);
+          const isNearNeutral = maxChannel - minChannel < 24;
+          const isNearWhite = red > 228 && green > 228 && blue > 228;
+
+          if (isNearNeutral && isNearWhite) nearWhiteOpaquePixels += 1;
+        }
+
+        const whiteRatio = opaquePixels > 0 ? nearWhiteOpaquePixels / opaquePixels : 0;
+
+        if (whiteRatio < 0.06) {
+          inventoryAlphaCache.set(src, src);
+          setRenderSrc(src);
+          return;
+        }
+
+        for (let index = 0; index < pixels.length; index += 4) {
+          const red = pixels[index];
+          const green = pixels[index + 1];
+          const blue = pixels[index + 2];
+          const alpha = pixels[index + 3];
+          if (alpha === 0) continue;
+
+          const maxChannel = Math.max(red, green, blue);
+          const minChannel = Math.min(red, green, blue);
+          const isNearNeutral = maxChannel - minChannel < 26;
+          const brightness = (red + green + blue) / 3;
+
+          if (isNearNeutral && brightness >= 248) {
+            pixels[index + 3] = 0;
+          } else if (isNearNeutral && brightness >= 230) {
+            const fade = (248 - brightness) / 18;
+            pixels[index + 3] = Math.max(0, Math.min(alpha, Math.round(alpha * fade)));
+          }
+        }
+
+        context.putImageData(imageData, 0, 0);
+        const processed = canvas.toDataURL('image/png');
+        inventoryAlphaCache.set(src, processed);
+        setRenderSrc(processed);
+      } catch {
+        inventoryAlphaCache.set(src, src);
+        setRenderSrc(src);
+      }
+    };
+
+    image.onerror = () => {
+      if (cancelled) return;
+      inventoryAlphaCache.set(src, src);
+      setRenderSrc(src);
+    };
+
+    return () => {
+      cancelled = true;
+    };
+  }, [src, enableAlphaAssist]);
+
+  return <img src={renderSrc} alt={alt} className={className} />;
+}
 
 function classeLabel(value: string): string {
   switch (value) {
@@ -215,6 +344,8 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
               const tipo = String(a.tipo || "").toUpperCase();
               const isEquipment = tipo === "VASO";
               const customIcon = getAditivoIcon(a.id);
+              const mappedLogo = getInventoryLogoSrc(a);
+              const cardIconSrc = mappedLogo || customIcon;
               const stock = getAditivoStock(a.id);
               const derived = getDerivedStock(stock);
               const isOutOfStock = isEquipment ? false : derived.isEmpty;
@@ -282,11 +413,12 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                     )}
 
                     <div className="flex items-center justify-center h-32 mb-3 bg-gradient-to-b from-[#172232] to-[#0B1220] rounded-lg border border-[#6fbf86]/15 group-hover:border-[#6fbf86]/30 transition-colors">
-                      {customIcon ? (
-                        <img
-                          src={customIcon}
+                      {cardIconSrc ? (
+                        <InventoryLogoImage
+                          src={cardIconSrc}
                           alt={a.nome}
                           className="h-20 w-20 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
+                          enableAlphaAssist={Boolean(mappedLogo)}
                         />
                       ) : (
                         <span className="text-5xl drop-shadow-lg">🧪</span>

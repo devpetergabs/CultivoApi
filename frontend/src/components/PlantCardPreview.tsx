@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import type { TargetAndTransition, Transition } from 'framer-motion';
 import type { Plant } from '../types/pokedex';
 import type { PlantType } from '../types/pokedex';
 import { TypeBadge } from './TypeBadge';
@@ -9,6 +10,7 @@ import { CrescerAction } from './actions/CrescerAction';
 import { apiService } from '../services/api';
 import baldeAgua from '../assets/balde-agua.png';
 import baldeMistico from '../assets/balde-mistico.png';
+import { getCanabinhoBlendClass, getCanabinhoSrc } from '../assets/canabinho/canabinhoMap';
 import {
   loadLegacyWateringMix,
   loadWateringMix,
@@ -46,7 +48,9 @@ const calculateAge = (date: string | null) => {
 
 const STAGE_ORDER: PlantType[] = [
   'GERMINACAO',
-  'VEGETATIVO',
+  'VEGETATIVO_INICIAL',
+  'VEGETATIVO_MEDIO',
+  'VEGETATIVO_AVANCADO',
   'FLORACAO_INICIAL',
   'FLORACAO_MEDIA',
   'FLORACAO_AVANCADA',
@@ -73,8 +77,57 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
   // ✅ Glow só quando estiver em FLORAÇÃO (não veg/germa)
   const isFloweringStage = String(plant.type).startsWith('FLORACAO');
 
+  // ✅ Animação do emoji hero por estágio
+  const heroAnim: Record<string, { animate: TargetAndTransition; transition: Transition }> = {
+    GERMINACAO:          { animate: { scale: [1, 1.08, 1] },        transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } },
+    VEGETATIVO_INICIAL:  { animate: { y: [0, -3, 0] },              transition: { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } },
+    VEGETATIVO_MEDIO:    { animate: { y: [0, -5, 0] },              transition: { duration: 2.8, repeat: Infinity, ease: 'easeInOut' } },
+    VEGETATIVO_AVANCADO: { animate: { y: [0, -7, 0], scale: [1, 1.03, 1] }, transition: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } },
+    FLORACAO_INICIAL:    { animate: { x: [-3, 3, -3] },             transition: { duration: 3.0, repeat: Infinity, ease: 'easeInOut' } },
+    FLORACAO_MEDIA:      { animate: { rotate: [-4, 4, -4] },        transition: { duration: 2.8, repeat: Infinity, ease: 'easeInOut' } },
+    FLORACAO_AVANCADA:   { animate: { y: [0, -7, 0] },              transition: { duration: 4.2, repeat: Infinity, ease: 'easeInOut' } },
+    FINALIZACAO:         { animate: { opacity: [0.75, 1, 0.75] },   transition: { duration: 5.0, repeat: Infinity, ease: 'easeInOut' } },
+  };
+  const stageAnim = heroAnim[String(plant.type)] ?? heroAnim.VEGETATIVO_MEDIO;
+
   // ☣ Estado de praga ativo (flag simples do backend)
   const pestActive = Boolean((plant as any).pestActive);
+  const canabinhoState = pestActive ? 'zombie' : 'normal';
+  const [canabinhoFrame, setCanabinhoFrame] = useState<'stealth' | 'reveal'>('stealth');
+  const fallbackPlantIdRef = useRef<number>(Math.floor(Math.random() * 1_000_000_000));
+  const plantIdForAsset = Number.isFinite(Number(plant.id))
+    ? Number(plant.id)
+    : fallbackPlantIdRef.current;
+
+  useEffect(() => {
+    setCanabinhoFrame('stealth');
+  }, [plant.type]);
+
+  // Timing assimétrico: stealth fica mais tempo (pokémon oculto), reveal é o momento do show.
+  // Cada vez que canabinhoFrame muda, o effect re-agenda com o delay correto para o próximo estado.
+  useEffect(() => {
+    if (canabinhoState === 'zombie') return;
+    const delay = canabinhoFrame === 'stealth' ? 6000 : 4000;
+    const timeoutId = window.setTimeout(() => {
+      setCanabinhoFrame((prev) => (prev === 'stealth' ? 'reveal' : 'stealth'));
+    }, delay);
+    return () => window.clearTimeout(timeoutId);
+  }, [canabinhoState, canabinhoFrame, plant.type]);
+
+  // Dois srcs simultâneos: stealth é a base, reveal emerge por cima (transformação)
+  const canabinhoStealthSrc = useMemo(
+    () => getCanabinhoSrc({ stage: plant.type, state: canabinhoState, frame: 'stealth', plantId: plantIdForAsset }),
+    [plant.type, canabinhoState, plantIdForAsset]
+  );
+  const canabinhoRevealSrc = useMemo(
+    () => getCanabinhoSrc({ stage: plant.type, state: canabinhoState, frame: 'reveal', plantId: plantIdForAsset }),
+    [plant.type, canabinhoState, plantIdForAsset]
+  );
+
+  const canabinhoBlendClass = useMemo(
+    () => getCanabinhoBlendClass({ stage: plant.type, state: canabinhoState, frame: 'stealth' }),
+    [plant.type, canabinhoState]
+  );
 
   const [nextWaterType, setNextWaterType] = useState<'A' | 'B'>('A');
   const [stockVersion, setStockVersion] = useState(0);
@@ -467,15 +520,34 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
               </span>
             </div>
 
-            {/* “quadrado tipo card” + animação */}
+            {/* "quadrado tipo card" + animação por estágio */}
             <motion.div
-              initial={{ y: 0 }}
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+              animate={stageAnim.animate}
+              transition={stageAnim.transition}
               className="relative flex items-center justify-center"
             >
               <div className="absolute inset-0 -m-4 rounded-xl bg-emerald-400/5 blur-xl opacity-50" />
-              <span className="relative text-5xl drop-shadow-lg opacity-90">{plant.imageUrl}</span>
+              {/* Container explícito para ancorar as duas camadas */}
+              <div className="relative h-36 w-36">
+                {/* Camada stealth — sai enquanto reveal entra (cross simultâneo) */}
+                <motion.img
+                  src={canabinhoStealthSrc}
+                  alt={String(plant.type)}
+                  className={`absolute inset-0 h-36 w-36 object-contain object-bottom ${canabinhoBlendClass} drop-shadow-lg`}
+                  draggable={false}
+                  animate={{ opacity: canabinhoFrame === 'stealth' ? 1 : 0 }}
+                  transition={{ duration: 1.4, ease: 'easeInOut' }}
+                />
+                {/* Camada reveal — entra enquanto stealth sai (cross simultâneo) */}
+                <motion.img
+                  src={canabinhoRevealSrc}
+                  alt={String(plant.type)}
+                  className={`absolute inset-0 h-36 w-36 object-contain object-bottom ${canabinhoBlendClass} drop-shadow-lg`}
+                  draggable={false}
+                  animate={{ opacity: canabinhoFrame === 'reveal' ? 1 : 0 }}
+                  transition={{ duration: 1.4, ease: 'easeInOut' }}
+                />
+              </div>
             </motion.div>
           </div>
 

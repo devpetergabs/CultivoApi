@@ -17,6 +17,12 @@ import java.time.LocalDate;
 @EqualsAndHashCode(of = "id")
 public class Planta {
 
+    private static boolean isEstagioVegetativo(EstagioPlanta estagio) {
+        return estagio == EstagioPlanta.VEGETATIVO_INICIAL
+                || estagio == EstagioPlanta.VEGETATIVO_MEDIO
+                || estagio == EstagioPlanta.VEGETATIVO_AVANCADO;
+    }
+
     // setters usados pelo endpoint de crescimento
     public void setAltura(Double altura) { this.altura = altura; }
     public void setLargura(Double largura) { this.largura = largura; }
@@ -168,7 +174,7 @@ public class Planta {
 
         if (estagio != null) {
             boolean mudouDeVegetativoParaPreFloracao =
-                    (estagioAnterior == EstagioPlanta.VEGETATIVO)
+                isEstagioVegetativo(estagioAnterior)
                             && (estagio == EstagioPlanta.FLORACAO_INICIAL);
 
             this.estagio = estagio;
@@ -182,7 +188,7 @@ public class Planta {
         if (dataSexagem != null) this.dataSexagem = dataSexagem;
 
         boolean mudandoParaPreFloracaoAgora =
-                (estagioAnterior == EstagioPlanta.VEGETATIVO)
+            isEstagioVegetativo(estagioAnterior)
                         && (estagio == EstagioPlanta.FLORACAO_INICIAL);
 
         if (!mudandoParaPreFloracaoAgora && dataFloracao != null) {

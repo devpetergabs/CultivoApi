@@ -332,7 +332,9 @@ export function PlantFormModal({
               className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
             >
               <option value="GERMINACAO">Germinação</option>
-              <option value="VEGETATIVO">Vegetativo</option>
+              <option value="VEGETATIVO_INICIAL">Vegetativo Inicial</option>
+              <option value="VEGETATIVO_MEDIO">Vegetativo Médio</option>
+              <option value="VEGETATIVO_AVANCADO">Vegetativo Avançado</option>
               <option value="FLORACAO_INICIAL">Floração Inicial</option>
               <option value="FLORACAO_MEDIA">Floração Média</option>
               <option value="FLORACAO_AVANCADA">Floração Avançada</option>

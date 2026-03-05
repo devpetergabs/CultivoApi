@@ -40,7 +40,7 @@ class PlantaRepositoryTest {
             90.0,
             9.5,
             TamanhVaso.VINTE_E_UM_L,
-            EstagioPlanta.VEGETATIVO,
+            EstagioPlanta.VEGETATIVO_MEDIO,
             cultivador
         );
 

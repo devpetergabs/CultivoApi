@@ -25,7 +25,7 @@ INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml
 SELECT 'pH Perfect Bloom', 'Advanced Nutrients', 'Base completa de floração', 'FLORACAO', 'BASE_NUTRICIONAL', 5.0, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'pH Perfect Bloom');
 
--- VEG Coco
+-- Veg Coco Grow
 UPDATE aditivos
 SET marca = 'Advanced Nutrients',
     descricao = 'Base nutricional vegetativa',
@@ -33,12 +33,12 @@ SET marca = 'Advanced Nutrients',
     classe = 'BASE_NUTRICIONAL',
     ativo = TRUE,
     dose_padrao_em_ml = COALESCE(dose_padrao_em_ml, 1.0)
-WHERE nome = 'VEG Coco';
+WHERE nome = 'Veg Coco Grow';
 
 INSERT INTO aditivos (nome, marca, descricao, estagio, classe, dose_padrao_em_ml, ativo)
 
-SELECT 'VEG Coco', 'Advanced Nutrients', 'Base nutricional vegetativa', 'VEGETATIVA', 'BASE_NUTRICIONAL', 1.0, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'VEG Coco');
+SELECT 'Veg Coco Grow', 'Advanced Nutrients', 'Base nutricional vegetativa', 'VEGETATIVA', 'BASE_NUTRICIONAL', 1.0, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM aditivos WHERE nome = 'Veg Coco Grow');
 
 -- Sensi Grow Part A
 UPDATE aditivos
@@ -273,7 +273,7 @@ SET pa.aditivo_id = k.keep_id
 WHERE pa.aditivo_id <> k.keep_id
   AND a.nome IN (
     'pH Perfect Bloom',
-    'VEG Coco',
+    'Veg Coco Grow',
     'Sensi Grow Part A',
     'Sensi Grow Part B',
     'FLOWER Coco',
@@ -308,7 +308,7 @@ WHERE id IN (
         WHERE a1.id <> k.keep_id
           AND a1.nome IN (
             'pH Perfect Bloom',
-            'VEG Coco',
+            'Veg Coco Grow',
             'Sensi Grow Part A',
             'Sensi Grow Part B',
             'FLOWER Coco',
@@ -387,7 +387,7 @@ UPDATE aditivos SET descricao = 'Base A da floração' WHERE nome = 'Sensi Bloom
 UPDATE aditivos SET descricao = 'Base B da floração' WHERE nome = 'Sensi Bloom Part B';
 UPDATE aditivos SET descricao = 'Base A do vegetativo' WHERE nome = 'Sensi Grow Part A';
 UPDATE aditivos SET descricao = 'Base B do vegetativo' WHERE nome = 'Sensi Grow Part B';
-UPDATE aditivos SET descricao = 'Base nutricional vegetativa' WHERE nome = 'VEG Coco';
+UPDATE aditivos SET descricao = 'Base nutricional vegetativa' WHERE nome = 'Veg Coco Grow';
 
 UPDATE aditivos SET descricao = 'Fortalece estrutura' WHERE nome = 'Rhino Skin';
 UPDATE aditivos SET descricao = 'Flush final' WHERE nome = 'Flawless Finish';
