@@ -167,9 +167,9 @@ public class PlantaController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // ADMIN vê tudo (read-only).
+        // ADMIN vê todas as plantas ativas (read-only).
         if (AccessControl.isAdmin(usuario)) {
-            var page = repository.findAll(paginacao)
+            var page = repository.findByAtivoTrue(paginacao)
                     .map(p -> new DadosDetalhePlanta(
                             p.getId(),
                             p.getNome(),

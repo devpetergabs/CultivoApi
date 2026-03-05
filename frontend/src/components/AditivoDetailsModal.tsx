@@ -427,7 +427,7 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
                 <div className="text-[11px] font-semibold text-white/80 tracking-wide uppercase">Configurar estoque</div>
 
                 {isEquipment ? (
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="mt-2 flex flex-col gap-2">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Quantidade</label>
                       <input
@@ -438,18 +438,6 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
                         onChange={(e) => setStock({ ...currentStock, unidades: Number(e.target.value), tracked: true })}
                         className="mt-1 w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Tamanho (L)</label>
-                      <select
-                        value={currentStock.mlFrasco || 5}
-                        onChange={(e) => setStock({ ...currentStock, mlFrasco: Number(e.target.value), tracked: true })}
-                        className="mt-1 w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
-                      >
-                        <option value={5}>5 L</option>
-                        <option value={21}>21 L</option>
-                        <option value={30}>30 L</option>
-                      </select>
                     </div>
                   </div>
                 ) : (

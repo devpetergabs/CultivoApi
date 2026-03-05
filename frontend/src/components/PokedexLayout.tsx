@@ -247,61 +247,83 @@ export function PokedexLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0B1220] text-white overflow-hidden">
-      <header className="relative border-b-2 border-[#6fbf86]/60 bg-gradient-to-b from-[#2b0f0f] to-[#3a1212] px-6 shrink-0 shadow-2xl h-16 flex items-center justify-between gap-6">
+      <header className="relative border-b-2 border-[#6fbf86]/60 bg-gradient-to-b from-[#2b0f0f] to-[#3a1212] px-4 sm:px-6 shrink-0 shadow-2xl">
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#6fbf86]" />
 
-        {/* ESQUERDA: Logo + Navegação */}
-        <div className="flex items-center gap-6 min-w-0">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className="text-2xl animate-float">🌱</span>
-            <span className="text-base font-semibold tracking-tight text-white leading-none">
-              POKÉDEX PLANTAS
-            </span>
+        {/* ── Mobile: 2 linhas ── Desktop: grid 3 colunas ── */}
+
+        {/* Desktop: grid-cols-3 → logo | tabs (centro) | perfil */}
+        {/* Mobile: flex-col → linha 1 (logo+sair) | linha 2 (tabs) */}
+        <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center sm:h-16 py-2 sm:py-0 gap-1.5 sm:gap-0">
+
+          {/* Coluna 1 / Linha 1 mobile: Logo + botão Sair (mobile only) */}
+          <div className="flex items-center justify-between sm:justify-start gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xl animate-float">🌱</span>
+              <span className="text-sm sm:text-base font-semibold tracking-tight text-white leading-none">
+                POKÉDEX<span className="hidden sm:inline"> PLANTAS</span>
+              </span>
+            </div>
+            {/* Olá + Sair — visível só no mobile, no canto direito da linha 1 */}
+            <div className="sm:hidden flex items-center gap-2 text-[12px] text-white/60">
+              <span>Olá, <span className="font-semibold text-white">{usuario?.nome ?? cultivador?.usuarioNome ?? '—'}</span></span>
+              <button
+                type="button"
+                onClick={logout}
+                title="Sair da conta"
+                className="flex items-center gap-1 text-white/40 hover:text-red-400 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span className="text-[11px]">Sair</span>
+              </button>
+            </div>
           </div>
 
-          <div className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 p-0.5 backdrop-blur-md">
-            <button
-              type="button"
-              onClick={() => switchView('POKEDEX')}
-              className={`h-8 px-3 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
-                activeView === 'POKEDEX'
-                  ? 'bg-[#6fbf86]/20 text-white border border-[#6fbf86]/30 shadow-[0_0_10px_rgba(111,191,134,0.18)]'
-                  : 'text-white/60 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              Pokédex
-            </button>
-            <button
-              type="button"
-              onClick={() => switchView('INVENTARIO')}
-              className={`h-8 px-3 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
-                activeView === 'INVENTARIO'
-                  ? 'bg-[#e7c35a]/15 text-white border border-[#e7c35a]/25 shadow-[0_0_10px_rgba(231,195,90,0.14)]'
-                  : 'text-white/60 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              Inventário
-            </button>
+          {/* Coluna 2 (centro) / Linha 2 mobile: Tabs */}
+          <div className="flex justify-center sm:justify-center">
+            <div className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 p-0.5 backdrop-blur-md w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => switchView('POKEDEX')}
+                className={`flex-1 sm:flex-none h-8 px-4 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                  activeView === 'POKEDEX'
+                    ? 'bg-[#6fbf86]/20 text-white border border-[#6fbf86]/30 shadow-[0_0_10px_rgba(111,191,134,0.18)]'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Pokédex
+              </button>
+              <button
+                type="button"
+                onClick={() => switchView('INVENTARIO')}
+                className={`flex-1 sm:flex-none h-8 px-4 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                  activeView === 'INVENTARIO'
+                    ? 'bg-[#e7c35a]/15 text-white border border-[#e7c35a]/25 shadow-[0_0_10px_rgba(231,195,90,0.14)]'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Inventário
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* DIREITA: Clima + Perfil */}
-        <div className="flex items-center gap-5 shrink-0">
-          <WeatherBox variant="strip" />
-
-          <div className="h-4 w-px bg-white/15" />
-
-          <div className="flex items-center gap-2 text-[12px] text-white/70">
+          {/* Coluna 3 (direita) — só desktop */}
+          <div className="hidden sm:flex items-center justify-end gap-3 text-[12px] text-white/70">
+            <WeatherBox variant="strip" />
+            <div className="h-4 w-px bg-white/15" />
             <span>
-              Olá,{' '}
-              <span className="font-semibold text-white">{usuario?.nome ?? cultivador?.usuarioNome ?? '—'}</span>
+              Olá, <span className="font-semibold text-white">{usuario?.nome ?? cultivador?.usuarioNome ?? '—'}</span>
             </span>
             <span className="text-white/20">·</span>
             <button
               type="button"
               onClick={logout}
               title="Sair da conta"
-              className="flex items-center gap-1 text-white/40 transition-colors duration-150 hover:text-red-400"
+              className="flex items-center gap-1 text-white/40 hover:text-red-400 transition-colors duration-150"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -311,6 +333,7 @@ export function PokedexLayout() {
               <span className="text-[11px]">Sair</span>
             </button>
           </div>
+
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6fbf86]/40" />

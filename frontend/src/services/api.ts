@@ -35,6 +35,9 @@ class ApiService {
   constructor() {
     this.axiosInstance = axios.create({
       baseURL: API_URL,
+      headers: {
+        'ngrok-skip-browser-warning': 'true',
+      },
     });
 
     // Interceptor global: transforma o “404 silencioso” (não-proprietário) em feedback visível.

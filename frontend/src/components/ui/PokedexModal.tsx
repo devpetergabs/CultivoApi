@@ -55,12 +55,12 @@ export function PokedexModal({
         aria-modal="true"
       >
         {/* HEADER */}
-        <div className="px-5 pt-5 pb-4 border-b border-white/5 flex items-start justify-between gap-4">
+        <div className="px-5 pt-5 pb-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-white">{title}</h3>
-            {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+            {subtitle && <p className="mt-0.5 text-xs text-slate-400 leading-relaxed">{subtitle}</p>}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
             {headerActions}
             <button
               type="button"
