@@ -14,15 +14,6 @@ type QuickAction = 'watering' | 'photo' | 'note' | 'insecticide';
 
 const ACTION_RADIUS = 38;
 
-function MagnifierIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="6" />
-      <path d="m20 20-4.2-4.2" />
-    </svg>
-  );
-}
-
 const getPolarPosition = (angleDeg: number, radius: number) => {
   const rad = (angleDeg * Math.PI) / 180;
   const x = radius * Math.cos(rad);
@@ -66,9 +57,9 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
       },
       {
         key: 'photo' as const,
-        label: 'INSPECIONAR',
+        label: 'DOCTOR P.',
         emoji: '',
-        icon: <MagnifierIcon />,
+        icon: null as ReactNode,
         angle: 180,
         gradient: 'from-[#63b7ff] to-[#3d8bdd]',
         border: 'border-[#b5d9ff]',
@@ -207,7 +198,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
                         aria-hidden="true"
                       />
                     )}
-                    <span className="mr-1 inline-flex items-center justify-center">{action.icon ?? action.emoji}</span>
+                    {!!(action.icon ?? action.emoji) && <span className="mr-1 inline-flex items-center justify-center">{action.icon ?? action.emoji}</span>}
                     {action.label}
                   </button>
                 );

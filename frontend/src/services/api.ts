@@ -228,7 +228,7 @@ class ApiService {
 
   async analisarPlantaFoto(
     plantaId: number,
-    data: { imagemBase64?: string; contentType?: string; descricao?: string }
+    data: { descricao?: string }
   ): Promise<PlantaFotoAnalise> {
     const response = await this.axiosInstance.post(`/plantas/${plantaId}/fotos/analise`, data);
     return response.data;

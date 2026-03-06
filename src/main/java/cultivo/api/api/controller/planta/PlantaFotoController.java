@@ -18,8 +18,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Base64;
-
 @RestController
 @RequestMapping("/plantas/{plantaId}/fotos")
 public class PlantaFotoController {
@@ -80,12 +78,7 @@ public class PlantaFotoController {
             return ResponseEntity.notFound().build();
         }
 
-        byte[] imagemBytes = null;
-        if (dados.imagemBase64() != null && !dados.imagemBase64().isBlank()) {
-            imagemBytes = Base64.getDecoder().decode(dados.imagemBase64());
-        }
-
-        var analise = analiseService.analisar(planta.get(), imagemBytes, dados.contentType(), dados.descricao());
+        var analise = analiseService.analisar(planta.get(), dados.descricao());
         return ResponseEntity.ok(analise);
     }
 
