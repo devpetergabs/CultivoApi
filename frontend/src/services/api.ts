@@ -13,6 +13,7 @@ import type {
   Usuario,
   CultivadorMe,
   AgendaInseticida,
+  CodexEstagio,
 } from '../types';
 
 const API_URL = '/api';
@@ -248,6 +249,21 @@ class ApiService {
     data: { altura: number; largura: number; larguraCaule: number; descricao?: string; obs?: string }
   ): Promise<void> {
     await this.axiosInstance.patch(`/plantas/${id}/crescer`, data);
+  }
+
+  async getPlantaCodexEstagioAtual(id: number): Promise<CodexEstagio> {
+    const response = await this.axiosInstance.get(`/plantas/${id}/codex/estagio-atual`);
+    return response.data;
+  }
+
+  async getPlantaCodexEstagios(id: number): Promise<CodexEstagio[]> {
+    const response = await this.axiosInstance.get(`/plantas/${id}/codex/estagios`);
+    return response.data;
+  }
+
+  async getCodexEstagios(): Promise<CodexEstagio[]> {
+    const response = await this.axiosInstance.get('/codex/estagios');
+    return response.data;
   }
 }
 

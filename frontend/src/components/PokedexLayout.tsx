@@ -5,10 +5,13 @@ import { usePokedexStore } from '../store/pokedexStore';
 import { PokedexGrid } from './PokedexGrid';
 import { PlantDetailDrawer } from './PlantDetailDrawer';
 import { InventarioView } from './InventarioView';
+import { StageCodexView } from './StageCodexView';
 import type { Plant } from '../types/pokedex';
 import { apiService } from '../services/api';
 import { mapPlantaToPokedexPlant } from '../utils/mapPlantaToPokedex';
 import { PlantFormModal } from './PlantFormModal';
+import { StageCodexModal } from './StageCodexModal';
+import type { CodexEstagio } from '../types';
 import type { PlantType } from '../types/pokedex';
 import { getPlantStageLabel } from './TypeBadge';
 import { potLitersToEnum } from '../utils/plantFormUtils';
@@ -46,8 +49,13 @@ export function PokedexLayout() {
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [levelUpError, setLevelUpError] = useState<string | null>(null);
 
-  const [activeView, setActiveView] = useState<'POKEDEX' | 'INVENTARIO'>('POKEDEX');
+  const [activeView, setActiveView] = useState<'POKEDEX' | 'INVENTARIO' | 'CODEX'>('POKEDEX');
   const [inventoryCount, setInventoryCount] = useState(0);
+  const [stageReveal, setStageReveal] = useState<{
+    plant: Plant;
+    entry: CodexEstagio;
+    reason: 'create' | 'level-up';
+  } | null>(null);
 
   const filtered = filteredPlants();
   const selectedPlant = plants.find((p) => p.id === selectedPlantId) || null;
@@ -87,7 +95,7 @@ export function PokedexLayout() {
   // Navegação global (ex: BAÚ vindo do menu radial da planta)
   useEffect(() => {
     const handler = (event: Event) => {
-      const custom = event as CustomEvent<{ view?: 'POKEDEX' | 'INVENTARIO' } | undefined>;
+      const custom = event as CustomEvent<{ view?: 'POKEDEX' | 'INVENTARIO' | 'CODEX' } | undefined>;
       const view = custom?.detail?.view;
       if (!view) return;
       switchView(view);
@@ -160,9 +168,19 @@ export function PokedexLayout() {
     load();
   }, [setPlants, cultivador?.usuarioNome, cultivador?.telefone]);
 
+  const openStageReveal = async (plant: Plant, reason: 'create' | 'level-up') => {
+    try {
+      const entry = await apiService.getPlantaCodexEstagioAtual(plant.id);
+      setStageReveal({ plant, entry, reason });
+    } catch (error) {
+      console.error('Erro ao carregar codex do estágio atual:', error);
+    }
+  };
+
   const handlePlantCreated = (plant: Plant) => {
     addPlant(plant);
     setSelectedPlant(plant.id);
+    void openStageReveal(plant, 'create');
   };
 
   const handlePlantEdited = (plant: Plant) => {
@@ -212,6 +230,7 @@ export function PokedexLayout() {
       });
 
       updatePlant(mapped);
+      void openStageReveal(mapped, 'level-up');
       setLevelUpPlant(null);
       setLevelUpCurrentStage(null);
       setLevelUpNextStage(null);
@@ -224,11 +243,10 @@ export function PokedexLayout() {
     }
   };
 
-  const switchView = (next: 'POKEDEX' | 'INVENTARIO') => {
+  const switchView = (next: 'POKEDEX' | 'INVENTARIO' | 'CODEX') => {
     if (next === activeView) return;
 
-    if (next === 'INVENTARIO') {
-      setSelectedPlant(null);
+    if (next !== 'POKEDEX') {
       setIsCreateModalOpen(false);
       setEditPlant(null);
       setDeletePlant(null);
@@ -308,6 +326,17 @@ export function PokedexLayout() {
               >
                 Inventário
               </button>
+              <button
+                type="button"
+                onClick={() => switchView('CODEX')}
+                className={`flex-1 sm:flex-none h-8 px-4 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                  activeView === 'CODEX'
+                    ? 'bg-sky-300/15 text-white border border-sky-300/25 shadow-[0_0_10px_rgba(125,211,252,0.14)]'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Estágios
+              </button>
             </div>
           </div>
 
@@ -354,8 +383,10 @@ export function PokedexLayout() {
             hideCannabis={hideCannabis}
             onHideCannabisChange={setHideCannabis}
           />
-        ) : (
+        ) : activeView === 'INVENTARIO' ? (
           <InventarioView onCountChange={setInventoryCount} />
+        ) : (
+          <StageCodexView plant={selectedPlant ?? filtered[0] ?? plants[0] ?? null} />
         )}
       </div>
 
@@ -513,6 +544,14 @@ export function PokedexLayout() {
           </div>
         </div>
       )}
+
+      <StageCodexModal
+        open={Boolean(stageReveal)}
+        onClose={() => setStageReveal(null)}
+        plant={stageReveal?.plant ?? null}
+        entry={stageReveal?.entry ?? null}
+        reason={stageReveal?.reason ?? 'create'}
+      />
     </div>
   );
 }

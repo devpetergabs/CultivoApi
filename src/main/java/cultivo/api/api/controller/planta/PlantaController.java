@@ -1,6 +1,7 @@
 package cultivo.api.api.controller.planta;
 
 import cultivo.api.domain.planta.Planta;
+import cultivo.api.application.planta.CodexEstagioService;
 import cultivo.api.application.planta.PlantaEquipamentoService;
 import cultivo.api.domain.planta.TamanhVaso;
 import cultivo.api.domain.planta.EspeciePlanta;
@@ -39,6 +40,9 @@ public class PlantaController {
 
     @Autowired
     private cultivo.api.application.estoque.ProdutoEstoqueService produtoEstoqueService;
+
+    @Autowired
+    private CodexEstagioService codexEstagioService;
 
     // Regras (MVP):
     // - ADMIN: read all, write only own
@@ -85,6 +89,7 @@ public class PlantaController {
             case TRINTA_L -> 30;
         };
         produtoEstoqueService.debitarUnidadeVaso(cultivador.getId(), litrosVaso);
+        codexEstagioService.garantirTrilhaDesbloqueada(planta, "CRIACAO_PLANTA");
 
         var resposta = new DadosDetalhePlanta(
                 planta.getId(),
@@ -153,6 +158,7 @@ public class PlantaController {
             case TRINTA_L -> 30;
         };
         produtoEstoqueService.debitarUnidadeVaso(cultivador.get().getId(), litrosVasoAdmin);
+        codexEstagioService.garantirTrilhaDesbloqueada(planta, "CRIACAO_PLANTA");
 
         var resposta = new DadosDetalhePlanta(
                 planta.getId(),
@@ -381,6 +387,7 @@ public class PlantaController {
                 ? !tamanhoAnterior.equals(p.getTamanhoVaso())
                 : (tamanhoAnterior != p.getTamanhoVaso());
         equipamentoService.garantirPoteSincronizado(p, mudouVaso);
+        codexEstagioService.garantirTrilhaDesbloqueada(p, "ATUALIZACAO_ESTAGIO");
 
         var resposta = new DadosDetalhePlanta(
                 p.getId(),
@@ -505,6 +512,7 @@ public class PlantaController {
         plantaEventoRepository.save(eventoEvolucao);
 
         repository.save(planta);
+        codexEstagioService.garantirTrilhaDesbloqueada(planta, "EVOLUCAO_PLANTA");
 
         // Evento de crescimento
         var eventoDescricao = dados.descricao() != null ? dados.descricao() : dados.obs();

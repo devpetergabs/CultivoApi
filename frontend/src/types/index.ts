@@ -93,6 +93,40 @@ export interface Page<T> {
   empty?: boolean;
 }
 
+export interface CodexAditivoMatch {
+  id: number;
+  nome: string;
+  marca: string;
+  tipo: string | null;
+  descricao: string | null;
+  dosePadraoEmML: number | null;
+}
+
+export interface CodexEstagio {
+  estagio: string;
+  slug: string;
+  nomeExibicao: string;
+  subtitulo: string;
+  descricaoBreve: string;
+  descricaoLore: string;
+  cuidadosPrincipais: string[];
+  curiosidades: string[];
+  pontosFortes: string[];
+  pontosFracos: string[];
+  alertas: string[];
+  resistencia: string | null;
+  observacaoLegal: string | null;
+  ordemDesbloqueio: number;
+  desbloqueado: boolean;
+  atual: boolean;
+  nenhumAditivoRecomendado: boolean;
+  mensagemAditivos: string;
+  aditivosRecomendados: CodexAditivoMatch[];
+  artAssetKey?: string | null;
+  temaVisual?: string | null;
+}
+
+
 export interface PlantaFoto {
   id: number;
   plantaNome: string;
