@@ -12,4 +12,5 @@ public interface AditivoRepository extends JpaRepository<Aditivo, Long> {
     Optional<Aditivo> findFirstByTipoAndCapacidadeLitros(TipoProduto tipo, Integer capacidadeLitros);
     Optional<Aditivo> findByIdAndTipo(Long id, TipoProduto tipo);
     List<Aditivo> findByAtivoTrueAndTipoAndEstagioOrderByNomeAsc(TipoProduto tipo, EstagioAditivo estagio);
+    List<Aditivo> findByAtivoTrueAndTipoOrderByNomeAsc(TipoProduto tipo);
 }

@@ -148,10 +148,27 @@ public class CodexEstagioService {
         var stage = mapPlantStageToAditivoStage(estagio);
         if (stage == null) return List.of();
 
-        return aditivoRepository.findByAtivoTrueAndTipoAndEstagioOrderByNomeAsc(TipoProduto.ADITIVO, stage)
+        String targetSubstage = estagio.name();
+
+        return aditivoRepository.findByAtivoTrueAndTipoOrderByNomeAsc(TipoProduto.ADITIVO)
                 .stream()
+                .filter(aditivo -> isAditivoActiveForSubstage(aditivo, targetSubstage, stage))
                 .map(this::toAditivoMatch)
                 .toList();
+    }
+
+    private boolean isAditivoActiveForSubstage(Aditivo aditivo, String targetSubstage, EstagioAditivo fallbackStage) {
+        String raw = aditivo.getEstagiosLista();
+        if (raw != null && !raw.isBlank()) {
+            for (String token : raw.split(",")) {
+                if (targetSubstage.equals(token == null ? "" : token.trim())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        return aditivo.getEstagio() == fallbackStage;
     }
 
     private DadosAditivoMatchEstagio toAditivoMatch(Aditivo aditivo) {

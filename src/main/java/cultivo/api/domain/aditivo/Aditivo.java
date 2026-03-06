@@ -22,8 +22,18 @@ public class Aditivo {
     private String marca;
     private String descricao;
 
+    @Column(name = "descricao_tecnica")
+    private String descricaoTecnica;
+
     @Enumerated(EnumType.STRING)
     private EstagioAditivo estagio;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estagios_macro")
+    private EstagioMacroAditivo estagiosMacro;
+
+    @Column(name = "estagios_lista")
+    private String estagiosLista;
 
     @Enumerated(EnumType.STRING)
     private ClasseAditivo classe;
@@ -84,7 +94,10 @@ public class Aditivo {
             String nome,
             String marca,
             String descricao,
+            String descricaoTecnica,
             EstagioAditivo estagio,
+            EstagioMacroAditivo estagiosMacro,
+            String estagiosLista,
             ClasseAditivo classe,
             Double dosePadraoEmML,
             TipoProduto tipo,
@@ -102,7 +115,10 @@ public class Aditivo {
         if (nome != null && !nome.isBlank()) this.nome = nome;
         if (marca != null && !marca.isBlank()) this.marca = marca;
         if (descricao != null) this.descricao = descricao;
+        if (descricaoTecnica != null) this.descricaoTecnica = descricaoTecnica;
         if (estagio != null) this.estagio = estagio;
+        if (estagiosMacro != null) this.estagiosMacro = estagiosMacro;
+        if (estagiosLista != null) this.estagiosLista = estagiosLista;
         if (classe != null) this.classe = classe;
         if (tipo != null) this.tipo = tipo;
 

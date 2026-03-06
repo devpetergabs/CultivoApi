@@ -188,10 +188,13 @@ function classeLabel(value: string): string {
 
 function estagioLabel(value: string): string {
   switch (value) {
+    case 'VEGETATIVO':
     case 'VEGETATIVA':
       return 'Vegetativa';
     case 'FLORACAO':
       return 'Floração';
+    case 'CICLO_INTEGRADO':
+      return 'Ciclo Integrado';
     case 'FINALIZACAO':
       return 'Finalização';
     default:
@@ -644,9 +647,9 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                           <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
                             {classeLabel(a.classe)}
                           </span>
-                          {a.estagio && ['VEGETATIVA', 'FLORACAO', 'FINALIZACAO'].includes(String(a.estagio)) && (
+                          {(a.estagiosMacro || a.estagio) && ['VEGETATIVO', 'VEGETATIVA', 'FLORACAO', 'CICLO_INTEGRADO', 'FINALIZACAO'].includes(String(a.estagiosMacro || a.estagio)) && (
                             <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
-                              {estagioLabel(a.estagio)}
+                              {estagioLabel(String(a.estagiosMacro || a.estagio))}
                             </span>
                           )}
                         </>

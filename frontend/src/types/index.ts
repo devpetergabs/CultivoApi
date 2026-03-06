@@ -58,7 +58,10 @@ export interface Aditivo {
   nome: string;
   marca: string;
   descricao: string;
+  descricaoTecnica?: string | null;
   estagio: 'VEGETATIVA' | 'FLORACAO' | 'FINALIZACAO' | string;
+  estagiosMacro?: 'VEGETATIVO' | 'FLORACAO' | 'CICLO_INTEGRADO' | 'FINALIZACAO' | string;
+  estagiosLista?: string | null;
   classe:
     | 'BASE_NUTRICIONAL'
     | 'FORTIFICANTE'

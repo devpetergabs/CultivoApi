@@ -2,6 +2,7 @@ package cultivo.api.api.controller.aditivo;
 
 import cultivo.api.domain.aditivo.ClasseAditivo;
 import cultivo.api.domain.aditivo.EstagioAditivo;
+import cultivo.api.domain.aditivo.EstagioMacroAditivo;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 
@@ -15,7 +16,13 @@ public record DadosAtualizacaoAditivo(
         @NotBlank(message = "Descrição é obrigatória")
         String descricao,
 
+        String descricaoTecnica,
+
         EstagioAditivo estagio,
+
+        EstagioMacroAditivo estagiosMacro,
+
+        String estagiosLista,
 
         @Positive(message = "Dose padrão deve ser maior que zero")
         Double dosePadraoEmML,

@@ -44,10 +44,13 @@ function classeLabel(value: string): string {
 
 function estagioLabel(value: string): string {
   switch (value) {
+    case 'VEGETATIVO':
     case 'VEGETATIVA':
       return 'Vegetativa';
     case 'FLORACAO':
       return 'Floração';
+    case 'CICLO_INTEGRADO':
+      return 'Ciclo Integrado';
     case 'FINALIZACAO':
       return 'Finalização';
     default:
@@ -354,7 +357,8 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
               </div>
 
 {(() => {
-                  const hasEstagio = aditivo.estagio && ['VEGETATIVA', 'FLORACAO', 'FINALIZACAO'].includes(String(aditivo.estagio));
+                  const estagioExibicao = aditivo.estagiosMacro || aditivo.estagio;
+                  const hasEstagio = estagioExibicao && ['VEGETATIVO', 'VEGETATIVA', 'FLORACAO', 'CICLO_INTEGRADO', 'FINALIZACAO'].includes(String(estagioExibicao));
                   return !isEquipment ? (
                     <div className={`mt-3 grid gap-2 ${hasEstagio ? 'grid-cols-2' : 'grid-cols-1'}`}>
                       <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
@@ -364,7 +368,7 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
                       {hasEstagio && (
                         <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                           <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Estágio</div>
-                          <div className="text-xs font-semibold text-white">{estagioLabel(String(aditivo.estagio ?? ''))}</div>
+                          <div className="text-xs font-semibold text-white">{estagioLabel(String(estagioExibicao ?? ''))}</div>
                         </div>
                       )}
                     </div>
@@ -372,7 +376,7 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
                 })()}
 
               <div className="mt-3 text-xs text-slate-200/90 leading-relaxed whitespace-pre-wrap">
-                {aditivo.descricao || '—'}
+                {aditivo.descricaoTecnica || aditivo.descricao || '—'}
               </div>
 
               {!isEquipment && (
