@@ -160,6 +160,7 @@ function resolveStockMl(anyObj: any): number | null {
 function mergeLocalStock(item: Aditivo): Aditivo {
   try {
     const local: any = getAditivoStock(item.id);
+    if (!local?.tracked) return item;
     const localMl = resolveStockMl(local);
 
     if (local && localMl !== null) {
@@ -543,8 +544,10 @@ export function BulkInsecticideModal({
 
     try {
       const local: any = getAditivoStock(selected.id);
-      const localMl = resolveStockMl(local);
-      if (localMl !== null) return localMl;
+      if (local?.tracked) {
+        const localMl = resolveStockMl(local);
+        if (localMl !== null) return localMl;
+      }
     } catch {
       // ignore
     }
@@ -876,16 +879,24 @@ export function BulkInsecticideModal({
       // atualiza estoque local
       try {
         const localAny: any = getAditivoStock(id);
-        const currentMl = resolveStockMl(localAny);
-        if (localAny && currentMl !== null) {
+        const apiAny: any = (selected as any)?.estoque;
+
+        const currentMl = localAny?.tracked
+          ? resolveStockMl(localAny)
+          : resolveStockMl(apiAny);
+
+        if (currentMl !== null) {
           const next = Math.max(0, Number(currentMl ?? 0) - totalEstimado);
 
           const payload: AditivoStock = {
             tracked: true,
-            tipoProduto: localAny.tipoProduto ?? (selected as any)?.tipo ?? null,
+            tipoProduto:
+              (localAny?.tracked ? localAny.tipoProduto : apiAny?.tipoProduto) ??
+              (selected as any)?.tipo ??
+              null,
             stockMlAtual: next,
-            unidades: Number(localAny.unidades ?? 0),
-            mlFrasco: Number(localAny.mlFrasco ?? 0),
+            unidades: Number(localAny?.tracked ? localAny.unidades ?? 0 : apiAny?.unidades ?? 0),
+            mlFrasco: Number(localAny?.tracked ? localAny.mlFrasco ?? 0 : apiAny?.mlFrasco ?? 0),
           };
           setAditivoStock(id, payload);
 

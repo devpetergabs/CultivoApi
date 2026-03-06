@@ -37,6 +37,9 @@ public class PlantaController {
     @Autowired
     private PlantaEquipamentoService equipamentoService;
 
+    @Autowired
+    private cultivo.api.application.estoque.ProdutoEstoqueService produtoEstoqueService;
+
     // Regras (MVP):
     // - ADMIN: read all, write only own
     // - USER: read/write only own
@@ -74,6 +77,14 @@ public class PlantaController {
 
         // Opção 2: vaso como equipamento (slot POT)
         equipamentoService.garantirPoteSincronizado(planta, false);
+
+        // Debitar 1 unidade do vaso selecionado no inventário do cultivador
+        int litrosVaso = switch (TamanhVaso.valueOf(dados.tamanhoVaso())) {
+            case CINCO_L -> 5;
+            case VINTE_E_UM_L -> 21;
+            case TRINTA_L -> 30;
+        };
+        produtoEstoqueService.debitarUnidadeVaso(cultivador.getId(), litrosVaso);
 
         var resposta = new DadosDetalhePlanta(
                 planta.getId(),
@@ -134,6 +145,14 @@ public class PlantaController {
 
         // Opção 2: vaso como equipamento (slot POT)
         equipamentoService.garantirPoteSincronizado(planta, false);
+
+        // Debitar 1 unidade do vaso selecionado no inventário do cultivador
+        int litrosVasoAdmin = switch (TamanhVaso.valueOf(dados.tamanhoVaso())) {
+            case CINCO_L -> 5;
+            case VINTE_E_UM_L -> 21;
+            case TRINTA_L -> 30;
+        };
+        produtoEstoqueService.debitarUnidadeVaso(cultivador.get().getId(), litrosVasoAdmin);
 
         var resposta = new DadosDetalhePlanta(
                 planta.getId(),

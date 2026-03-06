@@ -101,13 +101,14 @@ export function PlantCardPreview({ plant, isSelected, onClick }: PlantCardPrevie
 
   useEffect(() => {
     setCanabinhoFrame('stealth');
-  }, [plant.type]);
+  }, [plant.type, canabinhoState]);
 
   // Timing assimétrico: stealth fica mais tempo (pokémon oculto), reveal é o momento do show.
   // Cada vez que canabinhoFrame muda, o effect re-agenda com o delay correto para o próximo estado.
   useEffect(() => {
-    if (canabinhoState === 'zombie') return;
-    const delay = canabinhoFrame === 'stealth' ? 6000 : 4000;
+    const delay = canabinhoState === 'zombie'
+      ? (canabinhoFrame === 'stealth' ? 2600 : 1800)
+      : (canabinhoFrame === 'stealth' ? 6000 : 4000);
     const timeoutId = window.setTimeout(() => {
       setCanabinhoFrame((prev) => (prev === 'stealth' ? 'reveal' : 'stealth'));
     }, delay);

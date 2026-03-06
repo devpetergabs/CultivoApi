@@ -8,7 +8,6 @@ import {
   getAditivoIcon,
   getAditivoStock,
   getDerivedStock,
-  isAditivoOutOfStock,
   syncAditivoStocksFromApi,
   resetAllAditivoStocksOnce,
   type AditivoStock,
@@ -207,6 +206,35 @@ function formatMl(value: number): string {
   return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(1);
 }
 
+function normalizeStockNumber(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, parsed);
+}
+
+function getEffectiveStockForItem(item: Aditivo): AditivoStock {
+  const local = getAditivoStock(item.id);
+  if (local.tracked) return local;
+
+  const apiStock = item.estoque as any;
+  if (apiStock && Boolean(apiStock.tracked)) {
+    return {
+      tracked: true,
+      tipoProduto:
+        (typeof apiStock.tipoProduto === 'string'
+          ? apiStock.tipoProduto
+          : typeof item.tipo === 'string'
+            ? item.tipo
+            : null) ?? null,
+      stockMlAtual: normalizeStockNumber(apiStock.stockMlAtual),
+      unidades: Math.round(normalizeStockNumber(apiStock.unidades)),
+      mlFrasco: Math.round(normalizeStockNumber(apiStock.mlFrasco)),
+    };
+  }
+
+  return local;
+}
+
 export function InventarioView({ onCountChange }: InventarioViewProps) {
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -268,7 +296,7 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
         const tipo = String(a.tipo || "").toUpperCase();
         if (tipo === "VASO") return true;
 
-        const stock = getAditivoStock(a.id);
+        const stock = getEffectiveStockForItem(a);
         const derived = getDerivedStock(stock);
         return !derived.isEmpty;
       });
@@ -285,8 +313,12 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
         const yCollectible = !ay.ativo;
         if (xCollectible !== yCollectible) return xCollectible ? 1 : -1;
 
-        const xOut = String((ax as any).tipo || '').toUpperCase() === 'VASO' ? false : isAditivoOutOfStock(ax.id);
-        const yOut = String((ay as any).tipo || '').toUpperCase() === 'VASO' ? false : isAditivoOutOfStock(ay.id);
+        const xOut = String((ax as any).tipo || '').toUpperCase() === 'VASO'
+          ? false
+          : getDerivedStock(getEffectiveStockForItem(ax)).isEmpty;
+        const yOut = String((ay as any).tipo || '').toUpperCase() === 'VASO'
+          ? false
+          : getDerivedStock(getEffectiveStockForItem(ay)).isEmpty;
         if (xOut !== yOut) return xOut ? 1 : -1;
 
         return x.index - y.index;
@@ -464,7 +496,20 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                             return (
                               <div
                                 key={variant.aditivo.id}
-                                className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-[#6fbf86]/30 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedAditivoId(variant.aditivo.id);
+                                }}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSelectedAditivoId(variant.aditivo.id);
+                                  }
+                                }}
+                                className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-[#6fbf86]/30 hover:bg-white/10 transition-colors cursor-pointer"
                               >
                                 <span className="text-xs text-slate-200 font-medium">
                                   <span className="text-white font-semibold">{variant.capacidadeLitros}L</span>
@@ -497,7 +542,7 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
               const customIcon = getAditivoIcon(a.id);
               const mappedLogo = getInventoryLogoSrc(a);
               const cardIconSrc = mappedLogo || customIcon;
-              const stock = getAditivoStock(a.id);
+              const stock = getEffectiveStockForItem(a);
               const derived = getDerivedStock(stock);
               const isOutOfStock = isEquipment ? false : derived.isEmpty;
               const isLowStock = isEquipment ? false : derived.isLow;

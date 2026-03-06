@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Plant, PlantType } from '../types/pokedex';
+import type { Aditivo } from '../types';
 import { apiService } from '../services/api';
 import { mapPlantaToPokedexPlant } from '../utils/mapPlantaToPokedex';
 import { PokedexModal } from './ui/PokedexModal';
@@ -65,6 +66,8 @@ export function PlantFormModal({
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availableVasos, setAvailableVasos] = useState<Aditivo[]>([]);
+  const [vasosLoading, setVasosLoading] = useState(false);
 
   const strains = useMemo(() => {
     const fromLocal = loadCustomStrains();
@@ -134,6 +137,26 @@ export function PlantFormModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [species]);
 
+  // Carrega vasos disponíveis do inventário
+  useEffect(() => {
+    const loadVasos = async () => {
+      try {
+        setVasosLoading(true);
+        const aditivos = await apiService.getAditivos(0, 200);
+        const data = Array.isArray(aditivos) ? aditivos : (aditivos as any).content || [];
+        const vasos = (data as Aditivo[]).filter((a) => a.tipo === 'VASO');
+        setAvailableVasos(vasos);
+      } catch (err) {
+        console.error('Erro ao carregar vasos:', err);
+        setAvailableVasos([]);
+      } finally {
+        setVasosLoading(false);
+      }
+    };
+
+    loadVasos();
+  }, []);
+
   const addCustomStrain = () => {
     const normalized = normalizeStrain(customStrainInput);
     if (!normalized) return;
@@ -151,6 +174,13 @@ export function PlantFormModal({
     const trimmedName = name.trim();
     if (!trimmedName) {
       setError('Informe um nome para a planta.');
+      return;
+    }
+
+    // Validação de vasos disponíveis
+    if (mode === 'create' && noVasosAvailable) return;
+    if (mode === 'create' && currentVasoBlocked) {
+      setError('Este tamanho de vaso não tem estoque. Escolha outro tamanho.');
       return;
     }
 
@@ -231,6 +261,33 @@ export function PlantFormModal({
 
   const isCannabis = species === 'CANNABIS';
 
+  // Mapa de tamanhos para capacidades em litros
+  const potSizeMap: { [key in typeof pot]: number } = {
+    'CINCO_L': 5,
+    'VINTE_E_UM_L': 21,
+    'TRINTA_L': 30,
+  };
+
+  // Helper para obter disponibilidade de vaso por tamanho
+  const getVasoBySize = (capacidadeLitros: number): Aditivo | undefined => {
+    return availableVasos.find((v) => v.capacidadeLitros === capacidadeLitros);
+  };
+
+  // Helper para verificar se há estoque
+  const hasVasoStock = (capacidadeLitros: number): boolean => {
+    const vaso = getVasoBySize(capacidadeLitros);
+    return vaso ? (vaso.estoque?.unidades ?? 0) > 0 : false;
+  };
+
+  // Estoque do vaso atual
+  const currentVasoSize = potSizeMap[pot];
+  const currentVaso = getVasoBySize(currentVasoSize);
+  const currentVasoStock = currentVaso?.estoque?.unidades ?? 0;
+
+  // Disponibilidade geral
+  const noVasosAvailable = !vasosLoading && availableVasos.every((v) => (v.estoque?.unidades ?? 0) === 0);
+  const currentVasoBlocked = mode === 'create' && !vasosLoading && currentVasoStock === 0;
+
   return (
     <PokedexModal
       open={true}
@@ -239,6 +296,26 @@ export function PlantFormModal({
       subtitle={mode === 'create' ? 'Cria uma nova entrada na Pokédex.' : 'Atualiza os dados da planta selecionada.'}
       widthClass="w-full max-w-[420px]"
     >
+        {/* Banner de aviso: sem vasos no inventário */}
+        {mode === 'create' && vasosLoading && (
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-slate-400">
+            <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            Verificando estoque de vasos…
+          </div>
+        )}
+        {mode === 'create' && noVasosAvailable && (
+          <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2.5">
+            <span className="mt-0.5 text-amber-400 text-base leading-none">⚠</span>
+            <div>
+              <div className="text-xs font-semibold text-amber-300">Sem vasos no inventário</div>
+              <div className="mt-0.5 text-[11px] text-amber-300/70">Adicione vasos ao inventário antes de cadastrar uma planta.</div>
+            </div>
+          </div>
+        )}
+
         <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Nome</label>
         <input
           type="text"
@@ -347,12 +424,27 @@ export function PlantFormModal({
             <select
               value={pot}
               onChange={(event) => setPot(event.target.value as any)}
-              className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+              className={`w-full rounded-lg border bg-[#080B14] px-3 py-2 text-xs text-white outline-none transition-colors ${
+                currentVasoBlocked
+                  ? 'border-red-400/60 focus:border-red-400/80 focus:ring-1 focus:ring-red-400/30'
+                  : 'border-white/10 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30'
+              }`}
             >
-              <option value="CINCO_L">5 L</option>
-              <option value="VINTE_E_UM_L">21 L</option>
-              <option value="TRINTA_L">30 L</option>
+              <option value="CINCO_L">5 L{hasVasoStock(5) ? ' — disponível' : ''}</option>
+              <option value="VINTE_E_UM_L">21 L{hasVasoStock(21) ? ' — disponível' : ''}</option>
+              <option value="TRINTA_L">30 L{hasVasoStock(30) ? ' — disponível' : ''}</option>
             </select>
+            {!vasosLoading && (
+              <p className={`mt-1 text-[10px] ${
+                currentVasoBlocked ? 'text-red-400' : 'text-emerald-400/70'
+              }`}>
+                {currentVasoBlocked
+                  ? 'Sem estoque neste tamanho'
+                  : currentVasoStock > 0
+                    ? `${currentVasoStock} unidade${currentVasoStock !== 1 ? 's' : ''} disponível`
+                    : ''}
+              </p>
+            )}
           </div>
         </div>
 
@@ -456,9 +548,9 @@ export function PlantFormModal({
 
           <button
             onClick={handleSubmit}
-            disabled={isSaving}
+            disabled={isSaving || (mode === 'create' && noVasosAvailable)}
             className={`py-2 rounded-lg font-semibold uppercase tracking-widest text-xs transition-all ${
-              isSaving
+              isSaving || (mode === 'create' && noVasosAvailable)
                 ? 'bg-emerald-400/50 text-[#080B14]/70 cursor-not-allowed opacity-70'
                 : 'bg-emerald-400 text-[#080B14] hover:bg-emerald-300'
             }`}

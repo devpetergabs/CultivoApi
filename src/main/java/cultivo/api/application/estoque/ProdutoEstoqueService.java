@@ -1,6 +1,7 @@
 package cultivo.api.application.estoque;
 
 import cultivo.api.domain.aditivo.Aditivo;
+import cultivo.api.domain.aditivo.TipoProduto;
 import cultivo.api.domain.cultivador.Cultivador;
 import cultivo.api.domain.estoque.ProdutoEstoque;
 import cultivo.api.domain.usuario.Usuario;
@@ -61,6 +62,22 @@ public class ProdutoEstoqueService {
         // Atualiza (inclusive com 0): simula realidade.
         estoque.atualizar(stockMlAtual, unidades, mlFrasco);
         return estoqueRepository.save(estoque);
+    }
+
+    /**
+     * Debita 1 unidade do vaso correspondente ao tamanho da planta, se houver estoque rastreado.
+     * Chamado automaticamente ao criar uma planta.
+     */
+    @Transactional
+    public void debitarUnidadeVaso(Long cultivadorId, int capacidadeLitros) {
+        if (cultivadorId == null) return;
+        produtoRepository
+                .findFirstByTipoAndCapacidadeLitros(TipoProduto.VASO, capacidadeLitros)
+                .flatMap(vaso -> estoqueRepository.findByCultivadorIdAndProdutoId(cultivadorId, vaso.getId()))
+                .ifPresent(estoque -> {
+                    estoque.debitarUnidade();
+                    estoqueRepository.save(estoque);
+                });
     }
 
     /**

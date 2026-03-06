@@ -106,4 +106,10 @@ public class ProdutoEstoque {
         this.stockMlAtual = Math.max(0.0, next);
         // IMPORTANT: não reabastece automaticamente. Se zerou, fica 0.
     }
+
+    /** Debita 1 unidade física (equipamento, vaso etc.). Não desce abaixo de 0. */
+    public void debitarUnidade() {
+        int atual = this.unidades != null ? this.unidades : 0;
+        this.unidades = Math.max(0, atual - 1);
+    }
 }

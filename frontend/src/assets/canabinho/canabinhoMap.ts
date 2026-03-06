@@ -7,11 +7,10 @@ import germinacaoZombie from '../stages/1 -Germinação/germinacao-zombie.png';
 import vegInicialStealth from '../stages/2 -Vegetativo inicial/vegetativo-inicial-stealth.png';
 import vegInicialReveal from '../stages/2 -Vegetativo inicial/vegetativo-inicial-reveal.png';
 import vegInicialZombie from '../stages/2 -Vegetativo inicial/veg-inicial-zombie.png';
-import vegInicialZombieV2 from '../stages/2 -Vegetativo inicial/veg-inicial-zombie-v2.png';
 
 import vegMedioStealth from '../stages/2.1 - Vegetativo Medio/veg-med-stealth.png';
 import vegMedioReveal from '../stages/2.1 - Vegetativo Medio/veg-med-reveal.png';
-import vegMedioZombieV2 from '../stages/2.1 - Vegetativo Medio/veg-med-zombie-v2.png';
+import vegMedioZombie from '../stages/2.1 - Vegetativo Medio/veg-med-zombie.png';
 
 import vegAvancadoStealth from '../stages/2.2 - Vegetativo Avançado/veg-avan-stealth.png';
 import vegAvancadoReveal from '../stages/2.2 - Vegetativo Avançado/veg-avan-reveal.png';
@@ -60,11 +59,11 @@ export const CANABINHO_ASSETS: Record<PlantType, StageAssetSet> = {
   ),
   VEGETATIVO_INICIAL: buildStage(
     { stealth: vegInicialStealth, reveal: vegInicialReveal },
-    [vegInicialZombie, vegInicialZombieV2]
+    [vegInicialZombie]
   ),
   VEGETATIVO_MEDIO: buildStage(
     { stealth: vegMedioStealth, reveal: vegMedioReveal },
-    [vegMedioZombieV2]
+    [vegMedioZombie]
   ),
   VEGETATIVO_AVANCADO: buildStage(
     { stealth: vegAvancadoStealth, reveal: vegAvancadoReveal },
@@ -88,11 +87,23 @@ export const CANABINHO_ASSETS: Record<PlantType, StageAssetSet> = {
   ),
 };
 
-const pickZombieVariant = (variants: string[], plantId?: number): string | null => {
+const pickZombieVariantByFrame = (
+  variants: string[],
+  frame: CanabinhoFrame,
+  plantId?: number
+): string | null => {
   if (variants.length === 0) return null;
-  if (plantId === undefined || plantId === null || !Number.isFinite(plantId)) return variants[0];
-  const index = Math.abs(Math.trunc(plantId)) % variants.length;
-  return variants[index];
+  if (variants.length === 1) return variants[0];
+
+  const seed =
+    plantId === undefined || plantId === null || !Number.isFinite(plantId)
+      ? 0
+      : Math.abs(Math.trunc(plantId));
+
+  const baseIndex = seed % variants.length;
+  const nextIndex = (baseIndex + 1) % variants.length;
+
+  return frame === 'reveal' ? variants[nextIndex] : variants[baseIndex];
 };
 
 export function getCanabinhoSrc({
@@ -111,7 +122,7 @@ export function getCanabinhoSrc({
   const reveal = stageAssets.normal.reveal || stealth;
 
   if (state === 'zombie') {
-    const zombie = pickZombieVariant(stageAssets.zombie, plantId);
+    const zombie = pickZombieVariantByFrame(stageAssets.zombie, frame, plantId);
     return zombie || reveal || stealth || CANABINHO_ASSETS.GERMINACAO.normal.stealth;
   }
 
