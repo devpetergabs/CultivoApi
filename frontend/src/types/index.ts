@@ -138,6 +138,12 @@ export interface PlantaFoto {
   dataUpload: string;
 }
 
+export interface PlantaFotoAnalise {
+  modelo: string;
+  resposta: string;
+  observacao: string;
+}
+
 export interface PlantaEvento {
   id: number;
   plantaNome: string;

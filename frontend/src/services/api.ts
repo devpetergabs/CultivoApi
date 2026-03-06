@@ -3,6 +3,7 @@ import type {
   Aditivo,
   Planta,
   PlantaCompleta,
+  PlantaFotoAnalise,
   PlantaFoto,
   PlantaEventoPayload,
   PlantaEvento,
@@ -222,6 +223,14 @@ class ApiService {
     data: { imagemBase64: string; contentType: string; descricao?: string }
   ): Promise<PlantaFoto> {
     const response = await this.axiosInstance.post(`/plantas/${plantaId}/fotos`, data);
+    return response.data;
+  }
+
+  async analisarPlantaFoto(
+    plantaId: number,
+    data: { imagemBase64?: string; contentType?: string; descricao?: string }
+  ): Promise<PlantaFotoAnalise> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/fotos/analise`, data);
     return response.data;
   }
 

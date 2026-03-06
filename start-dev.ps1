@@ -15,7 +15,7 @@ Assert-CommandExists -Name "docker"
 Assert-CommandExists -Name "mvn"
 Assert-CommandExists -Name "npm"
 
-Write-Host "[1/3] Subindo MySQL (Docker Compose)..." -ForegroundColor Cyan
+Write-Host "[1/3] Subindo infraestrutura local (MySQL + Ollama + Open WebUI)..." -ForegroundColor Cyan
 docker compose up -d
 
 # If the container already existed from an older compose config, it may not have host ports published.
@@ -58,7 +58,9 @@ Start-Process -FilePath "powershell" -ArgumentList @(
   $frontendCmd
 )
 
-Write-Host "OK: containers + API + frontend iniciados." -ForegroundColor Green
+Write-Host "OK: infraestrutura local + API + frontend iniciados." -ForegroundColor Green
 Write-Host "Dica: se for a primeira vez, rode: .\\start-dev.ps1 -Install" -ForegroundColor DarkGray
 Write-Host "Frontend: http://localhost:3000 (ou a porta mostrada pelo Vite)" -ForegroundColor DarkGray
 Write-Host "API: http://localhost:8080 (quando o Spring terminar de subir)" -ForegroundColor DarkGray
+Write-Host "Open WebUI: http://localhost:3001" -ForegroundColor DarkGray
+Write-Host "Ollama API local: http://localhost:11434" -ForegroundColor DarkGray

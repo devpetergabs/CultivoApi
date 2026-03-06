@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { InsecticideModal } from './InsecticideModal';
 import { NoteModal } from './NoteModal';
 import { PhotoModal } from './PhotoModal';
@@ -13,6 +13,15 @@ interface PlantQuickActionsProps {
 type QuickAction = 'watering' | 'photo' | 'note' | 'insecticide';
 
 const ACTION_RADIUS = 38;
+
+function MagnifierIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="6" />
+      <path d="m20 20-4.2-4.2" />
+    </svg>
+  );
+}
 
 const getPolarPosition = (angleDeg: number, radius: number) => {
   const rad = (angleDeg * Math.PI) / 180;
@@ -37,6 +46,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         key: 'watering' as const,
         label: 'REGAR',
         emoji: '💧',
+        icon: null as ReactNode,
         angle: 90,
         gradient: 'from-[#6fbf86] to-[#3f6f57]',
         border: 'border-[#b7dfc5]',
@@ -47,6 +57,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         key: 'note' as const,
         label: 'NOTA',
         emoji: '📝',
+        icon: null as ReactNode,
         angle: 0,
         gradient: 'from-[#e8c96a] to-[#d7b04d]',
         border: 'border-[#f2e0ad]',
@@ -55,8 +66,9 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
       },
       {
         key: 'photo' as const,
-        label: 'FOTO',
-        emoji: '📷',
+        label: 'INSPECIONAR',
+        emoji: '',
+        icon: <MagnifierIcon />,
         angle: 180,
         gradient: 'from-[#63b7ff] to-[#3d8bdd]',
         border: 'border-[#b5d9ff]',
@@ -67,6 +79,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
         key: 'insecticide' as const,
         label: 'SINAL DE PRAGA',
         emoji: '🐛',
+        icon: null as ReactNode,
         angle: 270,
         gradient: 'from-[#f39a5c] to-[#df7a3a]',
         border: 'border-[#f6d2b4]',
@@ -194,7 +207,7 @@ export function PlantQuickActions({ plant }: PlantQuickActionsProps) {
                         aria-hidden="true"
                       />
                     )}
-                    <span className="mr-1">{action.emoji}</span>
+                    <span className="mr-1 inline-flex items-center justify-center">{action.icon ?? action.emoji}</span>
                     {action.label}
                   </button>
                 );

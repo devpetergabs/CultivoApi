@@ -1,5 +1,6 @@
 package cultivo.api.api.controller.planta;
 
+import cultivo.api.application.ai.PlantaImagemAnaliseService;
 import cultivo.api.domain.planta.PlantaFoto;
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.security.AccessControl;
@@ -25,6 +26,9 @@ public class PlantaFotoController {
 
     @Autowired
     private PlantaFotoRepository repository;
+
+    @Autowired
+    private PlantaImagemAnaliseService analiseService;
 
     @Autowired
     private PlantaRepository plantaRepository;
@@ -55,6 +59,34 @@ public class PlantaFotoController {
                 foto.getContentType(), foto.getDescricao(), foto.getDataUpload());
         var uriBuilder = uri.path("/plantas/{plantaId}/fotos/{id}").buildAndExpand(plantaId, foto.getId()).toUri();
         return ResponseEntity.created(uriBuilder).body(resposta);
+    }
+
+    @PostMapping("/analise")
+    public ResponseEntity<?> analisar(
+            @PathVariable Long plantaId,
+            @Valid @RequestBody DadosAnalisePlantaFoto dados,
+            @AuthenticationPrincipal Usuario usuario
+    ) {
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var planta = plantaRepository.findById(plantaId);
+        if (planta.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        if (!AccessControl.canReadPlanta(usuario, planta.get())) {
+            return ResponseEntity.notFound().build();
+        }
+
+        byte[] imagemBytes = null;
+        if (dados.imagemBase64() != null && !dados.imagemBase64().isBlank()) {
+            imagemBytes = Base64.getDecoder().decode(dados.imagemBase64());
+        }
+
+        var analise = analiseService.analisar(planta.get(), imagemBytes, dados.contentType(), dados.descricao());
+        return ResponseEntity.ok(analise);
     }
 
     @GetMapping
