@@ -1,6 +1,9 @@
 import axios, { AxiosInstance } from 'axios';
 import type {
   Aditivo,
+  DoctorChatSendResponse,
+  DoctorChatMode,
+  DoctorChatSession,
   Planta,
   PlantaCompleta,
   PlantaFotoAnalise,
@@ -231,6 +234,26 @@ class ApiService {
     data: { descricao?: string }
   ): Promise<PlantaFotoAnalise> {
     const response = await this.axiosInstance.post(`/plantas/${plantaId}/fotos/analise`, data);
+    return response.data;
+  }
+
+  async getOrCreateDoctorSession(plantaId: number): Promise<DoctorChatSession> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/doctor/session`);
+    return response.data;
+  }
+
+  async getDoctorSession(plantaId: number): Promise<DoctorChatSession> {
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/doctor/session`);
+    return response.data;
+  }
+
+  async resetDoctorSession(plantaId: number): Promise<DoctorChatSession> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/doctor/session/reset`);
+    return response.data;
+  }
+
+  async sendDoctorMessage(plantaId: number, mensagem: string, modo: DoctorChatMode = 'AUTO'): Promise<DoctorChatSendResponse> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/doctor/session/messages`, { mensagem, modo });
     return response.data;
   }
 

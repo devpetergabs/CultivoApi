@@ -17,6 +17,8 @@ import {
 type Mode = 'create' | 'edit';
 type SexoValue = 'FEMEA' | 'MACHO' | 'HERMAFRODITA';
 type SpeciesValue = 'CANNABIS' | 'ROSEIRA' | 'OUTRA';
+type CycleTypeValue = 'AUTOMATICA' | 'FOTOPERIODICA' | 'NAO_DEFINIDO';
+type GeneticsValue = 'SATIVA' | 'INDICA' | 'HIBRIDA' | 'NAO_DEFINIDO';
 
 interface PlantFormModalProps {
   mode: Mode;
@@ -36,6 +38,21 @@ function coerceSpecies(value: unknown): SpeciesValue {
   return 'CANNABIS';
 }
 
+function coerceCycleType(value: unknown): CycleTypeValue {
+  const v = String(value ?? '').toUpperCase();
+  if (v === 'AUTOMATICA') return 'AUTOMATICA';
+  if (v === 'FOTOPERIODICA') return 'FOTOPERIODICA';
+  return 'NAO_DEFINIDO';
+}
+
+function coerceGenetics(value: unknown): GeneticsValue {
+  const v = String(value ?? '').toUpperCase();
+  if (v === 'SATIVA') return 'SATIVA';
+  if (v === 'INDICA') return 'INDICA';
+  if (v === 'HIBRIDA') return 'HIBRIDA';
+  return 'NAO_DEFINIDO';
+}
+
 export function PlantFormModal({
   mode,
   initialPlant,
@@ -46,6 +63,8 @@ export function PlantFormModal({
 }: PlantFormModalProps) {
   const [name, setName] = useState('');
   const [species, setSpecies] = useState<SpeciesValue>('CANNABIS');
+  const [cycleType, setCycleType] = useState<CycleTypeValue>('NAO_DEFINIDO');
+  const [genetics, setGenetics] = useState<GeneticsValue>('NAO_DEFINIDO');
 
   // “strain” aqui vira “variedade/cultivar” para qualquer espécie
   const [strain, setStrain] = useState('');
@@ -88,6 +107,8 @@ export function PlantFormModal({
 
       // pega species do plant, mas não quebra se ainda estiver faltando no type
       setSpecies(coerceSpecies((initialPlant as any).species));
+      setCycleType(coerceCycleType((initialPlant as any).cycleType));
+      setGenetics(coerceGenetics((initialPlant as any).genetics));
 
       setStage(initialPlant.type);
       setPot(potLitersToEnum(initialPlant.potLiters));
@@ -102,6 +123,8 @@ export function PlantFormModal({
     } else {
       setName('');
       setSpecies('CANNABIS');
+      setCycleType('NAO_DEFINIDO');
+      setGenetics('NAO_DEFINIDO');
       setStrain(strains[0] ?? '');
       setStage('GERMINACAO');
       setPot('CINCO_L');
@@ -203,6 +226,8 @@ export function PlantFormModal({
           nome: trimmedName,
           strain: normalizedStrain,
           especie: species, // ✅ NOVO
+          tipoCiclo: cycleType,
+          genetica: genetics,
           altura: alturaPayload,
           largura: larguraPayload,
           larguraCaule: caulePayload,
@@ -233,6 +258,8 @@ export function PlantFormModal({
         nome: trimmedName,
         strain: normalizedStrain,
         especie: species, // ✅ NOVO
+        tipoCiclo: cycleType,
+        genetica: genetics,
         dataGerminacao: germinacaoIso ? germinacaoIso : null,
         altura: alturaPayload,
         largura: larguraPayload,
@@ -336,6 +363,37 @@ export function PlantFormModal({
               <option value="CANNABIS">Cannabis 🌿</option>
               <option value="ROSEIRA">Roseira 🌹</option>
               <option value="OUTRA">Outra 🌱</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Tipo de ciclo</label>
+            <select
+              value={cycleType}
+              onChange={(e) => setCycleType(coerceCycleType(e.target.value))}
+              className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+            >
+              <option value="NAO_DEFINIDO">Não identificado</option>
+              <option value="AUTOMATICA">Automática</option>
+              <option value="FOTOPERIODICA">Fotoperiódica</option>
+            </select>
+          </div>
+
+
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Genética</label>
+            <select
+              value={genetics}
+              onChange={(e) => setGenetics(coerceGenetics(e.target.value))}
+              className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+            >
+              <option value="NAO_DEFINIDO">Não identificado</option>
+              <option value="SATIVA">Sativa</option>
+              <option value="INDICA">Índica</option>
+              <option value="HIBRIDA">Híbrida</option>
             </select>
           </div>
 

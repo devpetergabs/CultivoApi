@@ -4,6 +4,8 @@ import cultivo.api.domain.cultivador.Cultivador;
 import cultivo.api.domain.planta.Planta;
 import cultivo.api.domain.planta.TamanhVaso;
 import cultivo.api.domain.planta.EstagioPlanta;
+import cultivo.api.domain.planta.GeneticaPlanta;
+import cultivo.api.domain.planta.TipoCicloPlanta;
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import cultivo.api.infrastructure.persistence.usuario.UsuarioRepository;
@@ -48,6 +50,8 @@ class PlantaRepositoryTest {
 
         assertThat(persisted.getId()).isNotNull();
         assertThat(persisted.getNome()).isEqualTo("Cannabis");
+        assertThat(persisted.getTipoCiclo()).isEqualTo(TipoCicloPlanta.NAO_DEFINIDO);
+        assertThat(persisted.getGenetica()).isEqualTo(GeneticaPlanta.NAO_DEFINIDO);
         assertThat(persisted.getAltura()).isEqualTo(2.0);
         assertThat(persisted.getLargura()).isEqualTo(90.0);
         assertThat(persisted.getLarguraCaule()).isEqualTo(9.5);

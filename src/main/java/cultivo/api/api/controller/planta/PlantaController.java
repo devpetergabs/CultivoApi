@@ -3,8 +3,10 @@ package cultivo.api.api.controller.planta;
 import cultivo.api.domain.planta.Planta;
 import cultivo.api.application.planta.CodexEstagioService;
 import cultivo.api.application.planta.PlantaEquipamentoService;
+import cultivo.api.domain.planta.GeneticaPlanta;
 import cultivo.api.domain.planta.TamanhVaso;
 import cultivo.api.domain.planta.EspeciePlanta;
+import cultivo.api.domain.planta.TipoCicloPlanta;
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.exception.ErrorResponse;
 import cultivo.api.infrastructure.security.AccessControl;
@@ -76,7 +78,10 @@ public class PlantaController {
             planta.setEspecie(dados.especie());
         }
 
-        planta.atualizarDados(null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
+        planta.setTipoCiclo(resolveTipoCiclo(dados.tipoCiclo()));
+        planta.setGenetica(resolveGenetica(dados.genetica()));
+
+        planta.atualizarDados(null, null, null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
         repository.save(planta);
 
         // Opção 2: vaso como equipamento (slot POT)
@@ -96,6 +101,8 @@ public class PlantaController {
                 planta.getNome(),
                 planta.getStrain(),
                 planta.getEspecie() != null ? planta.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(planta.getTipoCiclo()).toString(),
+            resolveGenetica(planta.getGenetica()).toString(),
                 planta.getPraga(),
                 planta.getAltura(),
                 planta.getLargura(),
@@ -145,7 +152,10 @@ public class PlantaController {
             planta.setEspecie(dados.especie());
         }
 
-        planta.atualizarDados(null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
+        planta.setTipoCiclo(resolveTipoCiclo(dados.tipoCiclo()));
+        planta.setGenetica(resolveGenetica(dados.genetica()));
+
+        planta.atualizarDados(null, null, null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
         repository.save(planta);
 
         // Opção 2: vaso como equipamento (slot POT)
@@ -165,6 +175,8 @@ public class PlantaController {
                 planta.getNome(),
                 planta.getStrain(),
                 planta.getEspecie() != null ? planta.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(planta.getTipoCiclo()).toString(),
+            resolveGenetica(planta.getGenetica()).toString(),
                 planta.getPraga(),
                 planta.getAltura(),
                 planta.getLargura(),
@@ -200,6 +212,8 @@ public class PlantaController {
                             p.getNome(),
                             p.getStrain(),
                             p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+                            resolveTipoCiclo(p.getTipoCiclo()).toString(),
+                            resolveGenetica(p.getGenetica()).toString(),
                             p.getPraga(),
                             p.getAltura(),
                             p.getLargura(),
@@ -227,6 +241,8 @@ public class PlantaController {
                         p.getNome(),
                         p.getStrain(),
                         p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+                    resolveTipoCiclo(p.getTipoCiclo()).toString(),
+                    resolveGenetica(p.getGenetica()).toString(),
                         p.getPraga(),
                         p.getAltura(),
                         p.getLargura(),
@@ -281,6 +297,8 @@ public class PlantaController {
                 p.getNome(),
                 p.getStrain(),
                 p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(p.getTipoCiclo()).toString(),
+            resolveGenetica(p.getGenetica()).toString(),
                 p.getPraga(),
                 p.getAltura(),
                 p.getLargura(),
@@ -326,6 +344,8 @@ public class PlantaController {
                 p.getNome(),
                 p.getStrain(),
                 p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(p.getTipoCiclo()).toString(),
+            resolveGenetica(p.getGenetica()).toString(),
                 p.getPraga(),
                 p.getAltura(),
                 p.getLargura(),
@@ -376,6 +396,8 @@ public class PlantaController {
                 dados.larguraCaule(),
                 dados.tamanhoVaso() != null ? TamanhVaso.valueOf(dados.tamanhoVaso()) : null,
                 dados.estagio(),
+            dados.tipoCiclo(),
+            dados.genetica(),
                 dados.sexo(),
                 dados.dataSexagem(),
                 dados.dataFloracao()
@@ -394,6 +416,8 @@ public class PlantaController {
                 p.getNome(),
                 p.getStrain(),
                 p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(p.getTipoCiclo()).toString(),
+            resolveGenetica(p.getGenetica()).toString(),
                 p.getPraga(),
                 p.getAltura(),
                 p.getLargura(),
@@ -456,6 +480,8 @@ public class PlantaController {
                         p.getNome(),
                         p.getStrain(),
                         p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+                    resolveTipoCiclo(p.getTipoCiclo()).toString(),
+                    resolveGenetica(p.getGenetica()).toString(),
                         p.getPraga(),
                         p.getAltura(),
                         p.getLargura(),
@@ -470,6 +496,14 @@ public class PlantaController {
                         p.getDataCriacao()
                 ));
         return ResponseEntity.ok(page);
+    }
+
+    private TipoCicloPlanta resolveTipoCiclo(TipoCicloPlanta tipoCiclo) {
+        return tipoCiclo != null ? tipoCiclo : TipoCicloPlanta.NAO_DEFINIDO;
+    }
+
+    private GeneticaPlanta resolveGenetica(GeneticaPlanta genetica) {
+        return genetica != null ? genetica : GeneticaPlanta.NAO_DEFINIDO;
     }
 
     @Autowired

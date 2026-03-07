@@ -39,7 +39,7 @@ Write-Host "[2/3] Subindo API (Spring Boot)..." -ForegroundColor Cyan
 Start-Process -FilePath "powershell" -ArgumentList @(
   "-NoExit",
   "-Command",
-  "Set-Location -Path '$PSScriptRoot'; $env:DB_PORT='3307'; mvn spring-boot:run"
+  "Set-Location -Path '$PSScriptRoot'; `$env:DB_PORT='3307'; mvn -q -DskipTests compile; mvn spring-boot:run"
 )
 
 Write-Host "[3/3] Subindo Frontend (Vite)..." -ForegroundColor Cyan

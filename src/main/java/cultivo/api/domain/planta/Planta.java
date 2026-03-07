@@ -32,6 +32,14 @@ public class Planta {
         if (especie != null) this.especie = especie;
     }
 
+    public void setTipoCiclo(TipoCicloPlanta tipoCiclo) {
+        if (tipoCiclo != null) this.tipoCiclo = tipoCiclo;
+    }
+
+    public void setGenetica(GeneticaPlanta genetica) {
+        if (genetica != null) this.genetica = genetica;
+    }
+
     // --- estado: sinal de praga ---
     public void marcarPraga() { this.praga = true; }
     public void limparPraga() { this.praga = false; }
@@ -50,6 +58,14 @@ public class Planta {
     @Enumerated(EnumType.STRING)
     @Column(name = "especie")
     private EspeciePlanta especie = EspeciePlanta.CANNABIS;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_ciclo", nullable = false)
+    private TipoCicloPlanta tipoCiclo = TipoCicloPlanta.NAO_DEFINIDO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "genetica", nullable = false)
+    private GeneticaPlanta genetica = GeneticaPlanta.NAO_DEFINIDO;
 
     @Column(name = "data_germinacao")
     private LocalDate dataGerminacao;
@@ -110,6 +126,8 @@ public class Planta {
         this.nome = nome;
         this.strain = strain;
         this.especie = EspeciePlanta.CANNABIS;
+        this.tipoCiclo = TipoCicloPlanta.NAO_DEFINIDO;
+        this.genetica = GeneticaPlanta.NAO_DEFINIDO;
 
         if (estagio == EstagioPlanta.GERMINACAO && dataGerminacao == null) {
             this.dataGerminacao = LocalDate.now();
@@ -150,6 +168,8 @@ public class Planta {
             Double larguraCaule,
             TamanhVaso tamanhoVaso,
             EstagioPlanta estagio,
+            TipoCicloPlanta tipoCiclo,
+            GeneticaPlanta genetica,
             SexoPlanta sexo,
             LocalDate dataSexagem,
             LocalDate dataFloracao
@@ -171,6 +191,8 @@ public class Planta {
         }
 
         if (tamanhoVaso != null) this.tamanhoVaso = tamanhoVaso;
+        if (tipoCiclo != null) this.tipoCiclo = tipoCiclo;
+        if (genetica != null) this.genetica = genetica;
 
         if (estagio != null) {
             boolean mudouDeVegetativoParaPreFloracao =

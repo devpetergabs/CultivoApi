@@ -40,6 +40,8 @@ class PlantaTest {
             EstagioPlanta.FLORACAO_INICIAL,
             null,
             null,
+            null,
+            null,
             null
         );
 
@@ -74,6 +76,8 @@ class PlantaTest {
             null,
             TamanhVaso.VINTE_E_UM_L,
             EstagioPlanta.FLORACAO_INICIAL,
+            null,
+            null,
             null,
             null,
             null
@@ -111,6 +115,8 @@ class PlantaTest {
             null,
             TamanhVaso.VINTE_E_UM_L,
             EstagioPlanta.FLORACAO_INICIAL,
+            null,
+            null,
             null,
             null,
             dataEnviadaPeloCliente

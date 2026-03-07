@@ -339,6 +339,8 @@ export function PlantDetailDrawer({ plant, allPlants, onClose, onEdit, onDelete 
                 <div className="text-xs font-medium text-[#6fbf86]/80 uppercase tracking-[0.12em]">Detalhes</div>
 
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <InfoCard label="Tipo de ciclo" value={formatCycleType(plant.cycleType)} />
+                  <InfoCard label="Genética" value={formatGenetics(plant.genetics)} />
                   {plant.sexo && <InfoCard label="Sexo" value={formatSexo(plant.sexo)} />}
                   {plant.dataSexagem && <InfoCard label="Sexagem" value={formatDateBr(plant.dataSexagem)} mono />}
                   {plant.dataFloracao && (
@@ -478,4 +480,19 @@ function formatSexo(sexo?: string | null) {
   if (sexo === 'MACHO') return '♂ Macho';
   if (sexo === 'HERMAFRODITA') return '⚥ Hermafrodita';
   return sexo;
+}
+
+function formatCycleType(value?: string | null) {
+  if (!value || value === 'NAO_DEFINIDO') return 'Não identificado';
+  if (value === 'AUTOMATICA') return 'Automática';
+  if (value === 'FOTOPERIODICA') return 'Fotoperiódica';
+  return value;
+}
+
+function formatGenetics(value?: string | null) {
+  if (!value || value === 'NAO_DEFINIDO') return 'Não identificado';
+  if (value === 'SATIVA') return 'Sativa';
+  if (value === 'INDICA') return 'Índica';
+  if (value === 'HIBRIDA') return 'Híbrida';
+  return value;
 }

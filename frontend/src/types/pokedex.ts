@@ -9,12 +9,16 @@ export type PlantType =
   | 'FINALIZACAO';
 
 export type PlantSpecies = 'CANNABIS' | 'ROSEIRA' | 'OUTRA' | string;
+export type PlantCycleType = 'AUTOMATICA' | 'FOTOPERIODICA' | 'NAO_DEFINIDO' | string;
+export type PlantGenetics = 'SATIVA' | 'INDICA' | 'HIBRIDA' | 'NAO_DEFINIDO' | string;
 
 export interface Plant {
   id: number;
   name: string;
   type: PlantType;
   species: PlantSpecies;
+  cycleType?: PlantCycleType;
+  genetics?: PlantGenetics;
   /** flag simples vindo do backend: planta está com "sinal de praga" ativo */
   pestActive?: boolean;
   heightCm: number;
