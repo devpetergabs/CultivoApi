@@ -2,6 +2,8 @@ package cultivo.api.application.ai;
 
 public record DoctorPromptRequest(
         DoctorChatMode mode,
+        DoctorChatIntent intent,
+        String intentBlock,
         String userMessage,
         String referencesBlock,
         String codexBlock,

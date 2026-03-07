@@ -26,6 +26,17 @@ public class DoctorPromptManager {
             - Quando houver trechos locais relevantes, priorize responder a partir deles em vez de depender só do conhecimento geral do modelo.
             - Se um trecho local sustentar uma explicação importante, mencione a fonte de forma natural no corpo da resposta.
             - Evite respostas cansativas, burocráticas ou repetitivas.
+            - Nunca confunda pergunta conceitual com diagnóstico situado só porque existe contexto de planta disponível.
+            """;
+
+    private static final String INTENT_FALLBACK = """
+            ## Contrato semântico do roteamento
+            - Pergunta conceitual usa pipeline conceitual e não recebe contexto operacional da planta por padrão.
+            - Diagnóstico geral usa contexto leve e hipóteses qualificadas.
+            - Diagnóstico especializado usa telemetria, histórico e tom técnico.
+            - Recomendação de manejo deve validar estágio e risco antes de sugerir ação.
+            - Leitura de estágio prioriza fenologia, fotoperíodo e janela de maturação.
+            - Triagem ambígua não deve fingir certeza; deve pedir só os dados mínimos para classificar melhor.
             """;
 
     private static final String KNOWLEDGE_FALLBACK = """
@@ -62,7 +73,7 @@ public class DoctorPromptManager {
 
     private static final String CROSS_MODULE_FALLBACK = """
             ## Mapa mental e lógica de negócio
-            - Identifique primeiro o módulo dominante do caso e cruze pelo menos um módulo secundário.
+            - Identifique primeiro o módulo dominante do caso e cruze pelo menos um módulo secundário quando isso realmente aumentar a precisão.
             - Use sempre a cadeia: ação do cultivador -> efeito na planta -> efeito no lote.
             - Explicite trade-offs antes de sugerir intervenção mais intensa.
             - Trate números vindos de papers como faixas contextuais, não como valor universal.
@@ -72,18 +83,18 @@ public class DoctorPromptManager {
             - Nunca deixe a resposta presa em um único tema se houver impacto claro em arquitetura, estágio, nutrição, pragas ou janela de colheita.
             """;
 
-        private static final String PEST_FALLBACK = """
-                        ## Modo: Praga
-                        - Atue como especialista em pragas e vetores comuns no cultivo de cannabis.
-                        - Diferencie praga, dano mecânico, estresse ambiental, fungo e deficiência antes de concluir.
-                        - Priorize sinais visuais, padrão de dano, local do ataque, velocidade de avanço e histórico de tratamento.
-                        - Quando houver incerteza, entregue hipóteses priorizadas e diga o que observar para separar uma da outra.
-                        - Formato preferido:
-                            1. Leitura de infestação
-                            2. Pragas mais prováveis
-                            3. O que confirmar agora
-                            4. Manejo imediato e cautelas
-                        """;
+    private static final String PEST_FALLBACK = """
+            ## Modo: Praga
+            - Atue como especialista em pragas e vetores comuns no cultivo de cannabis.
+            - Diferencie praga, dano mecânico, estresse ambiental, fungo e deficiência antes de concluir.
+            - Priorize sinais visuais, padrão de dano, local do ataque, velocidade de avanço e histórico de tratamento.
+            - Quando houver incerteza, entregue hipóteses priorizadas e diga o que observar para separar uma da outra.
+            - Formato preferido:
+                1. Leitura de infestação
+                2. Pragas mais prováveis
+                3. O que confirmar agora
+                4. Manejo imediato e cautelas
+            """;
 
     private final String promptFilePath;
 
@@ -93,6 +104,7 @@ public class DoctorPromptManager {
 
     public String buildPrompt(DoctorPromptRequest request) {
         DoctorChatMode mode = request.mode() == null ? DoctorChatMode.AVALIACAO_BASICA : request.mode();
+        DoctorChatIntent intent = request.intent() == null ? DoctorChatIntent.TRIAGEM_AMBIGUA : request.intent();
 
         return """
                 Você está operando como Doctor P. no ecossistema Cultivo Inteligente.
@@ -104,29 +116,34 @@ public class DoctorPromptManager {
                 [DIRETRIZES DO MODO]
                 %s
 
+                [CONTRATO DE INTENÇÃO]
+                %s
+
                 [GUARDRAILS GERAIS]
                 %s
 
                 [MAPA MENTAL E REGRAS DE NEGÓCIO]
                 %s
 
-                %s%s%s%s%s%s%s%s%s%s%s%s[PERGUNTA OU RELATO DO USUÁRIO]
+                %s%s%s%s%s%s%s%s%s%s%s%s%s[PERGUNTA OU RELATO DO USUÁRIO]
                 %s
 
-                Responda agora respeitando a identidade, o modo ativo, as guardrails e o contexto disponível.
+                Responda agora respeitando a identidade, o modo ativo, a intenção detectada, as guardrails e o contexto disponível.
                 Se houver repertório local relevante do Codex ou das fontes locais, use isso como base principal.
-                Quando a camada 1 trouxer o the-bible, trate esse material como guia-base obrigatório da resposta.
-                Quando a camada 2 trouxer fontes específicas do tópico, use-as para refinar, limitar ou complementar o guia-base sem ignorá-lo.
+                Trate o the-bible como base geral de apoio quando ele realmente acrescentar fundamento; não o force como centro da resposta se a pergunta for específica e o material temático já for suficiente.
+                Quando houver fontes temáticas mais aderentes, use-as para refinar, limitar ou complementar a base geral.
                 Se houver fontes em inglês e elas forem as melhores para o tema, use normalmente e responda em português do Brasil.
                 Ao extrapolar além do que está sustentado localmente, sinalize a parte como hipótese, não como fato.
-                Prefira resposta estruturada em: leitura, evidência local, hipótese/inferência, lacunas e próximo passo.
                 Nunca exponha ao usuário os nomes dos blocos internos do sistema, contratos, diagnósticos diferenciais, JSON bruto, contexto operacional interno ou títulos como "Fatos do Caso", "Contrato de Evidência" ou similares.
-                Use esses blocos apenas para pensar melhor. A resposta final deve soar natural e direta.
+                Use esses blocos apenas para pensar melhor. A resposta final deve soar natural, direta e proporcional à intenção detectada.
+                Para DEFINICAO e LEITURA_ESTAGIO, prefira objetividade. Para DIAGNOSTICO_* use hipótese qualificada. Para RECOMENDACAO_MANEJO, use formato acionável. Para TRIAGEM_AMBIGUA, peça no máximo três dados de desbloqueio.
                 """.formatted(
                 loadBasePrompt(),
                 loadModePrompt(mode),
+                joinIntentRules(request.intentBlock(), intent),
                 loadGuardrails(),
                 loadCrossModuleRules(),
+                optionalBlock("[BLOCO DE ROTEAMENTO]", request.intentBlock()),
                 optionalBlock("[TRECHOS RELEVANTES DAS FONTES LOCAIS]", request.referencesBlock()),
                 optionalBlock("[REFERENCIAL DE ESTÁGIO/TEMA (CODEX)]", request.codexBlock()),
                 optionalBlock("[FATOS DO CASO E CONTEXTO OPERACIONAL]", request.caseFactsBlock()),
@@ -141,6 +158,14 @@ public class DoctorPromptManager {
                 optionalBlock("[HISTÓRICO RECENTE DA CONVERSA]", request.historyBlock()),
                 value(request.userMessage())
         ).trim();
+    }
+
+    private String joinIntentRules(String routingBlock, DoctorChatIntent intent) {
+        String normalized = normalize(routingBlock);
+        if (normalized.isBlank()) {
+            return INTENT_FALLBACK + "\n- intenção atual: " + intent.name();
+        }
+        return INTENT_FALLBACK + "\n" + normalized;
     }
 
     private String loadBasePrompt() {
@@ -159,7 +184,6 @@ public class DoctorPromptManager {
             case AVALIACAO_BASICA, AUTO -> loadPromptAsset("modo-avaliacao-basica.md", BASIC_FALLBACK);
         };
     }
-
 
     private String loadCrossModuleRules() {
         return loadPromptAsset("modo-cross-module.md", CROSS_MODULE_FALLBACK);

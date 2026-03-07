@@ -179,7 +179,20 @@ export interface DoctorDecisionSupportMetadata {
   appActions?: string[];
 }
 
+export type DoctorChatIntent =
+  | 'DEFINICAO'
+  | 'DIAGNOSTICO_GERAL'
+  | 'DIAGNOSTICO_ESPECIALIZADO'
+  | 'RECOMENDACAO_MANEJO'
+  | 'LEITURA_ESTAGIO'
+  | 'TRIAGEM_AMBIGUA';
+
 export interface DoctorChatMessageMetadata {
+  intencaoDetectada?: DoctorChatIntent | string;
+  confiancaRoteamento?: string;
+  motivoRoteamento?: string;
+  sinaisDisparadores?: string[];
+  escopoContexto?: string;
   contextoBusca?: string;
   lacunasCriticas?: string[];
   modoUsado?: DoctorChatMode | string;

@@ -22,6 +22,11 @@ public record DoctorAnalysisDiagnostics(
         List<String> hypothesesConsidered,
         List<String> criticalMissingData,
         boolean blockedByEvidenceGate,
-        DoctorDecisionSupport decisionSupport
+        DoctorDecisionSupport decisionSupport,
+        DoctorChatIntent detectedIntent,
+        String routingConfidence,
+        String routingReason,
+        List<String> routingSignals,
+        String contextScope
 ) {
 }

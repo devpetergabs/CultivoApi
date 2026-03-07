@@ -6,7 +6,8 @@ public record DoctorConversationMemory(
         String resumoCurto,
         String ultimaPerguntaUsuario,
         String ultimaRespostaAssistente,
-        String ultimoModoUsado
+        String ultimoModoUsado,
+        String ultimaIntencaoDetectada
 ) {
 
     public boolean hasTopic() {
@@ -18,6 +19,11 @@ public record DoctorConversationMemory(
         return mode == DoctorChatMode.AUTO ? fallback : mode;
     }
 
+    public DoctorChatIntent lastIntentOr(DoctorChatIntent fallback) {
+        DoctorChatIntent intent = DoctorChatIntent.fromValue(ultimaIntencaoDetectada);
+        return intent == DoctorChatIntent.TRIAGEM_AMBIGUA ? fallback : intent;
+    }
+
     public String toPromptBlock() {
         StringBuilder sb = new StringBuilder();
         append(sb, "topico_atual", topicoAtual);
@@ -26,6 +32,7 @@ public record DoctorConversationMemory(
         append(sb, "ultima_pergunta_usuario", ultimaPerguntaUsuario);
         append(sb, "ultima_resposta_assistente", ultimaRespostaAssistente);
         append(sb, "ultimo_modo_usado", ultimoModoUsado);
+        append(sb, "ultima_intencao_detectada", ultimaIntencaoDetectada);
         return sb.toString().trim();
     }
 

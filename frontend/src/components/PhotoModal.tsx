@@ -228,6 +228,25 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
     }
   };
 
+  const formatIntentLabel = (value?: string) => {
+    switch (value) {
+      case 'DEFINICAO':
+        return 'Definição';
+      case 'DIAGNOSTICO_GERAL':
+        return 'Diagnóstico geral';
+      case 'DIAGNOSTICO_ESPECIALIZADO':
+        return 'Diagnóstico especializado';
+      case 'RECOMENDACAO_MANEJO':
+        return 'Recomendação';
+      case 'LEITURA_ESTAGIO':
+        return 'Leitura de estágio';
+      case 'TRIAGEM_AMBIGUA':
+        return 'Triagem ambígua';
+      default:
+        return value ? value.toLowerCase().replaceAll('_', ' ') : '';
+    }
+  };
+
   const formatModuleLabel = (value?: string | null) => {
     switch (value) {
       case 'fenologia_estagio':
@@ -410,6 +429,11 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
                             modo {formatModeLabel(metadata.modoUsado)}
                           </span>
                         )}
+                        {metadata.intencaoDetectada && (
+                          <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[10px] font-medium text-sky-200">
+                            intenção {formatIntentLabel(metadata.intencaoDetectada)}
+                          </span>
+                        )}
                         {typeof metadata.groundingLocalForte === 'boolean' && (
                           <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${metadata.groundingLocalForte ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-amber-400/30 bg-amber-400/10 text-amber-200'}`}>
                             {metadata.groundingLocalForte ? 'grounding forte' : 'grounding parcial'}
@@ -418,6 +442,16 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
                         {metadata.bloqueadaPorEvidencia && (
                           <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-medium text-amber-200">
                             travada por evidência
+                          </span>
+                        )}
+                        {metadata.confiancaRoteamento && (
+                          <span className="rounded-full border border-slate-400/20 bg-slate-400/10 px-2 py-0.5 text-[10px] font-medium text-slate-300">
+                            roteamento {metadata.confiancaRoteamento}
+                          </span>
+                        )}
+                        {metadata.escopoContexto && (
+                          <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-[10px] font-medium text-violet-200">
+                            contexto {metadata.escopoContexto.toLowerCase()}
                           </span>
                         )}
                         {metadata.usouCodex && (
@@ -457,16 +491,21 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
                         )}
                       </div>
 
-                      {!!(metadata.fontesRecuperadas?.length || decisionSupport || metadata.queryRecuperacao || metadata.lacunasCriticas?.length || metadata.dadosCriticosFaltantes?.length || metadata.hipotesesConsideradas?.length) && (
+                      {!!(metadata.fontesRecuperadas?.length || decisionSupport || metadata.queryRecuperacao || metadata.lacunasCriticas?.length || metadata.dadosCriticosFaltantes?.length || metadata.hipotesesConsideradas?.length || metadata.intencaoDetectada || metadata.motivoRoteamento || metadata.sinaisDisparadores?.length) && (
                         <details className="rounded-xl bg-[#0b1020]/70 px-2.5 py-2 text-[11px] text-slate-300">
                           <summary className="cursor-pointer list-none font-medium text-slate-400 marker:hidden">
                             Ver grounding local
                           </summary>
                           <div className="mt-2 space-y-2">
-                            {(metadata.rotaTema || metadata.idiomasPreferidos?.length || metadata.bibleObrigatoria) && (
+                            {(metadata.rotaTema || metadata.idiomasPreferidos?.length || metadata.bibleObrigatoria || metadata.intencaoDetectada || metadata.confiancaRoteamento || metadata.escopoContexto || metadata.motivoRoteamento || metadata.sinaisDisparadores?.length) && (
                               <div>
                                 <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-500">Roteamento</div>
                                 <div className="space-y-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[10px] text-slate-400">
+                                  {metadata.intencaoDetectada && <div><span className="text-slate-500">Intenção:</span> {formatIntentLabel(metadata.intencaoDetectada)}</div>}
+                                  {metadata.confiancaRoteamento && <div><span className="text-slate-500">Confiança:</span> {metadata.confiancaRoteamento}</div>}
+                                  {metadata.escopoContexto && <div><span className="text-slate-500">Escopo:</span> {metadata.escopoContexto.toLowerCase()}</div>}
+                                  {metadata.motivoRoteamento && <div><span className="text-slate-500">Motivo:</span> {metadata.motivoRoteamento}</div>}
+                                  {!!metadata.sinaisDisparadores?.length && <div><span className="text-slate-500">Sinais:</span> {metadata.sinaisDisparadores.join(' · ')}</div>}
                                   {metadata.rotaTema && <div><span className="text-slate-500">Tema:</span> {metadata.rotaTema}</div>}
                                   {!!metadata.idiomasPreferidos?.length && <div><span className="text-slate-500">Idiomas:</span> {metadata.idiomasPreferidos.join(', ')}</div>}
                                   {typeof metadata.bibleObrigatoria === 'boolean' && <div><span className="text-slate-500">The-bible obrigatório:</span> {metadata.bibleObrigatoria ? 'sim' : 'não'}</div>}

@@ -70,11 +70,20 @@ public class DoctorPlantKnowledgeBase {
     }
 
     public String buildReferenceContext(Planta planta, String descricao, DoctorChatMode modo) {
-        return buildReferenceResult(planta, descricao, modo).renderedContext();
+        return buildReferenceResult(planta, descricao, modo, mapIntentFromMode(modo, descricao)).renderedContext();
+    }
+
+    public String buildReferenceContext(Planta planta, String descricao, DoctorChatMode modo, DoctorChatIntent intent) {
+        return buildReferenceResult(planta, descricao, modo, intent).renderedContext();
     }
 
     public ReferenceContextResult buildReferenceResult(Planta planta, String descricao, DoctorChatMode modo) {
+        return buildReferenceResult(planta, descricao, modo, mapIntentFromMode(modo, descricao));
+    }
+
+    public ReferenceContextResult buildReferenceResult(Planta planta, String descricao, DoctorChatMode modo, DoctorChatIntent intent) {
         recarregarSeNecessario();
+        DoctorChatIntent resolvedIntent = intent == null ? mapIntentFromMode(modo, descricao) : intent;
 
         if (chunks.isEmpty()) {
             return new ReferenceContextResult(
@@ -86,9 +95,9 @@ public class DoctorPlantKnowledgeBase {
                     "geral",
                     List.of("geral"),
                     List.of("pt", "en", "multi"),
-                    true,
-                        List.of(),
-                        new CrossSourceSynthesis(
+                    false,
+                    List.of(),
+                    new CrossSourceSynthesis(
                             "nenhuma fonte local foi carregada para sustentar fundamento geral",
                             "sem refino temático local disponível",
                             "não há convergência observável sem fontes carregadas",
@@ -99,44 +108,51 @@ public class DoctorPlantKnowledgeBase {
                             List.of(),
                             List.of(),
                             "use apenas o prompt-base e admita a lacuna local"
-                        )
+                    )
             );
         }
 
-        String consulta = enriquecerConsulta(switch (modo) {
-            case CONHECIMENTO_GERAL -> String.join(" ",
-                    valor(descricao),
-                    "cannabis curiosidades botânica terpenos canabinoides cultivo história fisiologia"
-            );
-            case AVALIACAO_BASICA -> String.join(" ",
-                    valor(planta != null ? planta.getNome() : null),
-                    valor(planta != null && planta.getEstagio() != null ? planta.getEstagio().name() : null),
-                    valor(descricao),
-                    "cannabis manejo básico ambiente temperatura umidade rega estágio irrigação vigor"
-            );
-            case PRAGA -> String.join(" ",
-                valor(planta != null ? planta.getNome() : null),
-                valor(planta != null && planta.getEstagio() != null ? planta.getEstagio().name() : null),
-                valor(descricao),
-                "cannabis pragas tripes tripes ácaros acaros mosca branca pulgões pulgoes cochonilha gnats larvas ovos teias manejo integrado inspeção folha verso"
-            );
-            case AVALIACAO_TECNICA, AUTO -> String.join(" ",
-                    valor(planta != null ? planta.getNome() : null),
-                    valor(planta != null && planta.getEstagio() != null ? planta.getEstagio().name() : null),
-                    valor(descricao),
-                    "cannabis grow bible pragas deficiencias nutrientes ph ec ppm runoff substrato sais fungos fisiologia"
-            );
-            }, modo);
-            QueryRoute route = inferirRota(consulta, modo);
+        String consulta = enriquecerConsulta(montarConsultaBase(planta, descricao, modo, resolvedIntent), modo, resolvedIntent);
+        QueryRoute route = inferirRota(consulta, modo, resolvedIntent);
 
         Set<String> termos = tokenizar(consulta);
 
         List<RankedChunk> ranqueados = chunks.stream()
-                .map(chunk -> new RankedChunk(chunk, pontuar(chunk, termos, modo, planta, route)))
+                .map(chunk -> new RankedChunk(chunk, pontuar(chunk, termos, modo, resolvedIntent, planta, route)))
                 .sorted(Comparator.comparingInt(RankedChunk::score).reversed())
                 .toList();
 
-            return montarResultadoEmDuasCamadas(ranqueados, consulta, modo, route);
+        return montarResultadoEmDuasCamadas(ranqueados, consulta, modo, route);
+    }
+
+    private String montarConsultaBase(Planta planta, String descricao, DoctorChatMode modo, DoctorChatIntent intent) {
+        return switch (intent) {
+            case DEFINICAO -> String.join(" ", valor(descricao), "cannabis conceito definição glossário sinais diferenças práticas");
+            case LEITURA_ESTAGIO -> String.join(" ",
+                    valor(planta != null && planta.getEstagio() != null ? planta.getEstagio().name() : null),
+                    valor(descricao),
+                    "cannabis estágio fenologia fotoperíodo maturação tricomas pistilos colheita"
+            );
+            case RECOMENDACAO_MANEJO -> String.join(" ",
+                    valor(planta != null ? planta.getNome() : null),
+                    valor(planta != null && planta.getEstagio() != null ? planta.getEstagio().name() : null),
+                    valor(descricao),
+                    "cannabis manejo ação correção prevenção técnica aplicação timing estágio"
+            );
+            case DIAGNOSTICO_ESPECIALIZADO -> String.join(" ",
+                    valor(planta != null ? planta.getNome() : null),
+                    valor(planta != null && planta.getEstagio() != null ? planta.getEstagio().name() : null),
+                    valor(descricao),
+                    "cannabis diagnóstico técnico ph ec ppm runoff substrato sais fisiologia"
+            );
+            case DIAGNOSTICO_GERAL -> String.join(" ",
+                    valor(planta != null ? planta.getNome() : null),
+                    valor(planta != null && planta.getEstagio() != null ? planta.getEstagio().name() : null),
+                    valor(descricao),
+                    "cannabis sintomas manejo básico ambiente rega vigor"
+            );
+            case TRIAGEM_AMBIGUA -> valor(descricao);
+        };
     }
 
     private void recarregarSeNecessario() {
@@ -177,15 +193,21 @@ public class DoctorPlantKnowledgeBase {
         }
     }
 
-    private String enriquecerConsulta(String consulta, DoctorChatMode modo) {
+    private String enriquecerConsulta(String consulta, DoctorChatMode modo, DoctorChatIntent intent) {
         StringBuilder enriquecida = new StringBuilder(valor(consulta));
         enriquecida.append(" ").append(expandirSinonimosDeTema(consulta));
 
-        switch (modo) {
-            case PRAGA -> enriquecida.append(" the bible grow bible guia geral cannabis pragas cannabis sinais infestação dano raspagem prateada pontilhado teia melada folhas novas verso da folha monitoramento");
-            case AVALIACAO_BASICA -> enriquecida.append(" the bible grow bible guia geral cannabis sintomas sinais manejo observação causa provável poda treinamento lst topping desfolha");
-            case AVALIACAO_TECNICA, AUTO -> enriquecida.append(" the bible grow bible guia geral cannabis correlação causal diagnóstico diferencial evidência padrão fisiologia poda treinamento lst topping desfolha");
-            case CONHECIMENTO_GERAL -> enriquecida.append(" the bible grow bible guia geral cannabis explicação fundamento conceito referência local poda pruning topping fim lst training canopy supercropping defoliation");
+        switch (intent) {
+            case DEFINICAO -> enriquecida.append(" cannabis glossário conceito explicação sinais diferenças prática cultivo");
+            case LEITURA_ESTAGIO -> enriquecida.append(" cannabis fenologia estágio fotoperíodo maturação preflower flowering harvest trichomes pistils");
+            case RECOMENDACAO_MANEJO -> enriquecida.append(" cannabis manejo correção prevenção action plan safe timing stage restrictions");
+            case DIAGNOSTICO_GERAL -> enriquecida.append(" cannabis sintomas sinais observação hipótese rival ambiente rega vigor");
+            case DIAGNOSTICO_ESPECIALIZADO -> enriquecida.append(" cannabis correlação causal diagnóstico diferencial evidência ph ec ppm runoff salinidade fisiologia");
+            case TRIAGEM_AMBIGUA -> enriquecida.append(" cannabis clarificação intenção pergunta contexto mínimo");
+        }
+
+        if (modo == DoctorChatMode.PRAGA) {
+            enriquecida.append(" thrips mites whitefly aphids mealybugs damage scouting monitoring");
         }
 
         return enriquecida.toString().trim();
@@ -365,7 +387,10 @@ public class DoctorPlantKnowledgeBase {
     }
 
     private List<RankedChunk> selecionarCamadaRefino(List<RankedChunk> ranqueados, DoctorChatMode modo, List<RankedChunk> camadaBase) {
-        QueryRoute rota = inferirRota(ranqueados.stream().map(item -> item.chunk().content()).collect(Collectors.joining(" ")), modo);
+        String consultaInferida = ranqueados.stream()
+                .map(item -> item.chunk().content())
+                .collect(Collectors.joining(" "));
+        QueryRoute rota = inferirRota(consultaInferida, modo, mapIntentFromMode(modo, consultaInferida));
         return selecionarCamadaRefino(ranqueados, modo, camadaBase, rota);
     }
 
@@ -548,7 +573,7 @@ public class DoctorPlantKnowledgeBase {
         }
     }
 
-    private int pontuar(KnowledgeChunk chunk, Set<String> termos, DoctorChatMode modo, Planta planta, QueryRoute route) {
+    private int pontuar(KnowledgeChunk chunk, Set<String> termos, DoctorChatMode modo, DoctorChatIntent intent, Planta planta, QueryRoute route) {
         if (termos.isEmpty()) {
             return 0;
         }
@@ -572,6 +597,7 @@ public class DoctorPlantKnowledgeBase {
 
         score += Math.min(correspondencias, 6) * 2;
         score += bonusPorModo(chunk, modo);
+        score += bonusPorIntent(chunk, intent, route);
         score += bonusPorEstagio(chunk, planta);
         score += bonusPorRota(chunk, route);
 
@@ -642,6 +668,20 @@ public class DoctorPlantKnowledgeBase {
             return 3;
         }
         return 0;
+    }
+
+    private int bonusPorIntent(KnowledgeChunk chunk, DoctorChatIntent intent, QueryRoute route) {
+        if (chunk == null || intent == null) {
+            return 0;
+        }
+        return switch (intent) {
+            case DEFINICAO -> "base-geral".equals(chunk.sourceCategory()) && "geral".equals(route.primaryTopic()) ? 6 : route.preferredTopics().contains(chunk.parentTopic()) ? 5 : 1;
+            case LEITURA_ESTAGIO -> "ciclos_fotoperiodo".equals(chunk.parentTopic()) ? 7 : "extracao".equals(chunk.parentTopic()) ? 4 : 1;
+            case RECOMENDACAO_MANEJO -> route.preferredTopics().contains(chunk.parentTopic()) ? 6 : 1;
+            case DIAGNOSTICO_ESPECIALIZADO -> "nutricao_fertilizacao".equals(chunk.parentTopic()) ? 7 : route.preferredTopics().contains(chunk.parentTopic()) ? 5 : 1;
+            case DIAGNOSTICO_GERAL -> route.preferredTopics().contains(chunk.parentTopic()) ? 5 : 1;
+            case TRIAGEM_AMBIGUA -> 0;
+        };
     }
 
     private int bonusPorModo(KnowledgeChunk chunk, DoctorChatMode modo) {
@@ -727,17 +767,40 @@ public class DoctorPlantKnowledgeBase {
         return "paper";
     }
 
+    private DoctorChatIntent mapIntentFromMode(DoctorChatMode modo, String descricao) {
+        if (modo == null) {
+            return DoctorChatIntent.TRIAGEM_AMBIGUA;
+        }
+        String texto = normalizarBusca(descricao);
+        if (containsAny(texto, "tricoma", "pistilo", "colheita", "floracao", "flora", "vegetativo", "germinacao")) {
+            return DoctorChatIntent.LEITURA_ESTAGIO;
+        }
+        return switch (modo) {
+            case CONHECIMENTO_GERAL -> DoctorChatIntent.DEFINICAO;
+            case AVALIACAO_TECNICA -> DoctorChatIntent.DIAGNOSTICO_ESPECIALIZADO;
+            case AVALIACAO_BASICA, PRAGA -> DoctorChatIntent.DIAGNOSTICO_GERAL;
+            case AUTO -> DoctorChatIntent.TRIAGEM_AMBIGUA;
+        };
+    }
+
     private QueryRoute inferirRota(String consulta, DoctorChatMode modo) {
+        return inferirRota(consulta, modo, mapIntentFromMode(modo, consulta));
+    }
+
+    private QueryRoute inferirRota(String consulta, DoctorChatMode modo, DoctorChatIntent intent) {
         String texto = normalizarBusca(consulta);
         LinkedHashSet<String> topics = new LinkedHashSet<>();
 
-        if (modo == DoctorChatMode.PRAGA || containsAny(texto, "praga", "pest", "thrip", "mites", "mite", "acaro", "tripe", "whitefly", "aphid", "cochonilha")) {
+        if (intent == DoctorChatIntent.LEITURA_ESTAGIO) {
+            topics.add("ciclos_fotoperiodo");
+        }
+        if (containsAny(texto, "praga", "pest", "thrip", "mites", "mite", "acaro", "tripe", "whitefly", "aphid", "cochonilha")) {
             topics.add("pragas_manejo");
         }
-        if (containsAny(texto, "nutricao", "fertiliz", "deficien", "nitrogen", "phosphorus", "potassium", "calcio", "magnesio", "lockout")) {
+        if (containsAny(texto, "nutricao", "fertiliz", "deficien", "nitrogen", "phosphorus", "potassium", "calcio", "magnesio", "lockout", "ph", "ec", "ppm", "runoff")) {
             topics.add("nutricao_fertilizacao");
         }
-        if (containsAny(texto, "fotoperiodo", "photoperiod", "automatica", "fotoperiodica", "luz", "flora", "vegetativo")) {
+        if (containsAny(texto, "fotoperiodo", "photoperiod", "automatica", "fotoperiodica", "luz", "flora", "vegetativo", "tricoma", "pistilo", "colheita")) {
             topics.add("ciclos_fotoperiodo");
         }
         if (containsAny(texto, "poda", "treinamento", "lst", "topping", "canopy", "supercropping", "pruning")) {
@@ -760,12 +823,13 @@ public class DoctorPlantKnowledgeBase {
             languages.add("en");
             languages.add("multi");
         } else {
-            languages.add("en");
             languages.add("pt");
+            languages.add("en");
             languages.add("multi");
         }
 
-        return new QueryRoute(topics.iterator().next(), List.copyOf(topics), List.copyOf(languages), true);
+        boolean mandatoryBible = intent == DoctorChatIntent.DEFINICAO && topics.contains("geral");
+        return new QueryRoute(topics.iterator().next(), List.copyOf(topics), List.copyOf(languages), mandatoryBible);
     }
 
     private CrossSourceSynthesis sintetizarRelacoes(List<RankedChunk> combinados, List<RankedChunk> camadaBase, List<RankedChunk> camadaRefino, QueryRoute route) {
