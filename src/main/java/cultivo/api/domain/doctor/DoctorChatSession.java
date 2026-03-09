@@ -36,7 +36,7 @@ public class DoctorChatSession {
     @Column(nullable = false)
     private DoctorChatSessionStatus status;
 
-    @Column(name = "conversation_summary", columnDefinition = "TEXT")
+    @Column(name = "conversation_summary", columnDefinition = "LONGTEXT")
     private String conversationSummary;
 
     @Column(name = "created_at", nullable = false)

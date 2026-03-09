@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import UserRegisterModal, { RegisterFormData } from '../components/UserRegisterModal';
+import { apiService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import './Login.css';
 
@@ -7,7 +9,34 @@ export function Login() {
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
   const { login: fazerLogin } = useAuth();
+  // Placeholder for registration logic, to be implemented
+  const handleRegister = async (data: RegisterFormData) => {
+    setRegisterLoading(true);
+    setRegisterError(null);
+    try {
+      await apiService.registerUsuario({
+        nome: data.nome,
+        login: data.login,
+        senha: data.senha,
+        isCultivador: data.isCultivador,
+        telefone: data.telefone,
+      });
+      setRegisterOpen(false);
+      setErro('Cadastro realizado com sucesso! Faça login.');
+    } catch (err: any) {
+      if (err?.response?.status === 400) {
+        setRegisterError('Usuário já existe ou dados inválidos.');
+      } else {
+        setRegisterError('Erro ao cadastrar. Tente novamente.');
+      }
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +135,18 @@ export function Login() {
             {carregando ? 'Conectando...' : 'Entrar'}
           </button>
         </form>
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <button type="button" className="register-link" onClick={() => setRegisterOpen(true)}>
+            Não tem conta? Cadastre-se
+          </button>
+        </div>
+        <UserRegisterModal
+          isOpen={registerOpen}
+          onClose={() => setRegisterOpen(false)}
+          onRegister={handleRegister}
+          loading={registerLoading}
+          error={registerError}
+        />
       </div>
     </div>
   );

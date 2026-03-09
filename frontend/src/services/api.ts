@@ -92,6 +92,11 @@ class ApiService {
     delete this.axiosInstance.defaults.headers.common['Authorization'];
   }
 
+  async registerUsuario(payload: { nome: string; login: string; senha: string; isCultivador?: boolean; telefone?: string }): Promise<{ id: number; nome: string; login: string }> {
+    const response = await this.axiosInstance.post('/usuarios/registrar', payload);
+    return response.data;
+  }
+
   async getUsuarioMe(): Promise<Usuario> {
     const response = await this.axiosInstance.get('/usuarios/me');
     return response.data;

@@ -37,8 +37,8 @@ public class DoctorPlantKnowledgeBase {
             "sobre", "apenas", "ainda", "planta", "folha", "folhas", "relato", "cultivo"
     );
     private static final int TAMANHO_MAXIMO_CHUNK = 1400;
-    private static final int CHUNKS_RETORNADOS = 5;
-    private static final int TAMANHO_MAXIMO_TRECHO = 1100;
+    private static final int CHUNKS_RETORNADOS = 4;
+    private static final int TAMANHO_MAXIMO_TRECHO = 900;
     private static final int CHUNKS_CAMADA_BASE = 2;
     private static final Set<String> PASTAS_IGNORADAS_ROTEAMENTO = Set.of("fontes_ollama_filtradas");
 

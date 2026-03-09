@@ -15,16 +15,23 @@ public class DoctorChatIntentClassifier {
     private static final Pattern METRIC_PATTERN = Pattern.compile("\\b(?:ph|ec|ppm|rh|umidade|temperatura|vpd|runoff)\\b|\\b\\d+(?:[\\.,]\\d+)?\\s*(?:%|ppm|ppfd|ec|ph|c|°c|graus|ml|l)\\b", Pattern.CASE_INSENSITIVE);
 
     private static final List<String> DEFINICAO_TOKENS = List.of(
-            "o que é", "oq é", "qual a diferença", "qual a diferenca", "como funciona", "o que significa", "significa", "conceito", "explique", "curiosidade"
+            "o que é", "oq é", "o que sao", "o que são", "qual a diferença", "qual a diferenca", "como funciona", "o que significa", "significa", "conceito", "explique", "curiosidade"
     );
     private static final List<String> DIAGNOSTICO_TOKENS = List.of(
-            "minha planta", "essa planta", "esta planta", "folhas", "folha", "mancha", "amarel", "queimad", "murch", "caida", "travada", "pontinhos", "teia", "parece"
+            "minha planta", "essa planta", "esta planta", "folhas", "folha", "mancha", "amarel", "queimad", "murch", "caida", "travada", "pontinhos", "teia", "parece",
+            "raspagem prateada", "pontinhos escuros", "fezes escuras", "verso da folha"
+    );
+    private static final List<String> IDENTIFICACAO_VISUAL_TOKENS = List.of(
+            "quais são os sinais", "quais sao os sinais", "sinais de", "como identificar", "identificar", "olhando a folha", "via folha", "na folha", "no verso da folha", "o que observar"
+    );
+    private static final List<String> ENTIDADES_PRAGA_TOKENS = List.of(
+            "tripes", "tripe", "thrips", "ácaro", "acaro", "ácaros", "acaros", "mosca branca", "pulgão", "pulgao", "cochonilha", "praga"
     );
     private static final List<String> RECOMENDACAO_TOKENS = List.of(
-            "como tratar", "o que fazer", "oq fazer", "qual a dose", "qual a dosagem", "posso aplicar", "posso usar", "como corrigir", "como podar", "como resolver"
+            "como tratar", "o que fazer", "oq fazer", "qual a dose", "qual a dosagem", "posso aplicar", "posso usar", "como corrigir", "como podar", "como resolver", "pulverizar", "aplicar"
     );
     private static final List<String> ESTAGIO_TOKENS = List.of(
-            "quantas semanas", "hora de colher", "ja posso virar", "já posso virar", "tricomas", "tricoma", "pistilos", "pré-flora", "pre-flora", "maturação", "maturacao", "floração", "floracao", "vegetativo", "germinação", "germinacao"
+            "quantas semanas", "hora de colher", "ja posso virar", "já posso virar", "tricomas", "tricoma", "pistilos", "pré-flora", "pre-flora", "maturação", "maturacao", "floração", "floracao", "vegetativo", "germinação", "germinacao", "flora avançada", "flora avancada", "já é hora de colher", "ja e hora de colher", "âmbar", "ambar", "leitosos", "leitoso"
     );
     private static final List<String> AMBIGUOUS_TOKENS = List.of(
             "isso", "e isso", "minha planta ta ruim", "minha planta tá ruim", "o que acha", "oq acha"
@@ -37,7 +44,7 @@ public class DoctorChatIntentClassifier {
         }
 
         if (shouldCarryFromMemory(text, memory)) {
-            DoctorChatIntent carried = memory != null ? memory.lastIntentOr(DoctorChatIntent.TRIAGEM_AMBIGUA) : DoctorChatIntent.TRIAGEM_AMBIGUA;
+            DoctorChatIntent carried = inferCarriedIntent(text, memory);
             return new DoctorChatIntentClassification(
                     carried,
                     "média",
@@ -53,11 +60,18 @@ public class DoctorChatIntentClassifier {
         int diagnostico = score(text, DIAGNOSTICO_TOKENS, triggers, "sintoma");
         int recomendacao = score(text, RECOMENDACAO_TOKENS, triggers, "ação");
         int estagio = score(text, ESTAGIO_TOKENS, triggers, "estágio");
+        int identificacaoVisual = score(text, IDENTIFICACAO_VISUAL_TOKENS, triggers, "identificação visual");
+        boolean mencionaEntidadePraga = containsAny(text, ENTIDADES_PRAGA_TOKENS)
+                || (memory != null && memory.hasEntity() && text.contains(memory.entidadeAtual().toLowerCase(Locale.ROOT)));
+        if (mencionaEntidadePraga) {
+            triggers.add("entidade de praga explícita");
+        }
         int tecnico = METRIC_PATTERN.matcher(text).find() ? 4 : 0;
         if (tecnico > 0) {
             triggers.add("telemetria/medição");
         }
-        if (containsAny(text, AMBIGUOUS_TOKENS)) {
+        boolean ambiguousShort = containsAny(text, AMBIGUOUS_TOKENS);
+        if (ambiguousShort) {
             triggers.add("entrada curta/ambígua");
         }
 
@@ -72,16 +86,32 @@ public class DoctorChatIntentClassifier {
             }
         }
 
-        DoctorChatIntent intent = DoctorChatIntent.TRIAGEM_AMBIGUA;
-        int topScore = 0;
-        int secondScore = 0;
-
         int leituraScore = estagio;
-        int recomendacaoScore = recomendacao + (estagio > 0 ? 1 : 0);
+        int recomendacaoScore = recomendacao + (estagio > 0 ? 1 : 0) + (mencionaEntidadePraga && recomendacao > 0 ? 2 : 0);
         int tecnicoScore = tecnico + (diagnostico > 0 ? 1 : 0);
         int definicaoScore = definicao + (estagio > 0 && diagnostico == 0 && recomendacao == 0 ? 1 : 0);
-        int diagnosticoScore = diagnostico + (containsAny(text, List.of("praga", "tripes", "thrips", "ácaro", "acaro", "deficien", "fungo")) ? 1 : 0);
+        int diagnosticoScore = diagnostico + (mencionaEntidadePraga ? 2 : 0);
 
+        if (identificacaoVisual > 0 && mencionaEntidadePraga && !containsAny(text, List.of("minha planta", "essa planta", "esta planta"))) {
+            definicaoScore += 4;
+            diagnosticoScore += 1;
+        }
+        if ((text.contains("já é hora de colher") || text.contains("ja e hora de colher") || text.contains("já colho") || text.contains("ja colho"))) {
+            leituraScore += 4;
+        }
+        if ((text.contains("flora avançada") || text.contains("flora avancada")) && (text.contains("pulverizar") || text.contains("aplicar"))) {
+            recomendacaoScore += 4;
+            leituraScore += 1;
+        }
+        if (mencionaEntidadePraga && containsAny(text, List.of("o que é", "o que e", "quais são os sinais", "quais sao os sinais", "como identificar"))) {
+            definicaoScore += 3;
+        }
+        if (containsAny(text, List.of("raspagem prateada", "pontinhos escuros", "fezes escuras", "verso da folha"))) {
+            diagnosticoScore += 3;
+        }
+
+        DoctorChatIntent intent = DoctorChatIntent.TRIAGEM_AMBIGUA;
+        int topScore = 0;
         intent = pickHigher(intent, DoctorChatIntent.LEITURA_ESTAGIO, leituraScore, topScore);
         topScore = Math.max(topScore, leituraScore);
         intent = pickHigher(intent, DoctorChatIntent.RECOMENDACAO_MANEJO, recomendacaoScore, topScore);
@@ -93,9 +123,10 @@ public class DoctorChatIntentClassifier {
         intent = pickHigher(intent, DoctorChatIntent.DIAGNOSTICO_GERAL, diagnosticoScore, topScore);
         topScore = Math.max(topScore, diagnosticoScore);
 
-        secondScore = secondHighest(List.of(leituraScore, recomendacaoScore, tecnicoScore, definicaoScore, diagnosticoScore));
+        int secondScore = secondHighest(List.of(leituraScore, recomendacaoScore, tecnicoScore, definicaoScore, diagnosticoScore));
+        boolean forceNonAmbiguous = mencionaEntidadePraga || containsAny(text, ESTAGIO_TOKENS) || tecnico > 0;
 
-        if (topScore < 2 || topScore - secondScore <= 0 || containsAny(text, AMBIGUOUS_TOKENS) && topScore < 4) {
+        if (topScore < 2 || (!forceNonAmbiguous && topScore - secondScore <= 0) || (ambiguousShort && topScore < 4)) {
             intent = DoctorChatIntent.TRIAGEM_AMBIGUA;
         }
 
@@ -113,10 +144,7 @@ public class DoctorChatIntentClassifier {
     }
 
     private DoctorChatIntent pickHigher(DoctorChatIntent current, DoctorChatIntent candidate, int score, int currentScore) {
-        if (score > currentScore) {
-            return candidate;
-        }
-        return current;
+        return score > currentScore ? candidate : current;
     }
 
     private int secondHighest(List<Integer> scores) {
@@ -157,7 +185,7 @@ public class DoctorChatIntentClassifier {
         if (memory == null || memory.lastIntentOr(DoctorChatIntent.TRIAGEM_AMBIGUA) == DoctorChatIntent.TRIAGEM_AMBIGUA) {
             return false;
         }
-        if (text.length() > 48) {
+        if (text.length() > 96) {
             return false;
         }
         return text.contains("como assim")
@@ -168,7 +196,28 @@ public class DoctorChatIntentClassifier {
                 || text.contains("porque")
                 || text.contains("causado")
                 || text.contains("ele")
-                || text.contains("ela");
+                || text.contains("ela")
+                || text.contains("como tratar")
+                || text.contains("como identificar")
+                || text.contains("quais são os sinais")
+                || text.contains("quais sao os sinais")
+                || text.contains("na planta")
+                || text.contains("na folha")
+                || text.contains("olhando")
+                || text.contains("via folha");
+    }
+
+    private DoctorChatIntent inferCarriedIntent(String text, DoctorConversationMemory memory) {
+        if (text == null || memory == null) {
+            return memory != null ? memory.lastIntentOr(DoctorChatIntent.TRIAGEM_AMBIGUA) : DoctorChatIntent.TRIAGEM_AMBIGUA;
+        }
+        if (text.contains("como tratar") || text.contains("o que fazer") || text.contains("como corrigir") || text.contains("posso aplicar") || text.contains("pulverizar")) {
+            return DoctorChatIntent.RECOMENDACAO_MANEJO;
+        }
+        if (text.contains("quais são os sinais") || text.contains("quais sao os sinais") || text.contains("como identificar") || text.contains("na folha") || text.contains("olhando") || text.contains("via folha")) {
+            return memory.hasEntity() ? DoctorChatIntent.DEFINICAO : memory.lastIntentOr(DoctorChatIntent.DIAGNOSTICO_GERAL);
+        }
+        return memory.lastIntentOr(DoctorChatIntent.TRIAGEM_AMBIGUA);
     }
 
     private String inferConfidence(DoctorChatIntent intent, int topScore, int secondScore) {
@@ -194,7 +243,7 @@ public class DoctorChatIntentClassifier {
         if (intent == DoctorChatIntent.TRIAGEM_AMBIGUA) {
             reasons.add("a frase veio curta, híbrida ou com sinais competitivos");
         } else if (intent == DoctorChatIntent.DEFINICAO) {
-            reasons.add("a pergunta é conceitual e não exige contexto operacional da planta");
+            reasons.add("a pergunta é conceitual e não exige contexto operacional pesado");
         } else if (intent == DoctorChatIntent.DIAGNOSTICO_ESPECIALIZADO) {
             reasons.add("a mensagem trouxe telemetria ou medições que justificam leitura técnica");
         } else if (intent == DoctorChatIntent.RECOMENDACAO_MANEJO) {
@@ -202,7 +251,7 @@ public class DoctorChatIntentClassifier {
         } else if (intent == DoctorChatIntent.LEITURA_ESTAGIO) {
             reasons.add("o núcleo da decisão depende da fase fenológica ou da janela de colheita");
         } else {
-            reasons.add("há descrição de sintoma, mas sem telemetria suficiente para diagnóstico especializado");
+            reasons.add("há descrição de sintoma ou sinal observável sem telemetria suficiente para diagnóstico especializado");
         }
         if (text.contains("tripes") || text.contains("thrips")) {
             reasons.add("entidade tripes/thrips apareceu explicitamente");

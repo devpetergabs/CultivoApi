@@ -28,7 +28,7 @@ public class DoctorChatMessage {
     @Column(nullable = false)
     private DoctorChatMessageRole role;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String content;
 
     @Column(name = "metadata_json", columnDefinition = "json")

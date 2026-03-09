@@ -1,0 +1,1459 @@
+{
+  "info": {
+    "name": "Doctor Chat - Priority 12 Validation",
+    "_postman_id": "doctor-chat-priority12-validation",
+    "description": "Suíte prioritária de validação do Doctor Chat alinhada ao backend real do projeto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{username}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{password}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Priority_12",
+      "item": [
+        {
+          "name": "00 - Reset session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "reset"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P01 - o que é tripes?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"o que é tripes?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P02 - quais são os sinais de tripes na planta?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"quais são os sinais de tripes na planta?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P03 - como identificar tripes olhando a folha?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"como identificar tripes olhando a folha?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P04 - qual a diferença entre tripes e ácaros?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"qual a diferença entre tripes e ácaros?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P05 - pontinhos claros nas folhas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"minha planta está com pontinhos claros nas folhas\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P06 - raspagem prateada e pontinhos escuros",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"tem raspagem prateada e pontinhos escuros\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P07 - como tratar tripes?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"como tratar tripes?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P08 - pulverizar na flora avançada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"posso pulverizar agora na flora avançada?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P09 - já é hora de colher?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"já é hora de colher?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P10 - tricomas leitosos com alguns âmbar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"tricomas leitosos com alguns âmbar, já colho?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P11 - minha planta tá ruim",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"minha planta tá ruim\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P12a - reset para teste de memória",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "reset"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P12b - abre tópico",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"o que é tripes?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P12c - follow-up de memória",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"como tratar?\",\n  \"modo\": \"AUTO\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test(\"Sem vazamento de prompt interno\", function () {",
+                  "  if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"guardrails\", \"formato preferido\", \"contexto operacional\", \"contrato de evidência\", \"diagnóstico diferencial\", \"diagnostico diferencial\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de praga não saem do domínio\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tripe\") || req.includes(\"thrips\") || req.includes(\"ácar\") || req.includes(\"acaro\") || req.includes(\"praga\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    [\"veterin\", \"animal\", \"pata\", \"casco\"].forEach(function (term) {",
+                  "      pm.expect(text).to.not.include(term);",
+                  "    });",
+                  "  }",
+                  "});",
+                  "pm.test(\"Perguntas de colheita mencionam sinais de maturação\", function () {",
+                  "  const req = (pm.request.body && pm.request.body.raw ? pm.request.body.raw : \"\").toLowerCase();",
+                  "  if (req.includes(\"tricoma\") || req.includes(\"colher\") || req.includes(\"flora avançada\") || req.includes(\"flora avancada\") || req.includes(\"âmbar\") || req.includes(\"ambar\")) {",
+                  "    const data = pm.response.json();",
+                  "    const text = ((((data || {}).assistantMessage || {}).content) || \"\").toLowerCase();",
+                  "    pm.expect([\"tricoma\", \"tricomas\", \"âmbar\", \"ambar\", \"leitos\", \"pistilo\", \"colheita\"].some(function (term) { return text.includes(term); })).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "99 - Get session",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plantas/{{plantaId}}/doctor/session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plantas",
+                "{{plantaId}}",
+                "doctor",
+                "session"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx/3xx\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200,201,202,204]);",
+                  "});",
+                  "pm.test(\"Tempo abaixo de 60s\", function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "pm.test(\"JSON parseável quando houver body\", function () {",
+                  "  if (pm.response.text() && pm.response.text().trim().length > 0) {",
+                  "    pm.expect(function () { pm.response.json(); }).to.not.throw();",
+                  "  } else {",
+                  "    pm.expect(true).to.be.true;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api"
+    },
+    {
+      "key": "plantaId",
+      "value": "1"
+    },
+    {
+      "key": "username",
+      "value": "admin"
+    },
+    {
+      "key": "password",
+      "value": "admin"
+    }
+  ]
+}

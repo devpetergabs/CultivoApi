@@ -4,6 +4,7 @@ import cultivo.api.api.controller.planta.DadosResultadoAnalisePlantaFoto;
 import cultivo.api.application.ai.DoctorPlantKnowledgeBase.ReferenceContextResult;
 import cultivo.api.application.weather.WeatherService;
 import cultivo.api.domain.planta.Planta;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -52,6 +53,11 @@ public class PlantaImagemAnaliseService {
             "explique", "qual a diferença", "diferenca", "história", "historia",
             "origem", "conceito", "fato", "interessante", "sabia que", "por que"
     );
+    private static final List<String> KEYWORDS_IDENTIFICACAO_VISUAL = List.of(
+            "quais são os sinais", "quais sao os sinais", "sinais de", "como identificar",
+            "identificar", "na folha", "olhando a folha", "via folha", "o que observar",
+            "no verso da folha", "sinais na planta"
+    );
 
     private final RestTemplate restTemplate;
     private final DoctorPlantContextBuilder contextBuilder;
@@ -64,7 +70,7 @@ public class PlantaImagemAnaliseService {
     private final String modeloTexto;
 
     public PlantaImagemAnaliseService(
-            RestTemplate restTemplate,
+            @Qualifier("aiRestTemplate") RestTemplate restTemplate,
             DoctorPlantContextBuilder contextBuilder,
             DoctorPlantCodexContextBuilder codexContextBuilder,
             DoctorPlantKnowledgeBase knowledgeBase,
@@ -181,15 +187,27 @@ public class PlantaImagemAnaliseService {
     }
 
     public DoctorChatMode resolverModoResposta(String descricao, DoctorChatMode modoSolicitado, DoctorConversationMemory memory) {
+        return resolverModoResposta(descricao, modoSolicitado, memory, null);
+    }
+
+    public DoctorChatMode resolverModoResposta(
+            String descricao,
+            DoctorChatMode modoSolicitado,
+            DoctorConversationMemory memory,
+            DoctorChatIntentClassification intentClassification
+    ) {
         if (modoSolicitado != null && modoSolicitado != DoctorChatMode.AUTO) {
             return modoSolicitado;
+        }
+        if (intentClassification != null) {
+            return mapIntentToMode(intentClassification.safeIntent(), descricao, memory);
         }
         return detectarModoResposta(descricao, memory);
     }
 
     public boolean isFollowUpReferencial(String descricao, DoctorConversationMemory memory) {
         String texto = valor(descricao).toLowerCase(Locale.ROOT).trim();
-        if (texto.isBlank() || memory == null || !memory.hasTopic()) {
+        if (texto.isBlank() || memory == null || (!memory.hasTopic() && !memory.hasEntity())) {
             return false;
         }
 
@@ -197,7 +215,7 @@ public class PlantaImagemAnaliseService {
             return false;
         }
 
-        if (texto.length() <= 40 && (texto.contains("como assim") || texto.equals("isso?") || texto.equals("isso") || texto.contains("ele") || texto.contains("ela") || texto.contains("causado") || texto.contains("nasce") || texto.contains("por quê") || texto.contains("porque?"))) {
+        if (texto.length() <= 96 && (texto.contains("como assim") || texto.equals("isso?") || texto.equals("isso") || texto.contains("ele") || texto.contains("ela") || texto.contains("causado") || texto.contains("nasce") || texto.contains("por quê") || texto.contains("porque?") || texto.contains("como tratar") || texto.contains("como identificar") || texto.contains("quais são os sinais") || texto.contains("quais sao os sinais") || texto.contains("na folha") || texto.contains("na planta") || texto.contains("olhando") || texto.contains("via folha"))) {
             return true;
         }
 
@@ -205,7 +223,7 @@ public class PlantaImagemAnaliseService {
                 .filter(token -> !token.isBlank())
                 .count();
 
-        return tokens <= 6 && !KEYWORDS_CONHECIMENTO.stream().anyMatch(texto::contains) && !temMudancaClaraDeAssunto(texto);
+        return tokens <= 8 && !KEYWORDS_CONHECIMENTO.stream().anyMatch(texto::contains) && !temMudancaClaraDeAssunto(texto);
     }
 
     private DadosResultadoAnalisePlantaFoto executarPrompt(String prompt) {
@@ -306,13 +324,13 @@ public class PlantaImagemAnaliseService {
                 deveInjetarFatosDoCaso(intent) ? analysisPlan.caseFactsBlock() : "",
                 deveUsarContratoEvidencia(intent) ? analysisPlan.evidenceContractBlock() : "",
                 deveUsarContratoEvidencia(intent) ? analysisPlan.differentialBlock() : "",
-                decisionSupport.toPromptBlock(),
+                deveInjetarApoioDecisao(intent) ? decisionSupport.toPromptBlock() : "",
                 deveInjetarContextoEstruturado(intent) ? contextoPlanta(context, modo, intent) : "",
                 deveUsarClima(intent) ? climaAtual(modo, intent) : "",
                 conhecimentoGeralPuro ? "" : especialistaAuxiliar,
-                memoriaCurta(memory),
-                resumoPrompt(memory, resumoConversa),
-                historicoRecente(historico)
+                deveInjetarMemoriaCurta(intent, contextoUsuario, memory) ? memoriaCurta(memory) : "",
+                deveInjetarResumoConversa(intent, contextoUsuario, memory) ? resumoPrompt(memory, resumoConversa) : "",
+                deveInjetarHistorico(intent, contextoUsuario, memory) ? historicoRecente(historico) : ""
         ));
 
         return new PromptAssembly(prompt, referenceResult, codexContext, usouEspecialistaPraga, analysisPlan, decisionSupport);
@@ -662,6 +680,20 @@ public class PlantaImagemAnaliseService {
         return value == null ? "" : value.trim();
     }
 
+    private DoctorChatMode mapIntentToMode(DoctorChatIntent intent, String descricao, DoctorConversationMemory memory) {
+        if (intent == null || intent == DoctorChatIntent.TRIAGEM_AMBIGUA) {
+            return detectarModoResposta(descricao, memory);
+        }
+        return switch (intent) {
+            case DEFINICAO -> pedeContextoDeEstagio(descricao) ? DoctorChatMode.AVALIACAO_BASICA : DoctorChatMode.CONHECIMENTO_GERAL;
+            case LEITURA_ESTAGIO, RECOMENDACAO_MANEJO, DIAGNOSTICO_GERAL -> containsAny(valor(descricao).toLowerCase(Locale.ROOT), KEYWORDS_PRAGA)
+                    ? DoctorChatMode.PRAGA
+                    : DoctorChatMode.AVALIACAO_BASICA;
+            case DIAGNOSTICO_ESPECIALIZADO -> DoctorChatMode.AVALIACAO_TECNICA;
+            case TRIAGEM_AMBIGUA -> detectarModoResposta(descricao, memory);
+        };
+    }
+
     private DoctorChatMode detectarModoResposta(String descricao, DoctorConversationMemory memory) {
         String texto = valor(descricao).toLowerCase(Locale.ROOT).trim();
         if (texto.isBlank()) {
@@ -669,6 +701,9 @@ public class PlantaImagemAnaliseService {
         }
 
         if (isFollowUpReferencial(descricao, memory)) {
+            if (memoriaIndicaPraga(memory) && (containsAny(texto, KEYWORDS_IDENTIFICACAO_VISUAL) || texto.contains("como tratar") || texto.contains("sinais"))) {
+                return texto.contains("como tratar") ? DoctorChatMode.PRAGA : DoctorChatMode.CONHECIMENTO_GERAL;
+            }
             return memory.lastModeOr(DoctorChatMode.AVALIACAO_BASICA);
         }
 
@@ -683,6 +718,10 @@ public class PlantaImagemAnaliseService {
 
         if (temSinalPraga) {
             return DoctorChatMode.PRAGA;
+        }
+
+        if (containsAny(texto, KEYWORDS_IDENTIFICACAO_VISUAL) && (temSinalPraga || memoriaIndicaPraga(memory))) {
+            return DoctorChatMode.CONHECIMENTO_GERAL;
         }
 
         if (temSinalConhecimento && !temSinalAvaliacao) {
@@ -701,7 +740,11 @@ public class PlantaImagemAnaliseService {
             return new DoctorChatIntentClassification(DoctorChatIntent.LEITURA_ESTAGIO, "média", "há sinais claros de estágio/fase na pergunta", List.of("estágio/fase"), "LEVE", false);
         }
         if (modo == DoctorChatMode.CONHECIMENTO_GERAL) {
-            return new DoctorChatIntentClassification(DoctorChatIntent.DEFINICAO, "média", "modo de curiosidade favorece consulta conceitual", List.of("modo curiosidade"), "NENHUM", false);
+            String scope = containsAny(texto, KEYWORDS_IDENTIFICACAO_VISUAL) ? "LEVE" : "NENHUM";
+            String reason = containsAny(texto, KEYWORDS_IDENTIFICACAO_VISUAL)
+                    ? "modo de curiosidade com foco em identificação visual favorece resposta educativa ancorada no tópico atual"
+                    : "modo de curiosidade favorece consulta conceitual";
+            return new DoctorChatIntentClassification(DoctorChatIntent.DEFINICAO, "média", reason, List.of("modo curiosidade"), scope, false);
         }
         if (modo == DoctorChatMode.AVALIACAO_TECNICA) {
             return new DoctorChatIntentClassification(DoctorChatIntent.DIAGNOSTICO_ESPECIALIZADO, "média", "modo técnico favorece diagnóstico especializado", List.of("modo técnico"), "COMPLETO", false);
@@ -718,6 +761,9 @@ public class PlantaImagemAnaliseService {
         if (containsAny(texto, List.of("como tratar", "o que fazer", "como corrigir", "posso aplicar", "como podar"))) {
             return new DoctorChatIntentClassification(DoctorChatIntent.RECOMENDACAO_MANEJO, "média", "há pedido explícito de ação", List.of("ação/manejo"), "LEVE", false);
         }
+        if (containsAny(texto, KEYWORDS_IDENTIFICACAO_VISUAL) && (containsAny(texto, KEYWORDS_PRAGA) || memoriaIndicaPraga(memory))) {
+            return new DoctorChatIntentClassification(DoctorChatIntent.DEFINICAO, "média", "há pedido educativo de identificação visual ligado a praga já explícita ou ativa na memória", List.of("identificação visual"), "LEVE", memory != null && memory.hasEntity());
+        }
         if (containsAny(texto, KEYWORDS_AVALIACAO) || containsAny(texto, KEYWORDS_PRAGA)) {
             return new DoctorChatIntentClassification(DoctorChatIntent.DIAGNOSTICO_GERAL, "média", "há relato de sintoma ou sinal visual", List.of("sintoma visual"), "LEVE", false);
         }
@@ -726,6 +772,35 @@ public class PlantaImagemAnaliseService {
             return new DoctorChatIntentClassification(carry, "média", "continuidade do tópico anterior", List.of("memória recente"), carry == DoctorChatIntent.DIAGNOSTICO_ESPECIALIZADO ? "COMPLETO" : "LEVE", true);
         }
         return DoctorChatIntentClassification.fallback();
+    }
+
+    private boolean deveInjetarApoioDecisao(DoctorChatIntent intent) {
+        return intent == DoctorChatIntent.DIAGNOSTICO_GERAL
+                || intent == DoctorChatIntent.DIAGNOSTICO_ESPECIALIZADO
+                || intent == DoctorChatIntent.RECOMENDACAO_MANEJO;
+    }
+
+    private boolean deveInjetarMemoriaCurta(DoctorChatIntent intent, String contextoUsuario, DoctorConversationMemory memory) {
+        if (memory == null || (!memory.hasTopic() && !memory.hasEntity())) {
+            return false;
+        }
+        return intent != DoctorChatIntent.DEFINICAO || isFollowUpReferencial(contextoUsuario, memory);
+    }
+
+    private boolean deveInjetarResumoConversa(DoctorChatIntent intent, String contextoUsuario, DoctorConversationMemory memory) {
+        if (memory == null || (memory.resumoCurto() == null || memory.resumoCurto().isBlank())) {
+            return false;
+        }
+        return intent != DoctorChatIntent.DEFINICAO || isFollowUpReferencial(contextoUsuario, memory);
+    }
+
+    private boolean deveInjetarHistorico(DoctorChatIntent intent, String contextoUsuario, DoctorConversationMemory memory) {
+        if (intent == DoctorChatIntent.DEFINICAO) {
+            return isFollowUpReferencial(contextoUsuario, memory);
+        }
+        return intent == DoctorChatIntent.DIAGNOSTICO_GERAL
+                || intent == DoctorChatIntent.DIAGNOSTICO_ESPECIALIZADO
+                || intent == DoctorChatIntent.RECOMENDACAO_MANEJO;
     }
 
     private boolean deveInjetarContextoEstruturado(DoctorChatIntent intent) {
@@ -906,6 +981,10 @@ public class PlantaImagemAnaliseService {
                 || containsAny(texto, KEYWORDS_PRAGA)
                 || containsAny(texto, List.of("o que fazer", "oq fazer", "como resolver", "como tratar", "como corrigir", "apareceu", "amarelou", "amarelando", "murchou", "queimou", "travou", "caiu", "manchou"));
 
+        if (containsAny(texto, KEYWORDS_IDENTIFICACAO_VISUAL) && !texto.contains("minha planta") && !texto.contains("essa planta") && !texto.contains("esta planta")) {
+            return false;
+        }
+
         boolean ehPerguntaReferencialCurta = texto.length() <= 40 && (
                 texto.contains("como assim")
                         || texto.equals("isso?")
@@ -946,12 +1025,21 @@ public class PlantaImagemAnaliseService {
             return "";
         }
 
+        List<DoctorChatMessage> janela = historico.stream()
+                .filter(message -> message != null && message.getRole() != DoctorChatMessageRole.SYSTEM)
+                .skip(Math.max(0, historico.size() - 4L))
+                .toList();
+
         StringBuilder sb = new StringBuilder();
-        for (DoctorChatMessage message : historico) {
-            if (message == null || message.getContent() == null || message.getContent().isBlank()) {
+        for (DoctorChatMessage message : janela) {
+            if (message.getContent() == null || message.getContent().isBlank()) {
                 continue;
             }
-            String role = message.getRole() == DoctorChatMessageRole.ASSISTANT ? "ASSISTANT" : message.getRole() == DoctorChatMessageRole.SYSTEM ? "SYSTEM" : "USER";
+            String role = message.getRole() == DoctorChatMessageRole.ASSISTANT ? "ASSISTANT" : "USER";
+            String conteudo = resumirHistorico(message.getContent(), message.getRole());
+            if (conteudo.isBlank()) {
+                continue;
+            }
             LocalDateTime createdAt = message.getCreatedAt();
             String stamp = createdAt != null ? createdAt.format(CHAT_TIME_FORMAT) : "sem-data";
             sb.append("- [")
@@ -959,10 +1047,29 @@ public class PlantaImagemAnaliseService {
                     .append("] ")
                     .append(role)
                     .append(": ")
-                    .append(message.getContent().trim())
+                    .append(conteudo)
                     .append("\n");
         }
         return sb.toString().trim();
+    }
+
+    private String resumirHistorico(String conteudo, DoctorChatMessageRole role) {
+        String normalizado = sanitizar(conteudo);
+        if (normalizado.isBlank()) {
+            return "";
+        }
+        if (role == DoctorChatMessageRole.ASSISTANT) {
+            return truncar(normalizado, 160);
+        }
+        return truncar(normalizado, 120);
+    }
+
+    private String truncar(String valor, int max) {
+        if (valor == null || valor.isBlank()) {
+            return "";
+        }
+        String normalizado = valor.trim().replaceAll("\\s+", " ");
+        return normalizado.length() <= max ? normalizado : normalizado.substring(0, Math.max(0, max - 3)) + "...";
     }
 
     private String valor(String valor) {

@@ -17,7 +17,8 @@ import cultivo.api.infrastructure.security.AccessControl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,12 +26,16 @@ import java.util.stream.Collectors;
 @Service
 public class DoctorChatService {
 
+    private static final int MAX_ASSISTANT_CONTENT = 32000;
+    private static final int MAX_METADATA_CONTENT = 12000;
+
     private final DoctorChatSessionRepository sessionRepository;
     private final DoctorChatMessageRepository messageRepository;
     private final PlantaRepository plantaRepository;
     private final PlantaImagemAnaliseService analiseService;
     private final DoctorPlantContextBuilder contextBuilder;
     private final DoctorChatIntentClassifier intentClassifier;
+    private final DoctorResponseValidator responseValidator;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public DoctorChatService(
@@ -39,7 +44,8 @@ public class DoctorChatService {
             PlantaRepository plantaRepository,
             PlantaImagemAnaliseService analiseService,
             DoctorPlantContextBuilder contextBuilder,
-            DoctorChatIntentClassifier intentClassifier
+            DoctorChatIntentClassifier intentClassifier,
+            DoctorResponseValidator responseValidator
     ) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
@@ -47,6 +53,7 @@ public class DoctorChatService {
         this.analiseService = analiseService;
         this.contextBuilder = contextBuilder;
         this.intentClassifier = intentClassifier;
+        this.responseValidator = responseValidator;
     }
 
     @Transactional
@@ -92,28 +99,27 @@ public class DoctorChatService {
                 .findFirstByUsuarioIdAndPlantaIdAndStatusOrderByUpdatedAtDesc(usuario.getId(), plantaId, DoctorChatSessionStatus.ATIVA)
                 .orElseGet(() -> criarSessao(planta, usuario));
 
+        String userInput = sanitizeText(mensagem, 1200);
         DoctorPlantAnalysisContext contexto = contextBuilder.build(planta);
         DoctorConversationMemory memory = parseConversationMemory(session.getConversationSummary());
         DoctorChatMode modoSolicitadoEnum = DoctorChatMode.fromValue(modoSolicitado);
-        DoctorChatMode modo = analiseService.resolverModoResposta(mensagem.trim(), modoSolicitadoEnum, memory);
-        DoctorChatIntentClassification intentClassification = intentClassifier.classify(mensagem.trim(), modoSolicitadoEnum, memory);
+        DoctorChatIntentClassification intentClassification = intentClassifier.classify(userInput, modoSolicitadoEnum, memory);
+        DoctorChatMode modo = analiseService.resolverModoResposta(userInput, modoSolicitadoEnum, memory, intentClassification);
 
-        List<DoctorChatMessage> latestHistoryDesc = messageRepository.findTop12BySessionIdOrderByCreatedAtDesc(session.getId());
-        List<DoctorChatMessage> latestHistory = latestHistoryDesc.stream()
-                .sorted(java.util.Comparator.comparing(DoctorChatMessage::getCreatedAt))
-                .toList();
-        if (modo == DoctorChatMode.CONHECIMENTO_GERAL && !analiseService.isFollowUpReferencial(mensagem.trim(), memory)) {
+        List<DoctorChatMessage> latestHistory = messageRepository.findTop12BySessionIdOrderByCreatedAtDesc(session.getId()).stream()
+                .sorted(Comparator.comparing(DoctorChatMessage::getCreatedAt))
+                .collect(Collectors.toList());
+        if (modo == DoctorChatMode.CONHECIMENTO_GERAL && !analiseService.isFollowUpReferencial(userInput, memory)) {
             latestHistory = latestHistory.stream()
                     .skip(Math.max(0, latestHistory.size() - 2L))
                     .collect(Collectors.toList());
         }
 
-        DoctorChatMessage userMessage = new DoctorChatMessage(session, DoctorChatMessageRole.USER, mensagem.trim(), null);
-        userMessage = messageRepository.save(userMessage);
+        DoctorChatMessage userMessage = messageRepository.save(new DoctorChatMessage(session, DoctorChatMessageRole.USER, userInput, null));
 
         DoctorAnalysisOutcome analysis = analiseService.analisarConversaDetalhada(
                 planta,
-                mensagem.trim(),
+                userInput,
                 contexto,
                 memory,
                 memory != null ? memory.resumoCurto() : session.getConversationSummary(),
@@ -121,17 +127,25 @@ public class DoctorChatService {
                 modo,
                 intentClassification
         );
-        String resposta = analysis.response().resposta();
 
-        DoctorChatMessage assistantMessage = new DoctorChatMessage(
+        DoctorResponseValidator.ValidationResult validation = responseValidator.review(
+                userInput,
+                analysis.response().resposta(),
+                modo,
+                intentClassification,
+                analysis.diagnostics(),
+                memory
+        );
+        String resposta = sanitizeText(validation.content(), MAX_ASSISTANT_CONTENT);
+
+        DoctorChatMessage assistantMessage = messageRepository.save(new DoctorChatMessage(
                 session,
                 DoctorChatMessageRole.ASSISTANT,
                 resposta,
-                buildAssistantMetadata(contexto, modo, intentClassification, analysis.diagnostics())
-        );
-        assistantMessage = messageRepository.save(assistantMessage);
+                buildAssistantMetadata(contexto, modo, intentClassification, analysis.diagnostics(), validation)
+        ));
 
-        DoctorConversationMemory updatedMemory = updateConversationMemory(memory, mensagem.trim(), resposta, modo, intentClassification);
+        DoctorConversationMemory updatedMemory = updateConversationMemory(memory, userInput, resposta, modo, intentClassification);
         session.atualizarResumo(writeConversationMemory(updatedMemory));
         sessionRepository.save(session);
 
@@ -142,38 +156,38 @@ public class DoctorChatService {
             DoctorPlantAnalysisContext contexto,
             DoctorChatMode modo,
             DoctorChatIntentClassification intentClassification,
-            DoctorAnalysisDiagnostics diagnostics
+            DoctorAnalysisDiagnostics diagnostics,
+            DoctorResponseValidator.ValidationResult validation
     ) {
         try {
-            Map<String, Object> metadata = new HashMap<>();
-            metadata.put("contextoBusca", contexto.toSearchText());
-            metadata.put("lacunasCriticas", contexto.lacunasCriticas());
+            Map<String, Object> metadata = new LinkedHashMap<>();
             metadata.put("modoUsado", modo.name());
             metadata.put("intencaoDetectada", diagnostics != null && diagnostics.detectedIntent() != null
                     ? diagnostics.detectedIntent().name()
                     : intentClassification.safeIntent().name());
             metadata.put("confiancaRoteamento", diagnostics != null ? diagnostics.routingConfidence() : intentClassification.confidence());
             metadata.put("motivoRoteamento", diagnostics != null ? diagnostics.routingReason() : intentClassification.reason());
-            metadata.put("sinaisDisparadores", diagnostics != null ? diagnostics.routingSignals() : intentClassification.triggerSignals());
+            metadata.put("sinaisDisparadores", limitList(diagnostics != null ? diagnostics.routingSignals() : intentClassification.triggerSignals(), 6));
             metadata.put("escopoContexto", diagnostics != null ? diagnostics.contextScope() : intentClassification.contextScope());
-            metadata.put("queryRecuperacao", diagnostics != null ? diagnostics.retrievalQuery() : null);
-            metadata.put("fontesRecuperadas", diagnostics != null ? diagnostics.referenceSources() : List.of());
-            metadata.put("fontesDetalhadas", diagnostics != null ? diagnostics.referenceSourceDetails() : List.of());
-            metadata.put("debugRecuperacao", diagnostics != null ? diagnostics.referenceDebug() : List.of());
+            metadata.put("queryRecuperacao", truncate(diagnostics != null ? diagnostics.retrievalQuery() : null, 220));
+            metadata.put("fontesRecuperadas", limitList(diagnostics != null ? diagnostics.referenceSources() : List.of(), 5));
             metadata.put("groundingLocalForte", diagnostics != null && diagnostics.strongLocalGrounding());
             metadata.put("rotaTema", diagnostics != null ? diagnostics.routeTopic() : null);
-            metadata.put("rotaTopicos", diagnostics != null ? diagnostics.routeTopics() : List.of());
-            metadata.put("idiomasPreferidos", diagnostics != null ? diagnostics.preferredLanguages() : List.of());
+            metadata.put("rotaTopicos", limitList(diagnostics != null ? diagnostics.routeTopics() : List.of(), 4));
+            metadata.put("idiomasPreferidos", limitList(diagnostics != null ? diagnostics.preferredLanguages() : List.of(), 3));
             metadata.put("bibleObrigatoria", diagnostics != null && diagnostics.mandatoryBible());
-            metadata.put("relacoesCruzadas", diagnostics != null ? diagnostics.crossSourceSynthesis() : null);
             metadata.put("usouCodex", diagnostics != null && diagnostics.usedCodex());
             metadata.put("estagioCodex", diagnostics != null ? diagnostics.codexStage() : null);
             metadata.put("usouEspecialistaPraga", diagnostics != null && diagnostics.usedPestSpecialist());
-            metadata.put("hipotesesConsideradas", diagnostics != null ? diagnostics.hypothesesConsidered() : List.of());
-            metadata.put("dadosCriticosFaltantes", diagnostics != null ? diagnostics.criticalMissingData() : List.of());
+            metadata.put("hipotesesConsideradas", limitList(diagnostics != null ? diagnostics.hypothesesConsidered() : List.of(), 4));
+            metadata.put("dadosCriticosFaltantes", limitList(diagnostics != null ? diagnostics.criticalMissingData() : contexto.lacunasCriticas(), 4));
             metadata.put("bloqueadaPorEvidencia", diagnostics != null && diagnostics.blockedByEvidenceGate());
-            metadata.put("apoioDecisao", diagnostics != null ? diagnostics.decisionSupport() : null);
-            return objectMapper.writeValueAsString(metadata);
+            metadata.put("validacaoResposta", Map.of(
+                    "status", validation.status(),
+                    "fallbackUsado", validation.fallbackUsed(),
+                    "motivos", limitList(validation.reasons(), 4)
+            ));
+            return truncate(objectMapper.writeValueAsString(metadata), MAX_METADATA_CONTENT);
         } catch (Exception ex) {
             return null;
         }
@@ -186,13 +200,13 @@ public class DoctorChatService {
         try {
             return objectMapper.readValue(raw, DoctorConversationMemory.class);
         } catch (Exception ex) {
-            return new DoctorConversationMemory(null, null, raw, null, null, null, null);
+            return new DoctorConversationMemory(null, null, truncate(raw, 240), null, null, null, null);
         }
     }
 
     private String writeConversationMemory(DoctorConversationMemory memory) {
         try {
-            return objectMapper.writeValueAsString(memory);
+            return truncate(objectMapper.writeValueAsString(memory), MAX_ASSISTANT_CONTENT);
         } catch (Exception ex) {
             return memory != null ? memory.resumoCurto() : null;
         }
@@ -205,25 +219,33 @@ public class DoctorChatService {
             DoctorChatMode mode,
             DoctorChatIntentClassification intentClassification
     ) {
-        String topic = resolveTopic(previous, userMessage, assistantReply, mode, intentClassification.safeIntent());
-        String entity = resolveEntity(previous, userMessage, assistantReply);
-        String resumo = buildShortSummary(topic, userMessage, assistantReply, mode, intentClassification.safeIntent());
+        String entity = resolveEntity(previous, userMessage, assistantReply, mode, intentClassification.safeIntent());
+        String topic = resolveTopic(previous, userMessage, assistantReply, mode, intentClassification.safeIntent(), entity);
+        String resumo = buildShortSummary(topic, entity, userMessage, assistantReply, mode, intentClassification.safeIntent());
 
         return new DoctorConversationMemory(
                 topic,
                 entity,
                 resumo,
                 truncate(userMessage, 180),
-                truncate(assistantReply, 220),
+                truncate(assistantReply, 120),
                 mode.name(),
                 intentClassification.safeIntent().name()
         );
     }
 
-    private String resolveTopic(DoctorConversationMemory previous, String userMessage, String assistantReply, DoctorChatMode mode, DoctorChatIntent intent) {
+    private String resolveTopic(DoctorConversationMemory previous, String userMessage, String assistantReply, DoctorChatMode mode, DoctorChatIntent intent, String resolvedEntity) {
         String lower = userMessage.toLowerCase();
-        if (mode == DoctorChatMode.CONHECIMENTO_GERAL && previous != null && previous.hasTopic() && analiseService.isFollowUpReferencial(userMessage, previous)) {
-            return previous.topicoAtual();
+        if (previous != null && analiseService.isFollowUpReferencial(userMessage, previous)) {
+            if (previous.hasTopic()) {
+                return previous.topicoAtual();
+            }
+            if (previous.hasEntity()) {
+                return previous.entidadeAtual();
+            }
+        }
+        if (resolvedEntity != null && !resolvedEntity.isBlank() && (intent == DoctorChatIntent.DEFINICAO || mode == DoctorChatMode.PRAGA)) {
+            return resolvedEntity;
         }
         if (intent == DoctorChatIntent.DEFINICAO && lower.contains("tripe")) return "tripes";
         if (intent == DoctorChatIntent.LEITURA_ESTAGIO) return "leitura de estágio";
@@ -241,8 +263,11 @@ public class DoctorChatService {
         return firstNonBlank(previous != null ? previous.topicoAtual() : null, "avaliação básica da planta");
     }
 
-    private String resolveEntity(DoctorConversationMemory previous, String userMessage, String assistantReply) {
+    private String resolveEntity(DoctorConversationMemory previous, String userMessage, String assistantReply, DoctorChatMode mode, DoctorChatIntent intent) {
         String lower = userMessage.toLowerCase();
+        if (previous != null && analiseService.isFollowUpReferencial(userMessage, previous) && previous.hasEntity()) {
+            return previous.entidadeAtual();
+        }
         if (lower.contains("tripe")) return "tripes";
         if (lower.contains("ácar") || lower.contains("acaro") || lower.contains("ácaro")) return "ácaros";
         if (lower.contains("mosca branca")) return "mosca branca";
@@ -256,12 +281,28 @@ public class DoctorChatService {
         return previous != null ? previous.entidadeAtual() : null;
     }
 
-    private String buildShortSummary(String topic, String userMessage, String assistantReply, DoctorChatMode mode, DoctorChatIntent intent) {
+    private String buildShortSummary(String topic, String entity, String userMessage, String assistantReply, DoctorChatMode mode, DoctorChatIntent intent) {
         return "Tópico atual: " + firstNonBlank(topic, "sem tópico")
-                + ". Última pergunta: " + truncate(userMessage, 120)
+                + ". Entidade ativa: " + firstNonBlank(entity, "não definida")
+                + ". Última pergunta: " + truncate(userMessage, 110)
                 + ". Último modo: " + mode.name()
                 + ". Última intenção: " + intent.name()
-                + ". Última resposta: " + truncate(assistantReply, 140);
+                + ". Última resposta validada: " + truncate(assistantReply, 100);
+    }
+
+    private List<String> limitList(List<String> values, int max) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        return values.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .limit(max)
+                .map(value -> truncate(value, 180))
+                .toList();
+    }
+
+    private String sanitizeText(String value, int max) {
+        return truncate(value, max);
     }
 
     private String truncate(String value, int max) {
@@ -269,7 +310,10 @@ public class DoctorChatService {
             return null;
         }
         String trimmed = value.trim().replaceAll("\\s+", " ");
-        return trimmed.length() <= max ? trimmed : trimmed.substring(0, max) + "...";
+        if (trimmed.length() <= max) {
+            return trimmed;
+        }
+        return trimmed.substring(0, Math.max(0, max - 3)) + "...";
     }
 
     private String firstNonBlank(String first, String fallback) {
