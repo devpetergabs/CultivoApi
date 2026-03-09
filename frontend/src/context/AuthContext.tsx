@@ -1,91 +1,87 @@
-import { createContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useCallback, useEffect, useState } from 'react';
 import type { AuthContextType, Usuario, CultivadorMe } from '../types';
 import { apiService } from '../services/api';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_TOKEN_KEY = 'authToken';
+const AUTH_USUARIO_KEY = 'usuario';
+const AUTH_CULTIVADOR_KEY = 'cultivador';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(() => {
-    const stored = localStorage.getItem('usuario');
+    const stored = localStorage.getItem(AUTH_USUARIO_KEY);
     return stored ? JSON.parse(stored) : null;
   });
   const [isRestoring, setIsRestoring] = useState(true);
   const [cultivador, setCultivador] = useState<CultivadorMe | null>(() => {
-    const stored = localStorage.getItem('cultivador');
+    const stored = localStorage.getItem(AUTH_CULTIVADOR_KEY);
     return stored ? JSON.parse(stored) : null;
   });
 
+  const clearSession = useCallback(() => {
+    setUsuario(null);
+    setCultivador(null);
+    apiService.clearToken();
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USUARIO_KEY);
+    localStorage.removeItem(AUTH_CULTIVADOR_KEY);
+  }, []);
+
+  useEffect(() => {
+    apiService.setUnauthorizedHandler(clearSession);
+    return () => apiService.setUnauthorizedHandler(null);
+  }, [clearSession]);
+
   useEffect(() => {
     const restore = async () => {
-      const credentials = localStorage.getItem('credentials');
-      if (!credentials) {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      if (!token) {
         setIsRestoring(false);
         return;
       }
 
       try {
-        const { login, senha } = JSON.parse(credentials);
-        apiService.setCredentials(login, senha);
+        apiService.setToken(token);
         const me = await apiService.getUsuarioMe();
         const cultivadorMe = await apiService.getCultivadorMe();
         setUsuario(me);
         setCultivador(cultivadorMe);
-        localStorage.setItem('usuario', JSON.stringify(me));
-        localStorage.setItem('cultivador', JSON.stringify(cultivadorMe));
+        localStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(me));
+        localStorage.setItem(AUTH_CULTIVADOR_KEY, JSON.stringify(cultivadorMe));
       } catch {
-        apiService.clearCredentials();
-        localStorage.removeItem('credentials');
-        localStorage.removeItem('usuario');
-        localStorage.removeItem('cultivador');
-        setUsuario(null);
-        setCultivador(null);
+        clearSession();
       } finally {
         setIsRestoring(false);
       }
     };
 
     restore();
-  }, []);
+  }, [clearSession]);
 
   const login = useCallback(async (login: string, senha: string) => {
     try {
-      console.log(`🔄 Configurando credenciais para: ${login}`);
-      apiService.setCredentials(login, senha);
-      
-      console.log('📡 Validando credenciais na API (/usuarios/me)...');
+      const session = await apiService.login({ login, senha });
+      apiService.setToken(session.token);
+
       const usuarioData = await apiService.getUsuarioMe();
       const cultivadorData = await apiService.getCultivadorMe();
-      console.log('✅ Credenciais válidas! Criando sessão...');
-      
+
       setUsuario(usuarioData);
       setCultivador(cultivadorData);
-      localStorage.setItem('usuario', JSON.stringify(usuarioData));
-      localStorage.setItem('cultivador', JSON.stringify(cultivadorData));
-      localStorage.setItem('credentials', JSON.stringify({ login, senha }));
-      console.log(`✅ Sessão criada para: ${login}`);
-    } catch (error: any) {
-      console.error('❌ Falha na autenticação:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        mensagem: error.message,
-        erro: error
-      });
-      apiService.clearCredentials();
+      localStorage.setItem(AUTH_TOKEN_KEY, session.token);
+      localStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(usuarioData));
+      localStorage.setItem(AUTH_CULTIVADOR_KEY, JSON.stringify(cultivadorData));
+    } catch (error) {
+      clearSession();
       throw error;
     }
-  }, []);
+  }, [clearSession]);
 
   const logout = useCallback(() => {
-    setUsuario(null);
-    setCultivador(null);
-    apiService.clearCredentials();
-    localStorage.removeItem('usuario');
-    localStorage.removeItem('credentials');
-    localStorage.removeItem('cultivador');
-  }, []);
+    clearSession();
+  }, [clearSession]);
 
-  // Restaurar credenciais ao carregar
   const isAuthenticated = usuario !== null;
 
   return (

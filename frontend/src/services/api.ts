@@ -1,12 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
 import type {
   Aditivo,
-  DoctorChatSendResponse,
-  DoctorChatMode,
-  DoctorChatSession,
   Planta,
   PlantaCompleta,
-  PlantaFotoAnalise,
   PlantaFoto,
   PlantaEventoPayload,
   PlantaEvento,
@@ -17,13 +13,12 @@ import type {
   Usuario,
   CultivadorMe,
   AgendaInseticida,
-  CodexEstagio,
+  AuthLoginPayload,
+  AuthSession,
 } from '../types';
 
 const API_URL = '/api';
 
-// Eventos globais (UI)
-// - app:toast -> { message: string; tone?: 'success' | 'warning' | 'error' }
 function emitToast(detail: { message: string; tone?: 'success' | 'warning' | 'error' }) {
   if (typeof window === 'undefined') return;
   try {
@@ -35,7 +30,8 @@ function emitToast(detail: { message: string; tone?: 'success' | 'warning' | 'er
 
 class ApiService {
   private axiosInstance: AxiosInstance;
-  private credentials: { login: string; senha: string } | null = null;
+  private token: string | null = null;
+  private unauthorizedHandler: (() => void) | null = null;
 
   constructor() {
     this.axiosInstance = axios.create({
@@ -45,23 +41,19 @@ class ApiService {
       },
     });
 
-    // Interceptor global: transforma o “404 silencioso” (não-proprietário) em feedback visível.
-    // - Backend antigo: retorna 404 para ações em plantas de terceiros
-    // - Backend novo (se você mudar): pode retornar 403
     this.axiosInstance.interceptors.response.use(
       (response) => response,
       (error) => {
         const status: number | undefined = error?.response?.status;
         const method: string | undefined = error?.config?.method;
-
-        // Só em mutações (POST/PUT/PATCH/DELETE). GET 404 é válido (recurso não encontrado).
+        const url: string = String(error?.config?.url || '');
         const isMutation = typeof method === 'string' && method.toLowerCase() !== 'get';
 
         if (isMutation && (status === 403 || status === 404)) {
           const serverMsg =
             typeof error?.response?.data === 'string'
               ? error.response.data
-              : error?.response?.data?.message;
+              : error?.response?.data?.message || error?.response?.data?.mensagem;
 
           emitToast({
             tone: 'warning',
@@ -70,10 +62,14 @@ class ApiService {
         }
 
         if (status === 401) {
-          emitToast({
-            tone: 'warning',
-            message: 'Sessão expirada ou credenciais inválidas. Faça login novamente.',
-          });
+          const isLoginRequest = url.includes('/auth/login');
+          if (!isLoginRequest) {
+            emitToast({
+              tone: 'warning',
+              message: 'Sessão expirada ou credenciais inválidas. Faça login novamente.',
+            });
+            this.unauthorizedHandler?.();
+          }
         }
 
         return Promise.reject(error);
@@ -81,19 +77,22 @@ class ApiService {
     );
   }
 
-  setCredentials(login: string, senha: string) {
-    this.credentials = { login, senha };
-    const auth = btoa(`${login}:${senha}`);
-    this.axiosInstance.defaults.headers.common['Authorization'] = `Basic ${auth}`;
+  setUnauthorizedHandler(handler: (() => void) | null) {
+    this.unauthorizedHandler = handler;
   }
 
-  clearCredentials() {
-    this.credentials = null;
-    delete this.axiosInstance.defaults.headers.common['Authorization'];
+  setToken(token: string) {
+    this.token = token;
+    this.axiosInstance.defaults.headers.common.Authorization = `Bearer ${token}`;
   }
 
-  async registerUsuario(payload: { nome: string; login: string; senha: string; isCultivador?: boolean; telefone?: string }): Promise<{ id: number; nome: string; login: string }> {
-    const response = await this.axiosInstance.post('/usuarios/registrar', payload);
+  clearToken() {
+    this.token = null;
+    delete this.axiosInstance.defaults.headers.common.Authorization;
+  }
+
+  async login(payload: AuthLoginPayload): Promise<AuthSession> {
+    const response = await this.axiosInstance.post('/auth/login', payload);
     return response.data;
   }
 
@@ -175,10 +174,8 @@ class ApiService {
 
   async getPlantaEventos(plantaId: number, page = 0, size = 50) {
     const response = await this.axiosInstance.get(`/plantas/${plantaId}/eventos`, { params: { page, size } });
-    return response.data; // Page<PlantaEvento>
+    return response.data;
   }
-
-  // --- Agenda (Eventos Planejados) ---
 
   async getAgendaInseticida(plantaId: number): Promise<AgendaInseticida | null> {
     const response = await this.axiosInstance.get(`/plantas/${plantaId}/agenda/inseticida`);
@@ -234,34 +231,6 @@ class ApiService {
     return response.data;
   }
 
-  async analisarPlantaFoto(
-    plantaId: number,
-    data: { descricao?: string }
-  ): Promise<PlantaFotoAnalise> {
-    const response = await this.axiosInstance.post(`/plantas/${plantaId}/fotos/analise`, data);
-    return response.data;
-  }
-
-  async getOrCreateDoctorSession(plantaId: number): Promise<DoctorChatSession> {
-    const response = await this.axiosInstance.post(`/plantas/${plantaId}/doctor/session`);
-    return response.data;
-  }
-
-  async getDoctorSession(plantaId: number): Promise<DoctorChatSession> {
-    const response = await this.axiosInstance.get(`/plantas/${plantaId}/doctor/session`);
-    return response.data;
-  }
-
-  async resetDoctorSession(plantaId: number): Promise<DoctorChatSession> {
-    const response = await this.axiosInstance.post(`/plantas/${plantaId}/doctor/session/reset`);
-    return response.data;
-  }
-
-  async sendDoctorMessage(plantaId: number, mensagem: string, modo: DoctorChatMode = 'AUTO'): Promise<DoctorChatSendResponse> {
-    const response = await this.axiosInstance.post(`/plantas/${plantaId}/doctor/session/messages`, { mensagem, modo });
-    return response.data;
-  }
-
   async getAditivos(page: number = 0, size: number = 200): Promise<Page<Aditivo> | Aditivo[]> {
     const response = await this.axiosInstance.get('/aditivos', { params: { page, size } });
     return response.data;
@@ -287,23 +256,6 @@ class ApiService {
   ): Promise<void> {
     await this.axiosInstance.patch(`/plantas/${id}/crescer`, data);
   }
-
-  async getPlantaCodexEstagioAtual(id: number): Promise<CodexEstagio> {
-    const response = await this.axiosInstance.get(`/plantas/${id}/codex/estagio-atual`);
-    return response.data;
-  }
-
-  async getPlantaCodexEstagios(id: number): Promise<CodexEstagio[]> {
-    const response = await this.axiosInstance.get(`/plantas/${id}/codex/estagios`);
-    return response.data;
-  }
-
-  async getCodexEstagios(): Promise<CodexEstagio[]> {
-    const response = await this.axiosInstance.get('/codex/estagios');
-    return response.data;
-  }
 }
-
-  
 
 export const apiService = new ApiService();

@@ -3,8 +3,6 @@ export interface Planta {
   nome: string;
   strain?: string | null;
   especie?: string | null;
-  tipoCiclo?: string | null;
-  genetica?: string | null;
 
   /** flag simples: existe sinal de praga ativo (enquanto durar o tratamento) */
   praga?: boolean;
@@ -60,10 +58,7 @@ export interface Aditivo {
   nome: string;
   marca: string;
   descricao: string;
-  descricaoTecnica?: string | null;
   estagio: 'VEGETATIVA' | 'FLORACAO' | 'FINALIZACAO' | string;
-  estagiosMacro?: 'VEGETATIVO' | 'FLORACAO' | 'CICLO_INTEGRADO' | 'FINALIZACAO' | string;
-  estagiosLista?: string | null;
   classe:
     | 'BASE_NUTRICIONAL'
     | 'FORTIFICANTE'
@@ -98,161 +93,12 @@ export interface Page<T> {
   empty?: boolean;
 }
 
-export interface CodexAditivoMatch {
-  id: number;
-  nome: string;
-  marca: string;
-  tipo: string | null;
-  descricao: string | null;
-  dosePadraoEmML: number | null;
-}
-
-export interface CodexEstagio {
-  estagio: string;
-  slug: string;
-  nomeExibicao: string;
-  subtitulo: string;
-  descricaoBreve: string;
-  descricaoLore: string;
-  cuidadosPrincipais: string[];
-  curiosidades: string[];
-  pontosFortes: string[];
-  pontosFracos: string[];
-  alertas: string[];
-  resistencia: string | null;
-  observacaoLegal: string | null;
-  ordemDesbloqueio: number;
-  desbloqueado: boolean;
-  atual: boolean;
-  nenhumAditivoRecomendado: boolean;
-  mensagemAditivos: string;
-  aditivosRecomendados: CodexAditivoMatch[];
-  artAssetKey?: string | null;
-  temaVisual?: string | null;
-}
-
-
 export interface PlantaFoto {
   id: number;
   plantaNome: string;
   contentType: string;
   descricao: string;
   dataUpload: string;
-}
-
-export interface PlantaFotoAnalise {
-  modelo: string;
-  resposta: string;
-  observacao: string;
-}
-
-export interface DoctorChatMessage {
-  id: number;
-  role: 'SYSTEM' | 'USER' | 'ASSISTANT' | string;
-  content: string;
-  createdAt: string;
-  metadataJson?: string | null;
-}
-
-export interface DoctorDecisionSupportCauseEffectChain {
-  cultivatorAction: string;
-  plantEffect: string;
-  lotEffect: string;
-}
-
-export interface DoctorDecisionSupportMetadata {
-  dominantModule?: string | null;
-  dominantReason?: string | null;
-  secondaryModules?: string[];
-  evidenceStrength?: string | null;
-  confidenceLevel?: string | null;
-  riskLevel?: string | null;
-  causeEffectChain?: DoctorDecisionSupportCauseEffectChain | null;
-  tradeOffs?: string[];
-  businessWarnings?: string[];
-  businessRecommendations?: string[];
-  hardBlocks?: string[];
-  telemetryFocus?: string[];
-  appRuleSummary?: string | null;
-  responseProfile?: string | null;
-  stageWindow?: string | null;
-  appActions?: string[];
-}
-
-export type DoctorChatIntent =
-  | 'DEFINICAO'
-  | 'DIAGNOSTICO_GERAL'
-  | 'DIAGNOSTICO_ESPECIALIZADO'
-  | 'RECOMENDACAO_MANEJO'
-  | 'LEITURA_ESTAGIO'
-  | 'TRIAGEM_AMBIGUA';
-
-export interface DoctorChatMessageMetadata {
-  intencaoDetectada?: DoctorChatIntent | string;
-  confiancaRoteamento?: string;
-  motivoRoteamento?: string;
-  sinaisDisparadores?: string[];
-  escopoContexto?: string;
-  contextoBusca?: string;
-  lacunasCriticas?: string[];
-  modoUsado?: DoctorChatMode | string;
-  queryRecuperacao?: string;
-  fontesRecuperadas?: string[];
-  fontesDetalhadas?: Array<{
-    sourceId: string;
-    sourceName: string;
-    relativePath: string;
-    sourceCategory: string;
-    parentTopic: string;
-    language: string;
-    sourceType: string;
-    score: number;
-    layer: string;
-  }>;
-  debugRecuperacao?: string[];
-  groundingLocalForte?: boolean;
-  rotaTema?: string;
-  rotaTopicos?: string[];
-  idiomasPreferidos?: string[];
-  bibleObrigatoria?: boolean;
-  relacoesCruzadas?: {
-    foundationSummary: string;
-    refinementSummary: string;
-    convergenceSummary: string;
-    divergenceSummary: string;
-    languageSummary: string;
-    dominantTopics: string[];
-    selectedLanguages: string[];
-    baseSources: string[];
-    refinementSources: string[];
-    practicalActionHint: string;
-  } | null;
-  usouCodex?: boolean;
-  estagioCodex?: string | null;
-  usouEspecialistaPraga?: boolean;
-  hipotesesConsideradas?: string[];
-  dadosCriticosFaltantes?: string[];
-  bloqueadaPorEvidencia?: boolean;
-  apoioDecisao?: DoctorDecisionSupportMetadata | null;
-}
-
-export type DoctorChatMode = 'AUTO' | 'CONHECIMENTO_GERAL' | 'AVALIACAO_BASICA' | 'AVALIACAO_TECNICA' | 'PRAGA';
-
-export interface DoctorChatSession {
-  sessionId: number;
-  status: 'ATIVA' | 'ENCERRADA' | string;
-  titulo?: string | null;
-  summary?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  messages: DoctorChatMessage[];
-}
-
-export interface DoctorChatSendResponse {
-  sessionId: number;
-  modoUsado: DoctorChatMode;
-  userMessage: DoctorChatMessage;
-  assistantMessage: DoctorChatMessage;
 }
 
 export interface PlantaEvento {
@@ -329,8 +175,6 @@ export interface PlantaCreatePayload {
   nome: string;
   strain?: string | null;
   especie?: string | null;
-  tipoCiclo?: string | null;
-  genetica?: string | null;
 
   altura: number;
   largura: number;
@@ -348,8 +192,6 @@ export interface PlantaCreateMePayload {
   nome: string;
   strain?: string | null;
   especie?: string | null;
-  tipoCiclo?: string | null;
-  genetica?: string | null;
 
   altura: number;
   largura: number;
@@ -367,8 +209,6 @@ export interface PlantaUpdatePayload {
   nome: string;
   strain?: string | null;
   especie?: string | null;
-  tipoCiclo?: string | null;
-  genetica?: string | null;
 
   dataGerminacao?: string | null;
   altura?: number | null;
@@ -381,6 +221,22 @@ export interface PlantaUpdatePayload {
   sexo?: string | null;
   dataSexagem?: string | null;
   dataFloracao?: string | null;
+}
+
+
+export interface AuthLoginPayload {
+  login: string;
+  senha: string;
+}
+
+export interface AuthSession {
+  token: string;
+  tipo: string;
+  expiraEm: string;
+  usuarioId: number;
+  usuarioNome: string;
+  usuarioLogin: string;
+  role: string;
 }
 
 export interface Usuario {

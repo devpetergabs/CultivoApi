@@ -1,0 +1,22 @@
+[
+  [
+    {
+      "plugin": "github",
+      "options": {
+        "connectionId": 1,
+        "owner": "SEU_OWNER",
+        "repo": "cultivo-backend"
+      }
+    }
+  ],
+  [
+    {
+      "plugin": "github",
+      "options": {
+        "connectionId": 1,
+        "owner": "SEU_OWNER",
+        "repo": "cultivo-frontend"
+      }
+    }
+  ]
+]

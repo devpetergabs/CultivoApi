@@ -1,0 +1,40 @@
+[
+  [
+    {
+      "plugin": "jira",
+      "options": {
+        "connectionId": 1,
+        "boardId": 8
+      }
+    }
+  ],
+  [
+    {
+      "plugin": "jira",
+      "options": {
+        "connectionId": 1,
+        "boardId": 26
+      }
+    }
+  ],
+  [
+    {
+      "plugin": "github",
+      "options": {
+        "connectionId": 1,
+        "owner": "SEU_OWNER",
+        "repo": "cultivo-backend"
+      }
+    }
+  ],
+  [
+    {
+      "plugin": "github",
+      "options": {
+        "connectionId": 1,
+        "owner": "SEU_OWNER",
+        "repo": "cultivo-frontend"
+      }
+    }
+  ]
+]
