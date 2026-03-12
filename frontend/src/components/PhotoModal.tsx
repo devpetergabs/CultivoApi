@@ -1,7 +1,70 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PokedexModal } from './ui/PokedexModal';
 import { apiService } from '../services/api';
-import type { DoctorChatMessage, DoctorChatMessageMetadata, DoctorChatMode, DoctorChatSession } from '../types';
+import type { DoctorChatMensagem, DoctorChatSessao } from '../types';
+
+type DoctorChatMode =
+  | 'AUTO'
+  | 'CONHECIMENTO_GERAL'
+  | 'AVALIACAO_BASICA'
+  | 'AVALIACAO_TECNICA'
+  | 'PRAGA';
+
+type DoctorChatMessageMetadata = {
+  modoUsado?: string | null;
+  intencaoDetectada?: string | null;
+  groundingLocalForte?: boolean | null;
+  bloqueadaPorEvidencia?: boolean | null;
+  confiancaRoteamento?: string | null;
+  escopoContexto?: string | null;
+  usouCodex?: boolean | null;
+  estagioCodex?: string | null;
+  usouEspecialistaPraga?: boolean | null;
+  fontesRecuperadas?: string[] | null;
+  queryRecuperacao?: string | null;
+  lacunasCriticas?: string[] | null;
+  dadosCriticosFaltantes?: string[] | null;
+  hipotesesConsideradas?: string[] | null;
+  motivoRoteamento?: string | null;
+  sinaisDisparadores?: string[] | null;
+  rotaTema?: string | null;
+  idiomasPreferidos?: string[] | null;
+  bibleObrigatoria?: boolean | null;
+  debugRecuperacao?: string[] | null;
+  fontesDetalhadas?: Array<{
+    relativePath: string;
+    sourceName?: string | null;
+    language?: string | null;
+    parentTopic?: string | null;
+  }> | null;
+  relacoesCruzadas?: {
+    foundationSummary?: string | null;
+    refinementSummary?: string | null;
+    convergenceSummary?: string | null;
+    divergenceSummary?: string | null;
+    languageSummary?: string | null;
+    practicalActionHint?: string | null;
+    baseSources?: string[] | null;
+    refinementSources?: string[] | null;
+  } | null;
+  apoioDecisao?: {
+    dominantModule?: string | null;
+    riskLevel?: string | null;
+    confidenceLevel?: string | null;
+    dominantReason?: string | null;
+    secondaryModules?: string[] | null;
+    causeEffectChain?: {
+      cultivatorAction?: string | null;
+      plantEffect?: string | null;
+      lotEffect?: string | null;
+    } | null;
+    tradeOffs?: string[] | null;
+    businessWarnings?: string[] | null;
+    businessRecommendations?: string[] | null;
+    telemetryFocus?: string[] | null;
+    appRuleSummary?: string | null;
+  } | null;
+};
 
 type SourceDetail = NonNullable<DoctorChatMessageMetadata['fontesDetalhadas']>[number];
 
@@ -31,8 +94,8 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
 
   const [description, setDescription] = useState('');
   const [selectedMode, setSelectedMode] = useState<DoctorChatMode>('AUTO');
-  const [session, setSession] = useState<DoctorChatSession | null>(null);
-  const [messages, setMessages] = useState<DoctorChatMessage[]>([]);
+  const [session, setSession] = useState<DoctorChatSessao | null>(null);
+  const [messages, setMessages] = useState<DoctorChatMensagem[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +165,7 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
     }
 
     // Optimistic update: mostra a mensagem do usuário imediatamente
-    const optimisticMsg: DoctorChatMessage = {
+    const optimisticMsg: DoctorChatMensagem = {
       id: -Date.now(), // id temporário negativo
       role: 'USER',
       content: trimmedDescription,
@@ -114,7 +177,10 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
     setError(null);
 
     try {
-      const result = await apiService.sendDoctorMessage(plantId, trimmedDescription, selectedMode);
+      const result = await apiService.sendDoctorMessage(plantId, {
+        mensagem: trimmedDescription,
+        modo: selectedMode,
+      });
       setSession((prev) =>
         prev
           ? { ...prev, sessionId: result.sessionId, updatedAt: new Date().toISOString() }
@@ -202,7 +268,7 @@ export function PhotoModal({ open, onClose, plantId, plantName }: PhotoModalProp
     });
   };
 
-  const parseMetadata = (message: DoctorChatMessage): DoctorChatMessageMetadata | null => {
+  const parseMetadata = (message: DoctorChatMensagem): DoctorChatMessageMetadata | null => {
     if (!message.metadataJson) return null;
     try {
       return JSON.parse(message.metadataJson) as DoctorChatMessageMetadata;

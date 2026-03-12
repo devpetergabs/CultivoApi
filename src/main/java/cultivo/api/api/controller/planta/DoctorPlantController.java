@@ -2,6 +2,7 @@ package cultivo.api.api.controller.planta;
 
 import cultivo.api.application.ai.DoctorChatService;
 import cultivo.api.domain.usuario.Usuario;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -50,7 +51,7 @@ public class DoctorPlantController {
     @PostMapping("/messages")
     public ResponseEntity<?> enviarMensagem(
             @PathVariable Long plantaId,
-            @RequestBody DadosDoctorChatMensagemEnvio dados,
+            @Valid @RequestBody DadosDoctorChatMensagemEnvio dados,
             @AuthenticationPrincipal Usuario usuario
     ) {
         if (usuario == null) {

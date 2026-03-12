@@ -100,6 +100,10 @@ public class DoctorChatService {
                 .orElseGet(() -> criarSessao(planta, usuario));
 
         String userInput = sanitizeText(mensagem, 1200);
+        if (userInput == null) {
+            throw new IllegalArgumentException("Mensagem é obrigatória.");
+        }
+
         DoctorPlantAnalysisContext contexto = contextBuilder.build(planta);
         DoctorConversationMemory memory = parseConversationMemory(session.getConversationSummary());
         DoctorChatMode modoSolicitadoEnum = DoctorChatMode.fromValue(modoSolicitado);
