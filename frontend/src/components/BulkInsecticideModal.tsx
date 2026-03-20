@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+﻿import { useEffect, useMemo, useState } from 'react';
+import { PokedexModal } from './ui/PokedexModal';
 import { apiService } from '../services/api';
 import type { Aditivo, AgendaInseticida, AgendaPlanejado, PlantaEvento } from '../types';
 import type { Plant } from '../types/pokedex';
@@ -27,7 +27,10 @@ interface BulkInsecticideModalProps {
 
 type BulkPreset = {
   aditivoId: number;
-  dosePorPlanta: number;
+  /** dose do produto por litro (mL/L) */
+  doseMlPorLitro: number;
+  /** volume total de calda preparado (L) */
+  volumeLitros: number;
 };
 
 type PestSignal = {
@@ -74,14 +77,22 @@ function safeParsePreset(raw: string | null): BulkPreset | null {
   try {
     const parsed = JSON.parse(raw);
     const aditivoId = Number(parsed?.aditivoId);
-    const dosePorPlanta = Number(parsed?.dosePorPlanta);
+
+    // novo formato (compatível com o antigo "doseMlPorLitro")
+    const doseMlPorLitroRaw = parsed?.doseMlPorLitro ?? parsed?.doseMlPorLitro;
+    const volumeLitrosRaw = parsed?.volumeLitros ?? 1;
+
+    const doseMlPorLitro = Number(doseMlPorLitroRaw);
+    const volumeLitros = Number(volumeLitrosRaw);
 
     if (!Number.isFinite(aditivoId) || aditivoId <= 0) return null;
-    if (!Number.isFinite(dosePorPlanta) || dosePorPlanta <= 0) return null;
+    if (!Number.isFinite(doseMlPorLitro) || doseMlPorLitro <= 0) return null;
+    if (!Number.isFinite(volumeLitros) || volumeLitros <= 0) return null;
 
     return {
       aditivoId: Math.round(aditivoId),
-      dosePorPlanta: Number(dosePorPlanta.toFixed(2)),
+      doseMlPorLitro: Number(doseMlPorLitro.toFixed(2)),
+      volumeLitros: Number(volumeLitros.toFixed(2)),
     };
   } catch {
     return null;
@@ -149,6 +160,7 @@ function resolveStockMl(anyObj: any): number | null {
 function mergeLocalStock(item: Aditivo): Aditivo {
   try {
     const local: any = getAditivoStock(item.id);
+    if (!local?.tracked) return item;
     const localMl = resolveStockMl(local);
 
     if (local && localMl !== null) {
@@ -358,7 +370,8 @@ export function BulkInsecticideModal({
   const [signalsByPlantId, setSignalsByPlantId] = useState<Record<number, PestSignal>>({});
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [dosePorPlanta, setDosePorPlanta] = useState<number>(8);
+  const [doseMlPorLitro, setDoseMlPorLitro] = useState<number>(3);
+  const [volumeLitros, setVolumeLitros] = useState<number>(1);
   const [roundsTotal, setRoundsTotal] = useState<number>(6);
   const [descansoDias, setDescansoDias] = useState<number>(4);
   const [roundsTouched, setRoundsTouched] = useState(false);
@@ -476,9 +489,14 @@ export function BulkInsecticideModal({
 
   const selectedCount = selectedPlantIds.length;
 
-  const dosePorPlantaClamped = useMemo(
-    () => clampFloat(Number(dosePorPlanta), 0.1, 100000, 2),
-    [dosePorPlanta]
+  const doseMlPorLitroClamped = useMemo(
+    () => clampFloat(Number(doseMlPorLitro), 0.1, 100000, 2),
+    [doseMlPorLitro]
+  );
+
+  const volumeLitrosClamped = useMemo(
+    () => clampFloat(Number(volumeLitros), 0.1, 100000, 2),
+    [volumeLitros]
   );
 
   const roundsTotalClamped = useMemo(
@@ -503,13 +521,13 @@ export function BulkInsecticideModal({
   }, [selected]);
 
   const isDoseForaFaixa = useMemo(() => {
-    const dose = dosePorPlantaClamped;
+    const dose = doseMlPorLitroClamped;
     if (!(dose > 0)) return false;
 
     const abaixoMin = typeof doseRange.min === 'number' ? dose < doseRange.min : false;
     const acimaMax = typeof doseRange.max === 'number' ? dose > doseRange.max : false;
     return abaixoMin || acimaMax;
-  }, [dosePorPlantaClamped, doseRange]);
+  }, [doseMlPorLitroClamped, doseRange]);
 
   useEffect(() => {
     if (!isDoseForaFaixa) {
@@ -518,16 +536,18 @@ export function BulkInsecticideModal({
   }, [isDoseForaFaixa, effectiveSelectedId]);
 
   const totalEstimado = useMemo(() => {
-    return Number((dosePorPlantaClamped * selectedCount).toFixed(2));
-  }, [dosePorPlantaClamped, selectedCount]);
+    return Number((doseMlPorLitroClamped * volumeLitrosClamped).toFixed(2));
+  }, [doseMlPorLitroClamped, volumeLitrosClamped]);
 
   const selectedStockMl = useMemo(() => {
     if (!selected) return null;
 
     try {
       const local: any = getAditivoStock(selected.id);
-      const localMl = resolveStockMl(local);
-      if (localMl !== null) return localMl;
+      if (local?.tracked) {
+        const localMl = resolveStockMl(local);
+        if (localMl !== null) return localMl;
+      }
     } catch {
       // ignore
     }
@@ -571,14 +591,17 @@ export function BulkInsecticideModal({
       const preset = safeParsePreset(localStorage.getItem(PRESET_KEY));
       if (preset) {
         setSelectedId(preset.aditivoId);
-        setDosePorPlanta(preset.dosePorPlanta);
+        setDoseMlPorLitro(preset.doseMlPorLitro);
+        setVolumeLitros(preset.volumeLitros);
       } else {
         setSelectedId(null);
-        setDosePorPlanta(8);
+        setDoseMlPorLitro(3);
+        setVolumeLitros(1);
       }
     } catch {
       setSelectedId(null);
-      setDosePorPlanta(8);
+      setDoseMlPorLitro(3);
+      setVolumeLitros(1);
     }
 
     // se veio do drawer: começa no tab agenda e foca o grupo
@@ -780,8 +803,12 @@ export function BulkInsecticideModal({
       setError('Selecione ao menos 1 planta.');
       return;
     }
-    if (!(dosePorPlantaClamped > 0)) {
-      setError('Informe uma dose por planta válida.');
+    if (!(doseMlPorLitroClamped > 0)) {
+      setError('Informe uma dose (mL/L) válida.');
+      return;
+    }
+    if (!(volumeLitrosClamped > 0)) {
+      setError('Informe o volume de calda (L).');
       return;
     }
     if (!hasStockEnough) {
@@ -802,7 +829,8 @@ export function BulkInsecticideModal({
           PRESET_KEY,
           JSON.stringify({
             aditivoId: id,
-            dosePorPlanta: dosePorPlantaClamped,
+            doseMlPorLitro: doseMlPorLitroClamped,
+            volumeLitros: volumeLitrosClamped,
           })
         );
       } catch {
@@ -812,6 +840,7 @@ export function BulkInsecticideModal({
       const batchId = `B${Date.now().toString(36)}`;
       const safeObs = notes.trim();
       const baseDesc = `${selected.nome} (${selected.marca}) — tratamento em lote`;
+      const doseBlock = `dose=${doseMlPorLitroClamped}ml/L vol=${volumeLitrosClamped}L total=${totalEstimado}ml`;
 
       const createdEvents = await Promise.all(
         selectedPlantIds.map((plantId) => {
@@ -819,16 +848,16 @@ export function BulkInsecticideModal({
           const pestType = signal?.pestType ?? 'DESCONHECIDA';
           const intensityPart = signal?.intensity ? ` intensity=${signal.intensity}` : '';
           const signalBlock = `[PEST_SIGNAL] type=${pestType}${intensityPart}`;
-          const descricao = `${baseDesc} | ${signalBlock}${safeObs ? ` | ${safeObs}` : ''}`;
+          const descricao = `${baseDesc} | ${doseBlock} | ${signalBlock}${safeObs ? ` | ${safeObs}` : ''}`;
 
           return apiService.createPlantaEvento(plantId, {
             tipo: 'INSETICIDA',
             descricao,
-            doseEmML: dosePorPlantaClamped,
+            doseEmML: doseMlPorLitroClamped,
             produtoId: id,
             roundsTotal: roundsTotalClamped,
             descansoDias: descansoDiasClamped,
-            idempotencyKey: `insecticide-bulk:${batchId}:${plantId}:${id}:${dosePorPlantaClamped}:${roundsTotalClamped}:${descansoDiasClamped}`,
+            idempotencyKey: `insecticide-bulk:${batchId}:${plantId}:${id}:${doseMlPorLitroClamped}:${volumeLitrosClamped}:${roundsTotalClamped}:${descansoDiasClamped}`,
           });
         })
       );
@@ -850,16 +879,24 @@ export function BulkInsecticideModal({
       // atualiza estoque local
       try {
         const localAny: any = getAditivoStock(id);
-        const currentMl = resolveStockMl(localAny);
-        if (localAny && currentMl !== null) {
+        const apiAny: any = (selected as any)?.estoque;
+
+        const currentMl = localAny?.tracked
+          ? resolveStockMl(localAny)
+          : resolveStockMl(apiAny);
+
+        if (currentMl !== null) {
           const next = Math.max(0, Number(currentMl ?? 0) - totalEstimado);
 
           const payload: AditivoStock = {
             tracked: true,
-            tipoProduto: localAny.tipoProduto ?? (selected as any)?.tipo ?? null,
+            tipoProduto:
+              (localAny?.tracked ? localAny.tipoProduto : apiAny?.tipoProduto) ??
+              (selected as any)?.tipo ??
+              null,
             stockMlAtual: next,
-            unidades: Number(localAny.unidades ?? 0),
-            mlFrasco: Number(localAny.mlFrasco ?? 0),
+            unidades: Number(localAny?.tracked ? localAny.unidades ?? 0 : apiAny?.unidades ?? 0),
+            mlFrasco: Number(localAny?.tracked ? localAny.mlFrasco ?? 0 : apiAny?.mlFrasco ?? 0),
           };
           setAditivoStock(id, payload);
 
@@ -1073,212 +1110,237 @@ export function BulkInsecticideModal({
     return list;
   }, [roundsTotalClamped, descansoDiasClamped]);
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onMouseDown={(e) => {
-      if (e.target === e.currentTarget) onClose();
-    }}>
-      <div
-        className="w-[720px] max-w-[96vw] rounded-xl border border-[#f39a5c]/25 bg-gradient-to-b from-[#101a2b] to-[#0B1220] p-4 shadow-[0_12px_30px_rgba(9,15,25,0.5)]"
-        onMouseDown={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Inseticida em lote"
+  const tabPills = (
+    <div className="flex rounded-lg bg-white/5 p-0.5 gap-0.5">
+      <button
+        type="button"
+        onClick={() => setActiveTab('APPLY')}
+        className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+          activeTab === 'APPLY'
+            ? 'bg-[#f39a5c]/10 text-[#f39a5c]'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
       >
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-white tracking-tight">Inseticida (lote)</h3>
-            <p className="text-xs text-[#9fb0c0] font-normal">
-              Um tratamento por planta. Aplique em lote e gerencie rounds na agenda.
-            </p>
-          </div>
+        Aplicar lote
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab('AGENDA');
+          refreshAgendas();
+        }}
+        className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+          activeTab === 'AGENDA'
+            ? 'bg-[#f39a5c]/10 text-[#f39a5c]'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        Agenda do lote
+      </button>
+    </div>
+  );
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('APPLY')}
-              className={`rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] transition ${
-                activeTab === 'APPLY'
-                  ? 'border-[#f39a5c]/50 bg-[#f39a5c]/15 text-[#f7c6a1]'
-                  : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-              }`}
-            >
-              Aplicar lote
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('AGENDA');
-                refreshAgendas();
-              }}
-              className={`rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] transition ${
-                activeTab === 'AGENDA'
-                  ? 'border-amber-400/40 bg-amber-500/10 text-amber-200'
-                  : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-              }`}
-            >
-              Agenda do lote
-            </button>
+  return (
+    <PokedexModal
+      open={open}
+      onClose={onClose}
+      title="Inseticida em Lote"
+      subtitle="Um tratamento por planta. Aplique em lote e gerencie rounds na agenda."
+      widthClass="w-[740px] max-w-[96vw]"
+      headerActions={tabPills}
+    >
+          {/* ── APPLY TAB ── */}
+          {activeTab === 'APPLY' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-slate-600/70 px-3 py-2 text-xs font-medium text-slate-300 hover:border-slate-400"
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-
-        {activeTab === 'APPLY' && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Plantas infectadas</div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={selectAllFiltered}
-                      disabled={!canInteract}
-                      className="text-[11px] text-slate-200/80 hover:text-white"
-                    >
-                      tudo
-                    </button>
-                    <span className="text-slate-500">•</span>
-                    <button
-                      type="button"
-                      onClick={selectNone}
-                      disabled={!canInteract}
-                      className="text-[11px] text-slate-200/80 hover:text-white"
-                    >
-                      nada
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-2">
-                  <label className="text-[11px] text-slate-300/90 uppercase tracking-[0.06em]">Filtro por tipo de praga</label>
-                  <select
-                    value={filterPestType}
-                    onChange={(event) => setFilterPestType(event.target.value)}
-                    disabled={!canInteract}
-                    className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-2.5 py-1.5 text-xs text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-                  >
-                    <option value="ALL">Todos os tipos</option>
-                    {pestTypeOptions.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="mt-2 max-h-[240px] overflow-auto pr-1 space-y-2">
-                  {filteredInfectedPlants.length === 0 ? (
-                    <div className="text-xs text-slate-400">Nenhuma planta marcada com [PEST_SIGNAL] para este filtro.</div>
-                  ) : (
-                    filteredInfectedPlants.map((item) => {
-                      const checked = selectedPlantIds.includes(item.plant.id);
-                      return (
-                        <label
-                          key={item.plant.id}
-                          className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 cursor-pointer transition ${
-                            checked
-                              ? 'border-[#f39a5c]/40 bg-[#f39a5c]/10'
-                              : 'border-white/10 bg-white/5 hover:bg-white/10'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => togglePlant(item.plant.id)}
-                            disabled={!canInteract}
-                            className="h-4 w-4 accent-[#f39a5c]"
-                          />
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-white truncate">{item.plant.name}</div>
-                            <div className="text-[11px] text-slate-300/70 truncate">
-                              type={item.signal.pestType}
-                              {item.signal.intensity ? ` | intensity=${item.signal.intensity}` : ''}
-                            </div>
-                          </div>
-                          <div className="ml-auto text-[11px] text-slate-400/70">#{item.plant.id}</div>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-
-                <div className="mt-2 text-[11px] text-slate-400/80">
-                  Selecionadas: <span className="font-semibold text-slate-200">{selectedCount}</span>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Produtos do inventário</div>
-                  <div className="text-[11px] text-slate-400/80">
-                    Estoque — <span className="font-semibold text-slate-200">{estText}</span>
-                  </div>
-                </div>
-
-                <select
-                  value={effectiveSelectedId ?? ''}
-                  onChange={(event) => setSelectedId(event.target.value ? Number(event.target.value) : null)}
-                  disabled={!canInteract}
-                  className="mt-2 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-                >
-                  {selectable.length === 0 ? (
-                    <option value="">Nenhum produto de proteção encontrado</option>
-                  ) : (
-                    <>
-                      <option value="">Selecione um produto…</option>
-                      {selectable.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {pestTypeForMatch
-                            ? `${resolveProductMatch(a, pestTypeForMatch) === 'recommended' ? '✅' : '⚠'} ${a.nome} — ${a.marca}`
-                            : `${a.nome} — ${a.marca}`}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
-
-                {pestTypeForMatch && selectedMatch && (
-                  <div className="mt-2 flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                    <span className="text-[11px] text-slate-300/90">Match para {pestTypeForMatch}</span>
-                    {selectedMatch === 'recommended' ? (
-                      <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
-                        Recomendado
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
-                        Fora do recomendado
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Dose por planta (mL)</label>
-                    <input
-                      type="number"
-                      min={0.1}
-                      step={0.1}
-                      value={dosePorPlanta}
-                      onChange={(event) => setDosePorPlanta(Number(event.target.value))}
-                      disabled={!canInteract}
-                      className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-                    />
-                    <div className="mt-1 text-[11px] text-slate-400/80">
-                      Faixa: <span className="font-semibold text-slate-200">{formatDoseRange(doseRange.min, doseRange.max)}</span>
+                {/* LEFT: PLANTAS INFECTADAS */}
+                <div className="rounded-xl bg-[#101726] border border-white/5 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Plantas infectadas</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={selectAllFiltered}
+                        disabled={!canInteract}
+                        className="text-xs text-slate-400 hover:text-white transition-colors disabled:opacity-40"
+                      >
+                        Todas
+                      </button>
+                      <span className="text-white/20 text-xs">·</span>
+                      <button
+                        type="button"
+                        onClick={selectNone}
+                        disabled={!canInteract}
+                        className="text-xs text-slate-400 hover:text-white transition-colors disabled:opacity-40"
+                      >
+                        Nenhuma
+                      </button>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Rounds / Descanso</label>
-                    <div className="mt-1 grid grid-cols-2 gap-2">
+                  <div className="mb-3">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5">
+                      Filtro por tipo de praga
+                    </label>
+                    <select
+                      value={filterPestType}
+                      onChange={(event) => setFilterPestType(event.target.value)}
+                      disabled={!canInteract}
+                      className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60 transition-all duration-150"
+                    >
+                      <option value="ALL">Todos os tipos</option>
+                      {pestTypeOptions.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="max-h-[240px] overflow-auto pr-1 space-y-1.5">
+                    {filteredInfectedPlants.length === 0 ? (
+                      <p className="text-xs text-slate-500 py-2">Nenhuma planta com sinal de praga para este filtro.</p>
+                    ) : (
+                      filteredInfectedPlants.map((item) => {
+                        const checked = selectedPlantIds.includes(item.plant.id);
+                        return (
+                          <label
+                            key={item.plant.id}
+                            className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-all duration-150 ${
+                              checked
+                                ? 'border-[#f39a5c]/50 bg-[#f39a5c]/10'
+                                : 'border-white/5 bg-white/3 hover:border-white/10 hover:bg-white/5'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => togglePlant(item.plant.id)}
+                              disabled={!canInteract}
+                              className="sr-only"
+                            />
+                            <div
+                              className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-all duration-150 ${
+                                checked
+                                  ? 'bg-[#f39a5c] border-[#f39a5c]'
+                                  : 'bg-transparent border-white/20'
+                              }`}
+                            >
+                              {checked && (
+                                <svg className="w-2.5 h-2.5 text-[#080B14]" fill="none" viewBox="0 0 12 12">
+                                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium text-white truncate">{item.plant.name}</div>
+                              <div className="text-xs text-slate-500 truncate">
+                                {item.signal.pestType}
+                                {item.signal.intensity ? ` · ${item.signal.intensity}` : ''}
+                              </div>
+                            </div>
+                            <span className="text-xs tabular-nums text-slate-600 flex-shrink-0">#{item.plant.id}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Selecionadas</span>
+                    <span className="text-sm font-semibold text-[#f39a5c] tabular-nums">{selectedCount}</span>
+                    <span className="text-xs text-slate-600">/ {filteredInfectedPlants.length}</span>
+                  </div>
+                </div>
+
+                {/* RIGHT: PRODUTO & PARÂMETROS */}
+                <div className="rounded-xl bg-[#101726] border border-white/5 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Produto</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Estoque</span>
+                      <span className="text-sm font-semibold text-white tabular-nums">{estText}</span>
+                    </div>
+                  </div>
+
+                  <select
+                    value={effectiveSelectedId ?? ''}
+                    onChange={(event) => setSelectedId(event.target.value ? Number(event.target.value) : null)}
+                    disabled={!canInteract}
+                    className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60 transition-all duration-150"
+                  >
+                    {selectable.length === 0 ? (
+                      <option value="">Nenhum produto de proteção encontrado</option>
+                    ) : (
+                      <>
+                        <option value="">Selecione um produto…</option>
+                        {selectable.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {pestTypeForMatch
+                              ? `${resolveProductMatch(a, pestTypeForMatch) === 'recommended' ? '✅' : '⚠'} ${a.nome} — ${a.marca}`
+                              : `${a.nome} — ${a.marca}`}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+
+                  {pestTypeForMatch && selectedMatch && (
+                    <div className="mt-2 flex items-center justify-between rounded-lg border border-white/5 bg-white/3 px-3 py-2">
+                      <span className="text-xs text-slate-400">Match para {pestTypeForMatch}</span>
+                      {selectedMatch === 'recommended' ? (
+                        <span className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+                          Recomendado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-0.5 text-xs font-medium text-amber-300">
+                          Fora do recomendado
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Dose / Calda / Rounds */}
+                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5 whitespace-nowrap">
+                        Dose mL/L
+                      </label>
+                      <input
+                        type="number"
+                        min={0.1}
+                        step={0.1}
+                        value={doseMlPorLitro}
+                        onChange={(event) => setDoseMlPorLitro(Number(event.target.value))}
+                        disabled={!canInteract}
+                        className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60 transition-all duration-150"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">
+                        Faixa: <span className="text-slate-300 tabular-nums">{formatDoseRange(doseRange.min, doseRange.max)}</span>
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5 whitespace-nowrap">
+                        Calda (L)
+                      </label>
+                      <input
+                        type="number"
+                        min={0.1}
+                        step={0.1}
+                        value={volumeLitros}
+                        onChange={(event) => setVolumeLitros(Number(event.target.value))}
+                        disabled={!canInteract}
+                        className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60 transition-all duration-150"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">Ex.: 2 L foliar</p>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5 whitespace-nowrap">
+                        R Total
+                      </label>
                       <input
                         type="number"
                         min={1}
@@ -1286,9 +1348,16 @@ export function BulkInsecticideModal({
                         value={roundsTotal}
                         onChange={(event) => { setRoundsTouched(true); setRoundsTotal(Number(event.target.value)); }}
                         disabled={!canInteract}
-                        className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
+                        className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60 transition-all duration-150"
                         title="Rounds totais"
                       />
+                      <p className="mt-1 text-xs text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">&nbsp;</p>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5 whitespace-nowrap">
+                        Desc (d)
+                      </label>
                       <input
                         type="number"
                         min={0}
@@ -1296,242 +1365,263 @@ export function BulkInsecticideModal({
                         value={descansoDias}
                         onChange={(event) => { setDescTouched(true); setDescansoDias(Number(event.target.value)); }}
                         disabled={!canInteract}
-                        className="w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
+                        className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60 transition-all duration-150"
                         title="Dias de descanso"
                       />
+                      <p className="mt-1 text-xs text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">Ex.: 6 rounds, 4 d</p>
                     </div>
-                    <div className="mt-1 text-[11px] text-slate-400/80">Ex.: 6 rounds com 4d descanso</div>
                   </div>
-                </div>
 
-                {isDoseForaFaixa && (
-                  <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-2">
-                    <div className="text-[11px] font-semibold text-amber-200">Dose fora da faixa recomendada.</div>
-                    <label className="mt-1 inline-flex items-center gap-2 text-[11px] text-amber-100/90">
-                      <input
-                        type="checkbox"
-                        checked={confirmDoseForaFaixa}
-                        onChange={(event) => setConfirmDoseForaFaixa(event.target.checked)}
-                        disabled={!canInteract}
-                        className="h-3.5 w-3.5 accent-amber-400"
-                      />
-                      Confirmo aplicar fora da recomendação
-                    </label>
-                  </div>
-                )}
+                  {/* Out-of-range warning */}
+                  {isDoseForaFaixa && (
+                    <div className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/8 px-3 py-2.5">
+                      <p className="text-xs font-semibold text-amber-300">Dose fora da faixa recomendada.</p>
+                      <label className="mt-2 inline-flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={confirmDoseForaFaixa}
+                          onChange={(event) => setConfirmDoseForaFaixa(event.target.checked)}
+                          disabled={!canInteract}
+                          className="h-3.5 w-3.5 accent-amber-400"
+                        />
+                        <span className="text-xs text-amber-200/80">Confirmo aplicar fora da recomendação</span>
+                      </label>
+                    </div>
+                  )}
 
-                <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-slate-300/90 uppercase tracking-[0.06em]">Total estimado</span>
-                    <span className={`text-xs font-semibold ${hasStockEnough ? 'text-[#f7c6a1]' : 'text-red-400'}`}>
+                  {/* Total */}
+                  <div className="mt-3 rounded-lg border border-white/5 bg-[#080B14] px-3 py-2.5 flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total de produto</span>
+                    <span className={`text-sm font-semibold tabular-nums ${hasStockEnough ? 'text-[#f7c6a1]' : 'text-red-400'}`}>
                       {totalEstimado} mL
                     </span>
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-400/80">
-                    {hasStockEnough ? 'Ok para aplicar.' : 'Estoque insuficiente para as selecionadas.'}
-                  </div>
-                </div>
-
-                <div className="mt-2 rounded-lg border border-white/10 bg-[#0f1726] p-3">
-                  <div className="text-[11px] text-slate-300/90 uppercase tracking-[0.06em]">Preview de agenda</div>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    {schedulePreview.slice(0, Math.min(6, schedulePreview.length)).map((it) => (
-                      <div key={it.round} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1">
-                        <div className="text-[10px] text-white/50">R{it.round}</div>
-                        <div className="text-[11px] text-white/80">{it.when.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {schedulePreview.length > 6 && (
-                    <div className="mt-2 text-[11px] text-white/45">+{schedulePreview.length - 6} rounds…</div>
+                  {!hasStockEnough && (
+                    <p className="mt-1 text-xs text-red-400">Estoque insuficiente para as plantas selecionadas.</p>
                   )}
+
+                  {/* Schedule preview */}
+                  <div className="mt-3 rounded-lg border border-white/5 bg-[#080B14] p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Prévia da agenda</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {schedulePreview.slice(0, Math.min(6, schedulePreview.length)).map((it) => (
+                        <div key={it.round} className="rounded-lg border border-white/5 bg-white/3 px-2 py-1.5">
+                          <p className="text-[10px] font-bold text-[#f39a5c] tabular-nums">R{it.round}</p>
+                          <p className="text-xs text-slate-400 tabular-nums">
+                            {it.when.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    {schedulePreview.length > 6 && (
+                      <p className="mt-2 text-xs text-slate-500">+{schedulePreview.length - 6} rounds</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <label className="mt-3 block text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Observação (opcional)</label>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              disabled={!canInteract}
-              className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-            />
+              {/* Notes */}
+              <div className="mt-4">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5">
+                  Observação (opcional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  disabled={!canInteract}
+                  placeholder="Observações adicionais sobre o tratamento..."
+                  className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60 transition-all duration-150 resize-none"
+                />
+              </div>
 
-            {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+              {error && (
+                <div className="mt-3 rounded-lg border border-red-500/20 bg-red-950/30 px-3 py-2">
+                  <p className="text-xs text-red-400">{error}</p>
+                </div>
+              )}
 
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={handleAplicar}
-                className="rounded-lg bg-[#f39a5c] px-3 py-2 text-xs font-semibold text-[#0B1220] hover:brightness-110 disabled:opacity-60"
-                disabled={
-                  !canInteract ||
-                  !selected ||
-                  !hasStockEnough ||
-                  selectedPlantIds.length === 0 ||
-                  !(dosePorPlantaClamped > 0) ||
-                  (isDoseForaFaixa && !confirmDoseForaFaixa)
-                }
-              >
-                {isSaving ? 'Aplicando…' : 'Aplicar lote'}
-              </button>
-            </div>
-          </>
-        )}
+              <div className="mt-4 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={handleAplicar}
+                  className="rounded-lg bg-[#f39a5c] px-5 py-2 text-sm font-semibold text-[#080B14] hover:brightness-105 active:scale-[0.98] disabled:opacity-50 transition-all duration-150"
+                  disabled={
+                    !canInteract ||
+                    !selected ||
+                    !hasStockEnough ||
+                    selectedPlantIds.length === 0 ||
+                    !(doseMlPorLitroClamped > 0) || !(volumeLitrosClamped > 0) ||
+                    (isDoseForaFaixa && !confirmDoseForaFaixa)
+                  }
+                >
+                  {isSaving ? 'Aplicando…' : 'Aplicar lote'}
+                </button>
+              </div>
+            </>
+          )}
 
-        {activeTab === 'AGENDA' && (
-          <>
-            <div className="rounded-xl border border-amber-400/20 bg-[#111A2E]/60 backdrop-blur-sm p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs font-medium uppercase tracking-[0.06em] text-amber-300/90">🛡️ Tratamentos (lote)</div>
-                <div className="flex items-center gap-2">
+          {/* ── AGENDA TAB ── */}
+          {activeTab === 'AGENDA' && (
+            <>
+              {/* Status bar */}
+              <div className="rounded-xl bg-[#101726] border border-white/5 p-4 mb-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Tratamentos ativos</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      <span className="text-white font-medium tabular-nums">{selectedPlantIds.length}</span> plantas selecionadas &middot; agrupado por produto, rounds, descanso e início
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => refreshAgendas()}
-                    className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white/80 text-xs hover:bg-white/10 disabled:opacity-50"
+                    className="flex-shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:border-white/20 disabled:opacity-40 transition-all duration-150"
                     disabled={agendaLoading}
                   >
-                    ↻ Atualizar
+                    Atualizar
                   </button>
                 </div>
+
+                {agendaError && (
+                  <div className="mt-3 rounded-lg border border-red-500/20 bg-red-950/30 px-3 py-2">
+                    <p className="text-xs text-red-400">{agendaError}</p>
+                  </div>
+                )}
+
+                {agendaLoading && (
+                  <p className="mt-3 text-xs text-slate-500">Carregando agenda…</p>
+                )}
               </div>
-              <div className="mt-2 text-[11px] text-white/50">
-                Selecionadas no lote: <span className="font-semibold text-white/80">{selectedPlantIds.length}</span> •
-                Agrupado por <span className="font-semibold">produto + rounds + descanso + início</span>.
-              </div>
 
-              {agendaError && (
-                <div className="mt-3 text-xs text-red-200 bg-red-500/10 border border-red-500/30 rounded-lg p-2">
-                  {agendaError}
-                </div>
-              )}
+              <div className="grid grid-cols-1 gap-3">
+                {agendaGroups.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center">Nenhum tratamento ativo nas plantas selecionadas.</p>
+                ) : (
+                  agendaGroups.map((group) => {
+                    const size = group.entries.length;
+                    const aligned = group.alignedNextRound != null;
+                    const nextRound = group.alignedNextRound;
+                    const dueTxt = group.nextScheduledAt ? daysDiff(group.nextScheduledAt) : null;
+                    const isFocused = focusedGroupKey != null && group.key.startsWith(focusedGroupKey);
 
-              {agendaLoading && <div className="mt-3 text-xs text-white/50">Carregando agenda…</div>}
-            </div>
-
-            <div className="mt-3 grid grid-cols-1 gap-3">
-              {agendaGroups.length === 0 ? (
-                <div className="text-sm text-white/60">Nenhum tratamento ativo nas plantas selecionadas.</div>
-              ) : (
-                agendaGroups.map((group) => {
-                  const size = group.entries.length;
-                  const aligned = group.alignedNextRound != null;
-                  const nextRound = group.alignedNextRound;
-                  const dueTxt = group.nextScheduledAt ? daysDiff(group.nextScheduledAt) : null;
-                  const isFocused = focusedGroupKey != null && group.key.startsWith(focusedGroupKey);
-
-                  return (
-                    <div
-                      key={group.key}
-                      className={`rounded-xl border p-4 bg-[#0B1220]/70 ${
-                        isFocused ? 'border-amber-400/40' : 'border-white/10'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold text-white">
-                            {group.produtoNome} • {size} plantas • {group.roundsTotal} rounds
+                    return (
+                      <div
+                        key={group.key}
+                        className={`rounded-xl border p-4 bg-[#101726] transition-all duration-200 ${
+                          isFocused ? 'border-[#f39a5c]/40' : 'border-white/5'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white">
+                              {group.produtoNome}
+                            </p>
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              {size} planta{size !== 1 ? 's' : ''} &middot; {group.roundsTotal} rounds &middot; {group.descansoDias} d descanso &middot; início <span className="tabular-nums">{group.inicioBucket}</span>
+                            </p>
+                            <div className="mt-2.5 flex flex-wrap gap-1.5">
+                              {group.entries.map((e) => (
+                                <span
+                                  key={e.plant.id}
+                                  className="inline-flex items-center rounded-full border border-white/8 bg-white/5 px-2.5 py-0.5 text-xs text-slate-300"
+                                  title={`Planta #${e.plant.id}`}
+                                >
+                                  {e.plant.name}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                          <div className="mt-1 text-xs text-white/50">
-                            Descanso: {group.descansoDias}d • Início: {group.inicioBucket}
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {group.entries.map((e) => (
-                              <span
-                                key={e.plant.id}
-                                className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/70"
-                                title={`Planta #${e.plant.id}`}
+
+                          <div className="flex flex-col items-end gap-2.5 flex-shrink-0">
+                            {group.nextScheduledAt ? (
+                              <p
+                                className={`text-xs font-semibold tabular-nums ${
+                                  dueTxt != null && dueTxt <= 0 ? 'text-rose-300' : 'text-amber-300'
+                                }`}
+                                title={group.nextScheduledAt}
                               >
-                                {e.plant.name}
-                              </span>
-                            ))}
+                                {dueTxt != null && dueTxt <= 0 ? 'Hoje / Atrasado' : `Em ${dueTxt}d`} &middot; R{nextRound}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-slate-500">Sem próximo round</p>
+                            )}
+
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => exportBatchIcs(group)}
+                                disabled={agendaBusyKey != null}
+                                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:border-white/20 disabled:opacity-40 transition-all duration-150"
+                              >
+                                Exportar .ics
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => executeNextRoundBatch(group)}
+                                disabled={!aligned || agendaBusyKey != null || agendaBusyKey === group.key}
+                                className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/15 hover:border-emerald-400/40 disabled:opacity-40 transition-all duration-150"
+                                title={
+                                  !aligned
+                                    ? 'Plantas desalinhadas (roundAtual diferente).'
+                                    : `Executar round ${nextRound} em lote`
+                                }
+                              >
+                                Próximo round
+                              </button>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex flex-col items-end gap-2">
-                          {group.nextScheduledAt ? (
+                        {!aligned && (
+                          <div className="mt-3 rounded-lg border border-rose-500/20 bg-rose-950/30 px-3 py-2">
+                            <p className="text-xs text-rose-300">
+                              Plantas desalinhadas: <span className="font-medium">roundAtual</span> diferente entre elas. O lote só pode ser executado quando todas estão no mesmo round.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Rounds grid */}
+                        <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {group.rounds.map((r) => (
                             <div
-                              className={`text-xs font-semibold ${
-                                dueTxt != null && dueTxt <= 0 ? 'text-rose-300' : 'text-amber-200'
+                              key={r.roundIndex}
+                              className={`rounded-lg border px-3 py-2 flex items-center justify-between gap-2 ${
+                                r.pending === 0
+                                  ? 'border-emerald-400/20 bg-emerald-400/8'
+                                  : r.due
+                                    ? 'border-rose-400/20 bg-rose-400/8'
+                                    : 'border-white/5 bg-white/3'
                               }`}
-                              title={group.nextScheduledAt}
                             >
-                              {dueTxt != null && dueTxt <= 0 ? 'HOJE / ATRASADO' : `Falta ${dueTxt}d`} • R{nextRound}
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                  R{r.roundIndex}/{group.roundsTotal}
+                                </p>
+                                <p className="text-xs text-slate-500 tabular-nums">
+                                  {r.scheduledAt ? fmtDateTime(r.scheduledAt) : '—'}
+                                </p>
+                              </div>
+                              <div className="text-xs text-slate-400 flex-shrink-0 tabular-nums">
+                                <span className="text-emerald-300 font-semibold">{r.executed}</span>
+                                <span className="text-slate-600 mx-0.5">/</span>
+                                <span className="text-amber-300 font-semibold">{r.pending}</span>
+                              </div>
                             </div>
-                          ) : (
-                            <div className="text-xs text-white/40">Sem próximo round</div>
-                          )}
-
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => exportBatchIcs(group)}
-                              disabled={agendaBusyKey != null}
-                              className="px-3 py-2 rounded-lg border border-amber-400/30 bg-amber-500/10 text-amber-200 text-xs font-semibold uppercase tracking-[0.06em] hover:bg-amber-500/15 disabled:opacity-40"
-                            >
-                              📅 .ics
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => executeNextRoundBatch(group)}
-                              disabled={!aligned || agendaBusyKey != null || agendaBusyKey === group.key}
-                              className="px-3 py-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 text-emerald-200 text-xs font-semibold uppercase tracking-[0.06em] hover:bg-emerald-500/15 disabled:opacity-40"
-                              title={
-                                !aligned
-                                  ? 'Plantas desalinhadas (roundAtual diferente).'
-                                  : `Executar round ${nextRound} em lote`
-                              }
-                            >
-                              ✅ Próximo
-                            </button>
-                          </div>
+                          ))}
                         </div>
-                      </div>
 
-                      {!aligned && (
-                        <div className="mt-3 text-xs text-rose-200 bg-rose-500/10 border border-rose-500/30 rounded-lg p-2">
-                          Plantas desalinhadas: roundAtual diferente. (Regra: lote só executa quando todas estão no mesmo round)
-                        </div>
-                      )}
-
-                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {group.rounds.map((r) => (
-                          <div
-                            key={r.roundIndex}
-                            className={`rounded-lg border px-3 py-2 flex items-center justify-between gap-2 ${
-                              r.pending === 0
-                                ? 'border-emerald-400/20 bg-emerald-500/10'
-                                : r.due
-                                  ? 'border-rose-400/20 bg-rose-500/10'
-                                  : 'border-white/10 bg-white/5'
-                            }`}
-                          >
-                            <div className="min-w-0">
-                              <div className="text-xs font-semibold text-white/90">Round {r.roundIndex}/{group.roundsTotal}</div>
-                              <div className="text-[11px] text-white/50">{r.scheduledAt ? fmtDateTime(r.scheduledAt) : '—'}</div>
-                            </div>
-                            <div className="text-[11px] text-white/60">
-                              <span className="text-emerald-200 font-semibold">{r.executed}</span> ✅ /{' '}
-                              <span className="text-amber-200 font-semibold">{r.pending}</span> 🕓
-                            </div>
-                          </div>
-                        ))}
+                        <p className="mt-3 text-xs text-slate-500">
+                          Marque o próximo round em lote aqui. O drawer ainda permite marcar individualmente.
+                        </p>
                       </div>
-
-                      <div className="mt-3 text-[11px] text-white/45">
-                        Dica: marque o próximo round em lote aqui. O drawer ainda permite marcar individualmente.
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div>,
-    document.body
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
+    </PokedexModal>
   );
 }

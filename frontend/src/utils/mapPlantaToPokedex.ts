@@ -1,5 +1,5 @@
 import type { Planta } from '../types';
-import type { Plant, PlantType, PlantSpecies } from '../types/pokedex';
+import type { Plant, PlantType, PlantSpecies, PlantCycleType, PlantGenetics } from '../types/pokedex';
 
 const VASO_LITERS: Record<string, number> = {
   CINCO_L: 5,
@@ -27,6 +27,8 @@ export function mapPlantaToPokedexPlant(
   const potLiters = VASO_LITERS[planta.tamanhoVaso] ?? 0;
 
   const species = (String((planta as any).especie || 'CANNABIS').toUpperCase() as PlantSpecies) || 'CANNABIS';
+  const cycleType = (String((planta as any).tipoCiclo || 'NAO_DEFINIDO').toUpperCase() as PlantCycleType) || 'NAO_DEFINIDO';
+  const genetics = (String((planta as any).genetica || 'NAO_DEFINIDO').toUpperCase() as PlantGenetics) || 'NAO_DEFINIDO';
   const imageUrl = species === 'ROSEIRA' ? '🌹' : '🌿';
 
   return {
@@ -34,6 +36,8 @@ export function mapPlantaToPokedexPlant(
     name: planta.nome,
     type,
     species,
+    cycleType,
+    genetics,
     pestActive: Boolean(planta.praga),
     heightCm: planta.altura,
     widthCm: planta.largura,

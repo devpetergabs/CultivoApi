@@ -21,15 +21,15 @@ export function PokedexCardsGrid({ plants, selectedPlantId, onSelectPlant, onNew
           onClick={onNewPlant}
           className="mt-2 w-full max-w-[280px] min-h-[160px] rounded-xl border-2 border-dashed border-slate-700/80 bg-[#0B1220]/60 flex flex-col items-center justify-center text-slate-300 hover:border-[#6fbf86] hover:text-[#6fbf86] transition-all duration-200"
         >
-          <div className="flex items-center justify-center h-16 w-16 rounded-full border-2 border-current text-4xl">+</div>
-          <span className="mt-4 text-xs font-medium uppercase tracking-[0.06em]">Nova planta</span>
+          <div className="flex items-center justify-center h-12 w-12 rounded-full border-2 border-current text-3xl">+</div>
+          <span className="mt-3 text-xs font-medium uppercase tracking-[0.06em]">Nova planta</span>
         </button>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pb-4">
       {plants.map((plant) => (
         <PlantCardPreview
           key={plant.id}
@@ -42,10 +42,10 @@ export function PokedexCardsGrid({ plants, selectedPlantId, onSelectPlant, onNew
       <button
         type="button"
         onClick={onNewPlant}
-        className="h-full min-h-[180px] rounded-xl border-2 border-dashed border-slate-700/80 bg-[#0B1220]/60 flex flex-col items-center justify-center text-slate-300 hover:border-[#6fbf86] hover:text-[#6fbf86] transition-all duration-200"
+        className="h-full min-h-[160px] rounded-xl border-2 border-dashed border-slate-700/80 bg-[#0B1220]/60 flex flex-col items-center justify-center text-slate-300 hover:border-[#6fbf86] hover:text-[#6fbf86] transition-all duration-200"
       >
-        <div className="flex items-center justify-center h-16 w-16 rounded-full border-2 border-current text-4xl">+</div>
-        <span className="mt-4 text-xs font-medium uppercase tracking-[0.06em]">Nova planta</span>
+        <div className="flex items-center justify-center h-12 w-12 rounded-full border-2 border-current text-3xl">+</div>
+        <span className="mt-3 text-xs font-medium uppercase tracking-[0.06em]">Nova planta</span>
       </button>
     </div>
   );

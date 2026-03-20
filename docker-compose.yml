@@ -6,13 +6,38 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: cultivo_inteligente
-    ports: # Expondo a porta 3307 do container para a porta 3306 do host
-      - "3307:3306" 
+    ports: # Disponível apenas localmente em 127.0.0.1:3307
+      - "127.0.0.1:3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_0900_ai_ci
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cultivo_inteligente_ollama
+    restart: unless-stopped
+    gpus: all
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: cultivo_inteligente_open_webui
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+    ports:
+      - "127.0.0.1:3001:8080"
+    volumes:
+      - open_webui_data:/app/backend/data
+
 volumes:
   mysql_data:
+  ollama_data:
+  open_webui_data:

@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Aditivo } from '../types';
 import { apiService } from '../services/api';
 import { AditivoDetailsModal } from './AditivoDetailsModal';
+import { getInventoryLogoSrc } from '../assets/inventary-logo/inventoryLogoMap';
 import {
   ADITIVO_STOCK_UPDATED_EVENT,
   getAditivoIcon,
   getAditivoStock,
   getDerivedStock,
-  isAditivoOutOfStock,
   syncAditivoStocksFromApi,
   resetAllAditivoStocksOnce,
   type AditivoStock,
@@ -16,6 +16,154 @@ import {
 type InventarioViewProps = {
   onCountChange?: (count: number) => void;
 };
+
+type EquipmentVariant = {
+  aditivo: Aditivo;
+  capacidadeLitros: number;
+};
+
+type EquipmentGroup = {
+  tipo: 'group';
+  id: string;
+  nome: string;
+  marca: string;
+  variants: EquipmentVariant[];
+  firstAditivo: Aditivo;
+};
+
+type DisplayItem = Aditivo | EquipmentGroup;
+
+function isEquipmentGroup(item: DisplayItem): item is EquipmentGroup {
+  return (item as any).tipo === 'group';
+}
+
+const inventoryAlphaCache = new Map<string, string>();
+
+function InventoryLogoImage({
+  src,
+  alt,
+  className,
+  enableAlphaAssist,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  enableAlphaAssist: boolean;
+}) {
+  const [renderSrc, setRenderSrc] = useState(src);
+
+  useEffect(() => {
+    if (!enableAlphaAssist) {
+      setRenderSrc(src);
+      return;
+    }
+
+    const cached = inventoryAlphaCache.get(src);
+    if (cached) {
+      setRenderSrc(cached);
+      return;
+    }
+
+    let cancelled = false;
+    const image = new Image();
+    image.src = src;
+
+    image.onload = () => {
+      if (cancelled) return;
+      try {
+        const maxDimension = 192;
+        const naturalWidth = image.naturalWidth || image.width;
+        const naturalHeight = image.naturalHeight || image.height;
+        const scale = Math.min(1, maxDimension / naturalWidth, maxDimension / naturalHeight);
+        const width = Math.max(1, Math.round(naturalWidth * scale));
+        const height = Math.max(1, Math.round(naturalHeight * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+
+        if (!context) {
+          inventoryAlphaCache.set(src, src);
+          setRenderSrc(src);
+          return;
+        }
+
+        context.drawImage(image, 0, 0, width, height);
+        const imageData = context.getImageData(0, 0, width, height);
+        const pixels = imageData.data;
+
+        let opaquePixels = 0;
+        let nearWhiteOpaquePixels = 0;
+
+        for (let index = 0; index < pixels.length; index += 4) {
+          const red = pixels[index];
+          const green = pixels[index + 1];
+          const blue = pixels[index + 2];
+          const alpha = pixels[index + 3];
+
+          if (alpha <= 245) continue;
+          opaquePixels += 1;
+
+          const maxChannel = Math.max(red, green, blue);
+          const minChannel = Math.min(red, green, blue);
+          const isNearNeutral = maxChannel - minChannel < 24;
+          const isNearWhite = red > 228 && green > 228 && blue > 228;
+
+          if (isNearNeutral && isNearWhite) nearWhiteOpaquePixels += 1;
+        }
+
+        const whiteRatio = opaquePixels > 0 ? nearWhiteOpaquePixels / opaquePixels : 0;
+
+        if (whiteRatio < 0.06) {
+          inventoryAlphaCache.set(src, src);
+          setRenderSrc(src);
+          return;
+        }
+
+        for (let index = 0; index < pixels.length; index += 4) {
+          const red = pixels[index];
+          const green = pixels[index + 1];
+          const blue = pixels[index + 2];
+          const alpha = pixels[index + 3];
+          if (alpha === 0) continue;
+
+          const maxChannel = Math.max(red, green, blue);
+          const minChannel = Math.min(red, green, blue);
+          const isNearNeutral = maxChannel - minChannel < 26;
+          const brightness = (red + green + blue) / 3;
+
+          if (isNearNeutral && brightness >= 248) {
+            pixels[index + 3] = 0;
+          } else if (isNearNeutral && brightness >= 230) {
+            const fade = (248 - brightness) / 18;
+            pixels[index + 3] = Math.max(0, Math.min(alpha, Math.round(alpha * fade)));
+          }
+        }
+
+        context.putImageData(imageData, 0, 0);
+        const processed = canvas.toDataURL('image/png');
+        inventoryAlphaCache.set(src, processed);
+        setRenderSrc(processed);
+      } catch {
+        inventoryAlphaCache.set(src, src);
+        setRenderSrc(src);
+      }
+    };
+
+    image.onerror = () => {
+      if (cancelled) return;
+      inventoryAlphaCache.set(src, src);
+      setRenderSrc(src);
+    };
+
+    return () => {
+      cancelled = true;
+    };
+  }, [src, enableAlphaAssist]);
+
+  return <img src={renderSrc} alt={alt} className={className} />;
+}
 
 function classeLabel(value: string): string {
   switch (value) {
@@ -40,10 +188,13 @@ function classeLabel(value: string): string {
 
 function estagioLabel(value: string): string {
   switch (value) {
+    case 'VEGETATIVO':
     case 'VEGETATIVA':
       return 'Vegetativa';
     case 'FLORACAO':
       return 'Floração';
+    case 'CICLO_INTEGRADO':
+      return 'Ciclo Integrado';
     case 'FINALIZACAO':
       return 'Finalização';
     default:
@@ -56,6 +207,35 @@ function formatMl(value: number): string {
   const normalized = Math.max(0, value);
   // Keep decimals only when needed.
   return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(1);
+}
+
+function normalizeStockNumber(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, parsed);
+}
+
+function getEffectiveStockForItem(item: Aditivo): AditivoStock {
+  const local = getAditivoStock(item.id);
+  if (local.tracked) return local;
+
+  const apiStock = item.estoque as any;
+  if (apiStock && Boolean(apiStock.tracked)) {
+    return {
+      tracked: true,
+      tipoProduto:
+        (typeof apiStock.tipoProduto === 'string'
+          ? apiStock.tipoProduto
+          : typeof item.tipo === 'string'
+            ? item.tipo
+            : null) ?? null,
+      stockMlAtual: normalizeStockNumber(apiStock.stockMlAtual),
+      unidades: Math.round(normalizeStockNumber(apiStock.unidades)),
+      mlFrasco: Math.round(normalizeStockNumber(apiStock.mlFrasco)),
+    };
+  }
+
+  return local;
 }
 
 export function InventarioView({ onCountChange }: InventarioViewProps) {
@@ -119,14 +299,14 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
         const tipo = String(a.tipo || "").toUpperCase();
         if (tipo === "VASO") return true;
 
-        const stock = getAditivoStock(a.id);
+        const stock = getEffectiveStockForItem(a);
         const derived = getDerivedStock(stock);
         return !derived.isEmpty;
       });
     }
 
     // Stable sort: in-stock first, out-of-stock last. Collectibles always last.
-    return base
+    const sorted = base
       .map((item, index) => ({ item, index }))
       .sort((x, y) => {
         const ax = x.item;
@@ -136,13 +316,60 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
         const yCollectible = !ay.ativo;
         if (xCollectible !== yCollectible) return xCollectible ? 1 : -1;
 
-        const xOut = String((ax as any).tipo || '').toUpperCase() === 'VASO' ? false : isAditivoOutOfStock(ax.id);
-        const yOut = String((ay as any).tipo || '').toUpperCase() === 'VASO' ? false : isAditivoOutOfStock(ay.id);
+        const xOut = String((ax as any).tipo || '').toUpperCase() === 'VASO'
+          ? false
+          : getDerivedStock(getEffectiveStockForItem(ax)).isEmpty;
+        const yOut = String((ay as any).tipo || '').toUpperCase() === 'VASO'
+          ? false
+          : getDerivedStock(getEffectiveStockForItem(ay)).isEmpty;
         if (xOut !== yOut) return xOut ? 1 : -1;
 
         return x.index - y.index;
       })
       .map((x) => x.item);
+
+    // Agrupar equipamentos por tipo (VASO)
+    const equipmentMap = new Map<string, Aditivo[]>();
+    const nonEquipment: Aditivo[] = [];
+
+    for (const item of sorted) {
+      const tipo = String(item.tipo || "").toUpperCase();
+      if (tipo === "VASO") {
+        if (!equipmentMap.has(tipo)) {
+          equipmentMap.set(tipo, []);
+        }
+        equipmentMap.get(tipo)!.push(item);
+      } else {
+        nonEquipment.push(item);
+      }
+    }
+
+    // Montar lista final: grupos de equipamentos + produtos normais
+    const displayItems: DisplayItem[] = [];
+
+    // Adicionar grupos de equipamentos
+    for (const [tipo, items] of equipmentMap.entries()) {
+      if (items.length === 0) continue;
+      
+      const first = items[0];
+      const group: EquipmentGroup = {
+        tipo: 'group',
+        id: `group-${tipo}`,
+        nome: tipo === 'VASO' ? 'Vaso' : tipo,
+        marca: 'Genérico',
+        variants: items.map(a => ({
+          aditivo: a,
+          capacidadeLitros: a.capacidadeLitros ?? 0,
+        })),
+        firstAditivo: first,
+      };
+      displayItems.push(group);
+    }
+
+    // Adicionar produtos normais
+    displayItems.push(...nonEquipment);
+
+    return displayItems;
   }, [aditivos, mostrarColecionaveis, refreshKey]);
 
   const selectedAditivo = useMemo(() => {
@@ -210,12 +437,115 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {visible.map((a) => {
+            {visible.map((displayItem) => {
+              // ── EQUIPAMENTO AGRUPADO ──
+              if (isEquipmentGroup(displayItem)) {
+                const group = displayItem;
+                const customIcon = getAditivoIcon(group.firstAditivo.id);
+                const mappedLogo = getInventoryLogoSrc(group.firstAditivo);
+                const cardIconSrc = mappedLogo || customIcon;
+
+                return (
+                  <div
+                    key={group.id}
+                    onClick={() => setSelectedAditivoId(group.firstAditivo.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedAditivoId(group.firstAditivo.id);
+                      }
+                    }}
+                    aria-label={`Detalhes do equipamento: ${group.nome}`}
+                    className="relative group h-full rounded-xl overflow-hidden transition-all duration-200 text-left border-2 cursor-pointer border-[rgba(255,255,255,0.12)] hover:border-[#6fbf86]/70 hover:shadow-[0_0_10px_rgba(111,191,134,0.18)] bg-gradient-to-br from-[#111A2E]/80 to-[#0B1220]/80"
+                  >
+                    <div className="p-4 h-full flex flex-col pb-6">
+                      <div className="absolute top-3 left-3 bg-black/50 rounded px-2.5 py-1 border border-[#7BD389]/50 backdrop-blur-sm">
+                        <span className="text-xs font-semibold text-[#A7E5B2] font-mono">
+                          #{group.firstAditivo.id.toString().padStart(3, '0')}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-center h-32 mb-3 bg-gradient-to-b from-[#172232] to-[#0B1220] rounded-lg border border-[#6fbf86]/15 group-hover:border-[#6fbf86]/30 transition-colors">
+                        {cardIconSrc ? (
+                          <InventoryLogoImage
+                            src={cardIconSrc}
+                            alt={group.nome}
+                            className="h-20 w-20 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
+                            enableAlphaAssist={Boolean(mappedLogo)}
+                          />
+                        ) : (
+                          <span className="text-5xl drop-shadow-lg">🪴</span>
+                        )}
+                      </div>
+
+                      <h3 className="font-semibold text-slate-100 mb-0.5 text-base line-clamp-2 group-hover:text-[#A7E5B2] transition-colors">
+                        {group.nome}
+                      </h3>
+
+                      <p className="text-[11px] text-slate-300/80 mb-3 font-normal group-hover:text-[#A7E5B2]/80 transition-colors">
+                        {group.marca}
+                      </p>
+
+                      <div className="mb-4">
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em] mb-3">
+                          Equipamento
+                        </span>
+
+                        <div className="space-y-1.5">
+                          {group.variants.map((variant) => {
+                            const unidades = variant.aditivo.estoque?.unidades ?? 0;
+                            return (
+                              <div
+                                key={variant.aditivo.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedAditivoId(variant.aditivo.id);
+                                }}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSelectedAditivoId(variant.aditivo.id);
+                                  }
+                                }}
+                                className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-[#6fbf86]/30 hover:bg-white/10 transition-colors cursor-pointer"
+                              >
+                                <span className="text-xs text-slate-200 font-medium">
+                                  <span className="text-white font-semibold">{variant.capacidadeLitros}L</span>
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {unidades} {unidades === 1 ? 'unidade' : 'unidades'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                      style={{
+                        background: 'radial-gradient(circle at 50% 0%, rgba(123, 211, 137, 0.05) 0%, transparent 70%)',
+                      }}
+                    />
+                  </div>
+                );
+              }
+
+              // ── ADITIVO NORMAL ──
+              const a = displayItem as Aditivo;
               const isCollectible = !a.ativo;
               const tipo = String(a.tipo || "").toUpperCase();
               const isEquipment = tipo === "VASO";
               const customIcon = getAditivoIcon(a.id);
-              const stock = getAditivoStock(a.id);
+              const mappedLogo = getInventoryLogoSrc(a);
+              const cardIconSrc = mappedLogo || customIcon;
+              const stock = getEffectiveStockForItem(a);
               const derived = getDerivedStock(stock);
               const isOutOfStock = isEquipment ? false : derived.isEmpty;
               const isLowStock = isEquipment ? false : derived.isLow;
@@ -282,11 +612,12 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                     )}
 
                     <div className="flex items-center justify-center h-32 mb-3 bg-gradient-to-b from-[#172232] to-[#0B1220] rounded-lg border border-[#6fbf86]/15 group-hover:border-[#6fbf86]/30 transition-colors">
-                      {customIcon ? (
-                        <img
-                          src={customIcon}
+                      {cardIconSrc ? (
+                        <InventoryLogoImage
+                          src={cardIconSrc}
                           alt={a.nome}
                           className="h-20 w-20 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
+                          enableAlphaAssist={Boolean(mappedLogo)}
                         />
                       ) : (
                         <span className="text-5xl drop-shadow-lg">🧪</span>
@@ -316,9 +647,11 @@ export function InventarioView({ onCountChange }: InventarioViewProps) {
                           <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
                             {classeLabel(a.classe)}
                           </span>
-                          <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
-                            {estagioLabel(a.estagio)}
-                          </span>
+                          {(a.estagiosMacro || a.estagio) && ['VEGETATIVO', 'VEGETATIVA', 'FLORACAO', 'CICLO_INTEGRADO', 'FINALIZACAO'].includes(String(a.estagiosMacro || a.estagio)) && (
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/90 uppercase tracking-[0.12em]">
+                              {estagioLabel(String(a.estagiosMacro || a.estagio))}
+                            </span>
+                          )}
                         </>
                       )}
                     </div>

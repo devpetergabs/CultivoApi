@@ -1,0 +1,15 @@
+﻿Taxonomia de falhas,,,
+Código,Tipo,Descrição,Severidade padrão
+I-01,Intenção errada,Entrou no pipeline errado para o prompt,Alta
+I-02,Confiança incoerente,"Classificação ok, mas confiança incompatível com a evidência",Média
+C-01,Contexto excessivo,Injetou contexto demais e perdeu a intenção principal,Alta
+C-02,Contexto insuficiente,Ignorou dados relevantes que já estavam presentes,Alta
+M-01,Perda de memória,Não herdou entidade ativa ou assunto do turno anterior,Alta
+M-02,Troca de assunto falhou,Manteve o assunto antigo quando o usuário trocou explicitamente,Média
+R-01,Retrieval fraco,Buscou domínio/fonte errados ou com baixa pertinência,Alta
+R-02,Síntese ruim,"Recuperou bem, mas sintetizou de forma incorreta",Alta
+F-01,Erro factual,Resposta incorreta em conteúdo básico,Alta
+S-01,Segurança falhou,Liberou ação sensível sem cautela suficiente,Alta
+T-01,Timeout/travamento,Resposta demorou demais ou não concluiu,Alta
+G-01,Grounding inflado,Marcadores de grounding altos com resposta ruim,Média
+G-02,Assertividade indevida,Top ref baixo com tom excessivamente confiante,Média

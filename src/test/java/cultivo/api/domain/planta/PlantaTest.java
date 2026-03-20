@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PlantaTest {
 
     @Test
-    void shouldSetDataFloracaoToTodayWhenEvolvingFromVegetativoToPreFloracao() {
+    void shouldSetDataFloracaoToTodayWhenEvolvingFromVegetativoAvancadoToPreFloracao() {
         Usuario usuario = new Usuario("u", "u", "pw");
         Cultivador cultivador = new Cultivador(usuario);
 
@@ -23,7 +23,7 @@ class PlantaTest {
             null,
             null,
             TamanhVaso.VINTE_E_UM_L,
-            EstagioPlanta.VEGETATIVO,
+            EstagioPlanta.VEGETATIVO_AVANCADO,
             cultivador
         );
 
@@ -40,6 +40,8 @@ class PlantaTest {
             EstagioPlanta.FLORACAO_INICIAL,
             null,
             null,
+            null,
+            null,
             null
         );
 
@@ -47,7 +49,45 @@ class PlantaTest {
     }
 
     @Test
-    void shouldIgnoreProvidedDataFloracaoOnVegetativoToPreFloracaoTransition() {
+    void shouldSetDataFloracaoToTodayWhenEvolvingFromVegetativoInicialToPreFloracao() {
+        Usuario usuario = new Usuario("u", "u", "pw");
+        Cultivador cultivador = new Cultivador(usuario);
+
+        Planta planta = new Planta(
+            "Planta",
+            null,
+            null,
+            null,
+            null,
+            null,
+            TamanhVaso.VINTE_E_UM_L,
+            EstagioPlanta.VEGETATIVO_INICIAL,
+            cultivador
+        );
+
+        LocalDate hoje = LocalDate.now();
+
+        planta.atualizarDados(
+            "Planta",
+            null,
+            null,
+            null,
+            null,
+            null,
+            TamanhVaso.VINTE_E_UM_L,
+            EstagioPlanta.FLORACAO_INICIAL,
+            null,
+            null,
+            null,
+            null,
+            null
+        );
+
+        assertThat(planta.getDataFloracao()).isEqualTo(hoje);
+    }
+
+    @Test
+    void shouldIgnoreProvidedDataFloracaoOnVegetativoMedioToPreFloracaoTransition() {
         Usuario usuario = new Usuario("u", "u", "pw");
         Cultivador cultivador = new Cultivador(usuario);
 
@@ -59,7 +99,7 @@ class PlantaTest {
             null,
             null,
             TamanhVaso.VINTE_E_UM_L,
-            EstagioPlanta.VEGETATIVO,
+            EstagioPlanta.VEGETATIVO_MEDIO,
             cultivador
         );
 
@@ -75,6 +115,8 @@ class PlantaTest {
             null,
             TamanhVaso.VINTE_E_UM_L,
             EstagioPlanta.FLORACAO_INICIAL,
+            null,
+            null,
             null,
             null,
             dataEnviadaPeloCliente

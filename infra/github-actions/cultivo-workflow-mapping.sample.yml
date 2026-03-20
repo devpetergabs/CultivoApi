@@ -1,0 +1,42 @@
+project: cultivo-engineering-pilot
+strategy: github-actions-jobs-as-deployments
+
+repositories:
+  - backend
+  - frontend
+
+classification_rules:
+  validation:
+    examples:
+      - lint
+      - test
+      - unit-tests
+      - e2e
+      - quality-gate
+  package:
+    examples:
+      - build-image
+      - package
+      - publish-artifact
+  deploy_nonprod:
+    examples:
+      - deploy-dev
+      - deploy-hml
+      - deploy-staging
+  deploy_prod:
+    examples:
+      - deploy-prod
+      - release-prod
+      - promote-production
+
+regex_candidates:
+  deployment: "(?i).*(deploy|release|promote|publish-image|push-image).*"
+  production: "(?i).*(prod|production|release-prod|promote-production).*"
+
+acceptance_criteria:
+  - deployment regex nao pode capturar lint
+  - deployment regex nao pode capturar unit-tests
+  - production regex nao pode capturar hml
+  - production regex nao pode capturar staging
+
+status: ajustar-com-workflows-reais

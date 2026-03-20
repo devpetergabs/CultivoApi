@@ -1,0 +1,150 @@
+@baseUrl = http://localhost:8080/api
+@plantaId = 1
+@username = admin
+@password = admin
+
+### Criar ou reutilizar sessão
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+
+### Reset
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/reset
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+
+### P01 - o que é tripes?
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "o que é tripes?",
+  "modo": "AUTO"
+}
+
+### P02 - quais são os sinais de tripes na planta?
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "quais são os sinais de tripes na planta?",
+  "modo": "AUTO"
+}
+
+### P03 - como identificar tripes olhando a folha?
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "como identificar tripes olhando a folha?",
+  "modo": "AUTO"
+}
+
+### P04 - qual a diferença entre tripes e ácaros?
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "qual a diferença entre tripes e ácaros?",
+  "modo": "AUTO"
+}
+
+### P05 - pontinhos claros nas folhas
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "minha planta está com pontinhos claros nas folhas",
+  "modo": "AUTO"
+}
+
+### P06 - raspagem prateada e pontinhos escuros
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "tem raspagem prateada e pontinhos escuros",
+  "modo": "AUTO"
+}
+
+### P07 - como tratar tripes?
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "como tratar tripes?",
+  "modo": "AUTO"
+}
+
+### P08 - pulverizar na flora avançada
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "posso pulverizar agora na flora avançada?",
+  "modo": "AUTO"
+}
+
+### P09 - já é hora de colher?
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "já é hora de colher?",
+  "modo": "AUTO"
+}
+
+### P10 - tricomas leitosos com alguns âmbar
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "tricomas leitosos com alguns âmbar, já colho?",
+  "modo": "AUTO"
+}
+
+### P11 - minha planta tá ruim
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "minha planta tá ruim",
+  "modo": "AUTO"
+}
+
+### P12a - reset para teste de memória
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/reset
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+
+### P12b - abre tópico
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "o que é tripes?",
+  "modo": "AUTO"
+}
+
+### P12c - follow-up de memória
+POST {{baseUrl}}/plantas/{{plantaId}}/doctor/session/messages
+Authorization: Basic {{$base64 {{username}}:{{password}}}}
+Content-Type: application/json
+
+{
+  "mensagem": "como tratar?",
+  "modo": "AUTO"
+}
+
+### GET sessão
+GET {{baseUrl}}/plantas/{{plantaId}}/doctor/session
+Authorization: Basic {{$base64 {{username}}:{{password}}}}

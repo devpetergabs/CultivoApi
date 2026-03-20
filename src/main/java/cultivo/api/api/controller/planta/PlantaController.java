@@ -1,9 +1,12 @@
 package cultivo.api.api.controller.planta;
 
 import cultivo.api.domain.planta.Planta;
+import cultivo.api.application.planta.CodexEstagioService;
 import cultivo.api.application.planta.PlantaEquipamentoService;
+import cultivo.api.domain.planta.GeneticaPlanta;
 import cultivo.api.domain.planta.TamanhVaso;
 import cultivo.api.domain.planta.EspeciePlanta;
+import cultivo.api.domain.planta.TipoCicloPlanta;
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.exception.ErrorResponse;
 import cultivo.api.infrastructure.security.AccessControl;
@@ -37,6 +40,12 @@ public class PlantaController {
     @Autowired
     private PlantaEquipamentoService equipamentoService;
 
+    @Autowired
+    private cultivo.api.application.estoque.ProdutoEstoqueService produtoEstoqueService;
+
+    @Autowired
+    private CodexEstagioService codexEstagioService;
+
     // Regras (MVP):
     // - ADMIN: read all, write only own
     // - USER: read/write only own
@@ -69,17 +78,31 @@ public class PlantaController {
             planta.setEspecie(dados.especie());
         }
 
-        planta.atualizarDados(null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
+        planta.setTipoCiclo(resolveTipoCiclo(dados.tipoCiclo()));
+        planta.setGenetica(resolveGenetica(dados.genetica()));
+
+        planta.atualizarDados(null, null, null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
         repository.save(planta);
 
         // Opção 2: vaso como equipamento (slot POT)
         equipamentoService.garantirPoteSincronizado(planta, false);
+
+        // Debitar 1 unidade do vaso selecionado no inventário do cultivador
+        int litrosVaso = switch (TamanhVaso.valueOf(dados.tamanhoVaso())) {
+            case CINCO_L -> 5;
+            case VINTE_E_UM_L -> 21;
+            case TRINTA_L -> 30;
+        };
+        produtoEstoqueService.debitarUnidadeVaso(cultivador.getId(), litrosVaso);
+        codexEstagioService.garantirTrilhaDesbloqueada(planta, "CRIACAO_PLANTA");
 
         var resposta = new DadosDetalhePlanta(
                 planta.getId(),
                 planta.getNome(),
                 planta.getStrain(),
                 planta.getEspecie() != null ? planta.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(planta.getTipoCiclo()).toString(),
+            resolveGenetica(planta.getGenetica()).toString(),
                 planta.getPraga(),
                 planta.getAltura(),
                 planta.getLargura(),
@@ -129,17 +152,31 @@ public class PlantaController {
             planta.setEspecie(dados.especie());
         }
 
-        planta.atualizarDados(null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
+        planta.setTipoCiclo(resolveTipoCiclo(dados.tipoCiclo()));
+        planta.setGenetica(resolveGenetica(dados.genetica()));
+
+        planta.atualizarDados(null, null, null, null, null, null, null, null, null, null, dados.sexo(), dados.dataSexagem(), dados.dataFloracao());
         repository.save(planta);
 
         // Opção 2: vaso como equipamento (slot POT)
         equipamentoService.garantirPoteSincronizado(planta, false);
+
+        // Debitar 1 unidade do vaso selecionado no inventário do cultivador
+        int litrosVasoAdmin = switch (TamanhVaso.valueOf(dados.tamanhoVaso())) {
+            case CINCO_L -> 5;
+            case VINTE_E_UM_L -> 21;
+            case TRINTA_L -> 30;
+        };
+        produtoEstoqueService.debitarUnidadeVaso(cultivador.get().getId(), litrosVasoAdmin);
+        codexEstagioService.garantirTrilhaDesbloqueada(planta, "CRIACAO_PLANTA");
 
         var resposta = new DadosDetalhePlanta(
                 planta.getId(),
                 planta.getNome(),
                 planta.getStrain(),
                 planta.getEspecie() != null ? planta.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(planta.getTipoCiclo()).toString(),
+            resolveGenetica(planta.getGenetica()).toString(),
                 planta.getPraga(),
                 planta.getAltura(),
                 planta.getLargura(),
@@ -167,14 +204,16 @@ public class PlantaController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // ADMIN vê tudo (read-only).
+        // ADMIN vê todas as plantas ativas (read-only).
         if (AccessControl.isAdmin(usuario)) {
-            var page = repository.findAll(paginacao)
+            var page = repository.findByAtivoTrue(paginacao)
                     .map(p -> new DadosDetalhePlanta(
                             p.getId(),
                             p.getNome(),
                             p.getStrain(),
                             p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+                            resolveTipoCiclo(p.getTipoCiclo()).toString(),
+                            resolveGenetica(p.getGenetica()).toString(),
                             p.getPraga(),
                             p.getAltura(),
                             p.getLargura(),
@@ -202,6 +241,8 @@ public class PlantaController {
                         p.getNome(),
                         p.getStrain(),
                         p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+                    resolveTipoCiclo(p.getTipoCiclo()).toString(),
+                    resolveGenetica(p.getGenetica()).toString(),
                         p.getPraga(),
                         p.getAltura(),
                         p.getLargura(),
@@ -256,6 +297,8 @@ public class PlantaController {
                 p.getNome(),
                 p.getStrain(),
                 p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(p.getTipoCiclo()).toString(),
+            resolveGenetica(p.getGenetica()).toString(),
                 p.getPraga(),
                 p.getAltura(),
                 p.getLargura(),
@@ -301,6 +344,8 @@ public class PlantaController {
                 p.getNome(),
                 p.getStrain(),
                 p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(p.getTipoCiclo()).toString(),
+            resolveGenetica(p.getGenetica()).toString(),
                 p.getPraga(),
                 p.getAltura(),
                 p.getLargura(),
@@ -351,6 +396,8 @@ public class PlantaController {
                 dados.larguraCaule(),
                 dados.tamanhoVaso() != null ? TamanhVaso.valueOf(dados.tamanhoVaso()) : null,
                 dados.estagio(),
+            dados.tipoCiclo(),
+            dados.genetica(),
                 dados.sexo(),
                 dados.dataSexagem(),
                 dados.dataFloracao()
@@ -362,12 +409,15 @@ public class PlantaController {
                 ? !tamanhoAnterior.equals(p.getTamanhoVaso())
                 : (tamanhoAnterior != p.getTamanhoVaso());
         equipamentoService.garantirPoteSincronizado(p, mudouVaso);
+        codexEstagioService.garantirTrilhaDesbloqueada(p, "ATUALIZACAO_ESTAGIO");
 
         var resposta = new DadosDetalhePlanta(
                 p.getId(),
                 p.getNome(),
                 p.getStrain(),
                 p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+            resolveTipoCiclo(p.getTipoCiclo()).toString(),
+            resolveGenetica(p.getGenetica()).toString(),
                 p.getPraga(),
                 p.getAltura(),
                 p.getLargura(),
@@ -430,6 +480,8 @@ public class PlantaController {
                         p.getNome(),
                         p.getStrain(),
                         p.getEspecie() != null ? p.getEspecie().toString() : EspeciePlanta.CANNABIS.toString(),
+                    resolveTipoCiclo(p.getTipoCiclo()).toString(),
+                    resolveGenetica(p.getGenetica()).toString(),
                         p.getPraga(),
                         p.getAltura(),
                         p.getLargura(),
@@ -444,6 +496,14 @@ public class PlantaController {
                         p.getDataCriacao()
                 ));
         return ResponseEntity.ok(page);
+    }
+
+    private TipoCicloPlanta resolveTipoCiclo(TipoCicloPlanta tipoCiclo) {
+        return tipoCiclo != null ? tipoCiclo : TipoCicloPlanta.NAO_DEFINIDO;
+    }
+
+    private GeneticaPlanta resolveGenetica(GeneticaPlanta genetica) {
+        return genetica != null ? genetica : GeneticaPlanta.NAO_DEFINIDO;
     }
 
     @Autowired
@@ -486,6 +546,7 @@ public class PlantaController {
         plantaEventoRepository.save(eventoEvolucao);
 
         repository.save(planta);
+        codexEstagioService.garantirTrilhaDesbloqueada(planta, "EVOLUCAO_PLANTA");
 
         // Evento de crescimento
         var eventoDescricao = dados.descricao() != null ? dados.descricao() : dados.obs();

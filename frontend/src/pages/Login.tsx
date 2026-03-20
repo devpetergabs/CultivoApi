@@ -14,7 +14,6 @@ export function Login() {
     setErro('');
     setCarregando(true);
 
-    // Validações iniciais
     if (!login.trim()) {
       setErro('❌ Campo "Login" é obrigatório');
       setCarregando(false);
@@ -28,23 +27,15 @@ export function Login() {
     }
 
     try {
-      console.log(`🔐 Tentando autenticar com login: ${login}`);
       await fazerLogin(login, senha);
-      console.log('✅ Login realizado com sucesso!');
     } catch (err: any) {
       const statusCode = err.response?.status;
-      const mensagemErro = err.response?.data?.message || err.message;
-      
-      console.error(`❌ Erro de autenticação:`, {
-        status: statusCode,
-        mensagem: mensagemErro,
-        erro: err
-      });
+      const mensagemErro = err.response?.data?.mensagem || err.response?.data?.message || err.message;
 
       if (statusCode === 401) {
         setErro('❌ Login ou senha inválidos. Verifique suas credenciais.');
       } else if (statusCode === 400) {
-        setErro('❌ Dados inválidos. Verifique login e senha.');
+        setErro(`❌ ${mensagemErro || 'Dados inválidos. Verifique login e senha.'}`);
       } else if (statusCode === 0 || !navigator.onLine) {
         setErro('❌ Erro de conexão. Verifique se a API está rodando em http://localhost:8080');
       } else {

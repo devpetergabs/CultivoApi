@@ -245,3 +245,64 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isRestoring: boolean;
 }
+
+export interface DoctorChatMensagem {
+  id: number;
+  role: string;
+  content: string;
+  createdAt: string;
+  metadataJson?: string | null;
+}
+
+export interface DoctorChatSessao {
+  sessionId: number;
+  status: string;
+  titulo: string;
+  summary?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messages: DoctorChatMensagem[];
+}
+
+export interface DoctorChatMensagemEnvioPayload {
+  mensagem: string;
+  modo?: string | null;
+}
+
+export interface DoctorChatRespostaEnvio {
+  sessionId: number;
+  modoUsado: string;
+  userMessage: DoctorChatMensagem;
+  assistantMessage: DoctorChatMensagem;
+}
+
+
+export interface AuthSession {
+  token: string;
+}
+
+export interface CodexAditivoMatchEstagio {
+  nome: string;
+  marca?: string | null;
+  classe?: string | null;
+  estagioProduto?: string | null;
+  matchFase?: boolean;
+  observacao?: string | null;
+}
+
+export interface CodexEstagio {
+  estagio: string;
+  nomeExibicao: string;
+  subtitulo: string;
+  descricaoBreve: string;
+  descricaoLore?: string | null;
+  cuidadosTexto?: string | null;
+  requisitosTexto?: string | null;
+  sinaisTexto?: string | null;
+  riscosTexto?: string | null;
+  recompensaTexto?: string | null;
+  desbloqueado: boolean;
+  atual: boolean;
+  ordemDesbloqueio: number;
+  aditivosCompativeis?: CodexAditivoMatchEstagio[];
+}

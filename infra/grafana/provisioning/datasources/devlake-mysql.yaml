@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: DevLake MySQL
+    type: mysql
+    access: proxy
+    url: ${DEVLAKE_DB_HOST}:${DEVLAKE_DB_PORT}
+    database: ${DEVLAKE_DB_NAME}
+    user: ${DEVLAKE_DB_USER}
+    secureJsonData:
+      password: ${DEVLAKE_DB_PASSWORD}
+    jsonData:
+      maxOpenConns: 20
+      maxIdleConns: 5
+      connMaxLifetime: 14400
+      tlsAuth: false

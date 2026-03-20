@@ -14,6 +14,9 @@ public record DadosCadastroUsuario(
 
         @NotBlank(message = "Senha é obrigatória")
         @Size(min = 6, max = 100, message = "Senha deve ter entre 6 e 100 caracteres")
-        String senha
+        String senha,
+
+        Boolean isCultivador,
+        String telefone
 ) {
 }

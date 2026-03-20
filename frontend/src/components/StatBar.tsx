@@ -24,7 +24,9 @@ export function StatBar({ label, value, max = 100, color = 'blue' }: StatBarProp
       <div className="flex justify-between items-center">
         <span className="text-xs font-medium uppercase tracking-[0.06em] text-slate-300">{label}</span>
         <span className={`text-sm font-semibold ${isOver ? 'text-[#e7c35a]' : 'text-[#6fbf86]'}`}>
-          {Math.round(value)} {isOver && '⭐ ÉPICA'}
+          {Math.round(value)}
+          <span className="text-white/35 font-normal text-xs"> / {max}</span>
+          {isOver && ' ⭐ ÉPICA'}
         </span>
       </div>
       <div className="w-full bg-[#0B1220]/60 rounded-full overflow-visible h-3 border border-slate-700/60">

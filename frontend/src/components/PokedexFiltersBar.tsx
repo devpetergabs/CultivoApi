@@ -22,7 +22,9 @@ interface PokedexFiltersBarProps {
 
 const STAGES: PlantType[] = [
   'GERMINACAO',
-  'VEGETATIVO',
+  'VEGETATIVO_INICIAL',
+  'VEGETATIVO_MEDIO',
+  'VEGETATIVO_AVANCADO',
   'FLORACAO_INICIAL',
   'FLORACAO_MEDIA',
   'FLORACAO_AVANCADA',
@@ -35,10 +37,20 @@ const STAGE_CONFIG: Record<string, { emoji?: string; label: string; selectedClas
     label: 'Germinação',
     selectedClasses: 'bg-blue-500/15 border-blue-300/40 text-blue-100',
   },
-  VEGETATIVO: {
+  VEGETATIVO_INICIAL: {
+    emoji: '🌿',
+    label: 'Veg. Inicial',
+    selectedClasses: 'bg-lime-500/15 border-lime-300/40 text-lime-100',
+  },
+  VEGETATIVO_MEDIO: {
     emoji: '🍃',
-    label: 'Vegetativo',
-    selectedClasses: 'bg-emerald-500/15 border-emerald-300/40 text-emerald-100',
+    label: 'Veg. Médio',
+    selectedClasses: 'bg-green-500/15 border-green-300/40 text-green-100',
+  },
+  VEGETATIVO_AVANCADO: {
+    emoji: '🌳',
+    label: 'Veg. Avançado',
+    selectedClasses: 'bg-emerald-500/15 border-emerald-200/40 text-emerald-50',
   },
   FLORACAO_INICIAL: {
     emoji: '🌸',
@@ -74,7 +86,8 @@ export function PokedexFiltersBar({
   onHideCannabisChange,
   onOpenBulkInsecticide,
 }: PokedexFiltersBarProps) {
-  const [showFilters, setShowFilters] = useState(true);
+  // 🔒 Requisito: filtros sempre começam desativados ao abrir a tela.
+  const [showFilters, setShowFilters] = useState(false);
 
   return (
     <div className="sticky top-0 z-50 isolate pokedex-card-frame p-5 space-y-4 border-cyan-500/20">

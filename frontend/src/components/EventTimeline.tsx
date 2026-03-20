@@ -70,6 +70,8 @@ function prettyTipo(tipo: string) {
       return 'CRESCIMENTO';
     case 'EVOLUCAO':
       return 'EVOLUÇÃO';
+    case 'PRAGA':
+      return 'PRAGA';
     default:
       // fallback: "FOO_BAR" -> "FOO BAR"
       return (tipo || '').replaceAll('_', ' ').toUpperCase();
@@ -96,6 +98,8 @@ function niceTypeName(tipo: string) {
       return 'Crescimento';
     case 'EVOLUCAO':
       return 'Evolução';
+    case 'PRAGA':
+      return 'Praga';
     default:
       return tipo;
   }
@@ -124,9 +128,47 @@ function typeMeta(tipo: string) {
     case 'EVOLUCAO':
       return { icon: '✨', badge: 'bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-400/20' };
 
+    case 'PRAGA':
+      return { icon: '☣️', badge: 'bg-emerald-600/20 text-emerald-200 border-emerald-400/30' };
+
     default:
       return { icon: '📍', badge: 'bg-slate-500/15 text-slate-200 border-white/10' };
   }
+}
+
+const PEST_TYPE_LABELS: Record<string, string> = {
+  TRIPES: 'Tripes',
+  PULGAO: 'Pulgão',
+  APHID: 'Pulgão',
+  ACARO: 'Ácaro',
+  FUNGUS_GNAT: 'Fungus Gnat',
+  MOSCA_BRANCA: 'Mosca-branca',
+  COCHONILHA: 'Cochonilha',
+  LAGARTA: 'Lagarta',
+  BESOURO: 'Besouro',
+};
+
+const INTENSITY_LABELS: Record<string, string> = {
+  BAIXA: 'Baixa',
+  MEDIA: 'Média',
+  ALTA: 'Alta',
+  CRITICA: 'Crítica',
+};
+
+function formatDescricao(tipo: string, descricao: string): string {
+  if (tipo === 'PRAGA' || descricao.includes('[PEST_SIGNAL]')) {
+    // Formato: [PEST_SIGNAL] type=TRIPES intensity=MEDIA
+    const typeMatch = descricao.match(/type=([\w]+)/);
+    const intensityMatch = descricao.match(/intensity=([\w]+)/);
+    const pestType = typeMatch ? (PEST_TYPE_LABELS[typeMatch[1]] ?? typeMatch[1]) : null;
+    const intensity = intensityMatch ? (INTENSITY_LABELS[intensityMatch[1]] ?? intensityMatch[1]) : null;
+
+    if (pestType && intensity) return `${pestType} — intensidade ${intensity.toLowerCase()}`;
+    if (pestType) return pestType;
+    if (intensity) return `Intensidade ${intensity}`;
+    return 'Sinal de praga detectado';
+  }
+  return descricao;
 }
 
 function defaultDescForEvent(tipo: string, ml: number | null) {
@@ -414,89 +456,104 @@ export const EventTimeline: React.FC<Props> = ({
 
   return (
     <div className="w-full" onClick={() => setMenuOpenFor(null)}>
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <div>
-          <div className="text-sm font-semibold text-white">{title}</div>
-          <div className="text-xs text-white/60">A “visão de estado” da planta vem daqui.</div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="hidden md:flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
-            <button
-              type="button"
-              onClick={() => setScope('ACTIONS')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide transition ${
-                scope === 'ACTIONS' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
-              }`}
-              title="Ações do dia a dia (menos poluição)"
-            >
-              Ações
-            </button>
-            <button
-              type="button"
-              onClick={() => setScope('GROWTH')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide transition ${
-                scope === 'GROWTH' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
-              }`}
-              title="Crescimento / Evolução"
-            >
-              Cresc.
-            </button>
-            <button
-              type="button"
-              onClick={() => setScope('ALL')}
-              className={`px-2 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide transition ${
-                scope === 'ALL' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
-              }`}
-              title="Tudo"
-            >
-              Tudo
-            </button>
+      {/* Header / Controls */}
+      <div className="mb-3 rounded-xl border border-white/10 bg-gradient-to-b from-white/5 to-black/20 p-3 shadow-[0_14px_36px_rgba(0,0,0,0.35)]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-white">{title}</div>
+            <div className="mt-0.5 text-[11px] text-white/55">
+              A “visão de estado” da planta vem daqui. Ajuste o escopo pra reduzir poluição.
+            </div>
           </div>
 
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as Filter)}
-            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 outline-none"
-          >
-            <option value="ALL">Todos</option>
-            {tipos.map((t) => (
-              <option key={t} value={t}>
-                {prettyTipo(t)}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => setScope('ACTIONS')}
+                className={`px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide transition ${
+                  scope === 'ACTIONS' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
+                }`}
+                title="Ações do dia a dia (menos poluição)"
+              >
+                ⚡ Ações
+              </button>
+              <button
+                type="button"
+                onClick={() => setScope('GROWTH')}
+                className={`px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide transition ${
+                  scope === 'GROWTH' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
+                }`}
+                title="Crescimento / Evolução"
+              >
+                📈 Cresc.
+              </button>
+              <button
+                type="button"
+                onClick={() => setScope('ALL')}
+                className={`px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide transition ${
+                  scope === 'ALL' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white'
+                }`}
+                title="Tudo"
+              >
+                🗂 Tudo
+              </button>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setShowTime((v) => !v)}
-            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80 hover:bg-white/10"
-            title="Alterna exibição de horário (reduz poluição visual)"
-          >
-            {showTime ? 'Ocultar horário' : 'Mostrar horário'}
-          </button>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as Filter)}
+              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 outline-none hover:bg-white/10"
+              title="Filtra por tipo"
+            >
+              <option value="ALL">Todos</option>
+              {tipos.map((t) => (
+                <option key={t} value={t}>
+                  {prettyTipo(t)}
+                </option>
+              ))}
+            </select>
 
-          {onRefresh && (
             <button
               type="button"
-              onClick={() => onRefresh()}
+              onClick={() => setShowTime((v) => !v)}
               className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80 hover:bg-white/10"
+              title="Alterna exibição de horário (reduz poluição visual)"
             >
-              {loading ? '...' : 'Atualizar'}
+              ⏱ {showTime ? 'Ocultar' : 'Horário'}
             </button>
-          )}
+
+            {onRefresh && (
+              <button
+                type="button"
+                onClick={() => onRefresh()}
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80 hover:bg-white/10"
+                title="Recarrega eventos"
+              >
+                {loading ? '…' : '↻ Atualizar'}
+              </button>
+            )}
+          </div>
         </div>
+
+        {err && <div className="mt-2 text-xs text-red-300">{err}</div>}
       </div>
 
-      {err && <div className="mb-2 text-xs text-red-300">{err}</div>}
-
       {grouped.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/60">Sem eventos ainda.</div>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/60">
+          Sem eventos ainda.
+        </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {grouped.map(([day, list]) => (
-            <div key={day}>
-              <div className="mb-2 text-xs font-semibold text-white/70">{labelForDay(day)}</div>
+            <div key={day} className="relative">
+              {/* timeline line */}
+              <div className="absolute left-[18px] top-7 bottom-3 w-px bg-white/10" />
+
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-xs font-semibold text-white/70">{labelForDay(day)}</div>
+                <div className="text-[11px] text-white/45">{list.length} evento(s)</div>
+              </div>
 
               <div className="space-y-2">
                 {list.map((ev) => {
@@ -504,24 +561,22 @@ export const EventTimeline: React.FC<Props> = ({
                   const menuOpen = menuOpenFor === ev.id;
 
                   return (
-                    <div
-                      key={ev.id}
-                      className="relative rounded-xl border border-white/10 bg-white/5 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.25)]"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2">
-                          <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-base">
-                            {meta.icon}
-                          </div>
+                    <div key={ev.id} className="relative pl-12" onClick={(e) => e.stopPropagation()}>
+                      {/* marker */}
+                      <div className="absolute left-1.5 top-3 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-black/30 shadow-[0_8px_22px_rgba(0,0,0,0.35)]">
+                        <span className="text-base">{meta.icon}</span>
+                      </div>
 
+                      <div className="relative rounded-xl border border-white/10 bg-gradient-to-b from-white/5 to-black/25 p-3 shadow-[0_10px_24px_rgba(0,0,0,0.25)]">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span
                                 className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}
                               >
                                 {prettyTipo(ev.tipo)}
                               </span>
+
                               <span
                                 className="text-[11px] text-white/60"
                                 title={new Date(ev.dataEvento).toLocaleString('pt-BR', {
@@ -537,7 +592,7 @@ export const EventTimeline: React.FC<Props> = ({
                             </div>
 
                             {ev.descricao && ev.descricao.trim().length > 0 && (
-                              <div className="mt-1 text-sm text-white/90 whitespace-pre-line">{ev.descricao}</div>
+                              <div className="mt-1 text-sm text-white/90 whitespace-pre-line">{formatDescricao(ev.tipo, ev.descricao)}</div>
                             )}
 
                             {ev.doseEmML != null && (
@@ -546,57 +601,57 @@ export const EventTimeline: React.FC<Props> = ({
                               </div>
                             )}
                           </div>
-                        </div>
 
-                        {plantId ? (
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => setMenuOpenFor((prev) => (prev === ev.id ? null : ev.id))}
-                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
-                              disabled={isSaving}
-                              aria-label="Ações"
-                            >
-                              ⋯
-                            </button>
+                          {plantId ? (
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setMenuOpenFor((prev) => (prev === ev.id ? null : ev.id))}
+                                className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+                                disabled={isSaving}
+                                aria-label="Ações"
+                              >
+                                ⋯
+                              </button>
 
-                            {menuOpen && (
-                              <div className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#0b1220] shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
-                                <div className="px-3 py-2 text-[11px] font-semibold text-white/60">Ações</div>
-                                <div className="h-px bg-white/10" />
+                              {menuOpen && (
+                                <div className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#0b1220] shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
+                                  <div className="px-3 py-2 text-[11px] font-semibold text-white/60">Ações</div>
+                                  <div className="h-px bg-white/10" />
 
-                                <div className="p-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => openReplace(ev)}
-                                    className="w-full rounded-lg px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10"
-                                  >
-                                    Substituir…
-                                  </button>
+                                  <div className="p-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => openReplace(ev)}
+                                      className="w-full rounded-lg px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10"
+                                    >
+                                      Substituir…
+                                    </button>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => openCorrect(ev)}
-                                    className="w-full rounded-lg px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10"
-                                  >
-                                    Corrigir…
-                                  </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openCorrect(ev)}
+                                      className="w-full rounded-lg px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10"
+                                    >
+                                      Corrigir…
+                                    </button>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setMenuOpenFor(null);
-                                      void doDelete(ev);
-                                    }}
-                                    className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-300 hover:bg-red-500/10"
-                                  >
-                                    Excluir
-                                  </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setMenuOpenFor(null);
+                                        void doDelete(ev);
+                                      }}
+                                      className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-300 hover:bg-red-500/10"
+                                    >
+                                      Excluir
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   );
@@ -606,6 +661,7 @@ export const EventTimeline: React.FC<Props> = ({
           ))}
         </div>
       )}
+
 
       {/* MODAL */}
       {modalMode !== 'NONE' && activeEvent && (

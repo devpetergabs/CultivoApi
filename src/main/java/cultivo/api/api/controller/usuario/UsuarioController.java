@@ -2,6 +2,8 @@ package cultivo.api.api.controller.usuario;
 
 import cultivo.api.domain.usuario.Usuario;
 import cultivo.api.infrastructure.persistence.usuario.UsuarioRepository;
+import cultivo.api.domain.cultivador.Cultivador;
+import cultivo.api.infrastructure.persistence.cultivador.CultivadorRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -18,6 +20,9 @@ public class UsuarioController {
 
     @Autowired
     private UsuarioRepository repository;
+
+    @Autowired
+    private CultivadorRepository cultivadorRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -41,6 +46,14 @@ public class UsuarioController {
         var senhaCriptografada = passwordEncoder.encode(dados.senha());
         var usuario = new Usuario(dados.nome(), dados.login(), senhaCriptografada);
         repository.save(usuario);
+
+        // Se isCultivador for true, cria o Cultivador
+        if (Boolean.TRUE.equals(dados.isCultivador())) {
+            Cultivador cultivador = dados.telefone() != null && !dados.telefone().isBlank()
+                ? new Cultivador(usuario, dados.telefone())
+                : new Cultivador(usuario);
+            cultivadorRepository.save(cultivador);
+        }
 
         var resposta = new DadosDetalheUsuario(usuario.getId(), usuario.getNome(), usuario.getLogin());
         var uriBuilder = uri.path("/usuarios/{id}").buildAndExpand(usuario.getId()).toUri();

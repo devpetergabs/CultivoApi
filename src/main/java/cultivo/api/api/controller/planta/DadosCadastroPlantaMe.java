@@ -2,7 +2,9 @@ package cultivo.api.api.controller.planta;
 
 import cultivo.api.domain.planta.EstagioPlanta;
 import cultivo.api.domain.planta.EspeciePlanta;
+import cultivo.api.domain.planta.GeneticaPlanta;
 import cultivo.api.domain.planta.SexoPlanta;
+import cultivo.api.domain.planta.TipoCicloPlanta;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Min;
@@ -17,6 +19,10 @@ public record DadosCadastroPlantaMe(
 
         // opcional (default: CANNABIS)
         EspeciePlanta especie,
+
+        TipoCicloPlanta tipoCiclo,
+
+        GeneticaPlanta genetica,
 
         LocalDate dataGerminacao,
 

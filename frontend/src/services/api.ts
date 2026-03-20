@@ -13,6 +13,11 @@ import type {
   Usuario,
   CultivadorMe,
   AgendaInseticida,
+  DoctorChatSessao,
+  DoctorChatRespostaEnvio,
+  DoctorChatMensagemEnvioPayload,
+  CodexEstagio,
+  AuthSession,
 } from '../types';
 
 const API_URL = '/api';
@@ -31,10 +36,14 @@ function emitToast(detail: { message: string; tone?: 'success' | 'warning' | 'er
 class ApiService {
   private axiosInstance: AxiosInstance;
   private credentials: { login: string; senha: string } | null = null;
+  private unauthorizedHandler: (() => void) | null = null;
 
   constructor() {
     this.axiosInstance = axios.create({
       baseURL: API_URL,
+      headers: {
+        'ngrok-skip-browser-warning': 'true',
+      },
     });
 
     // Interceptor global: transforma o “404 silencioso” (não-proprietário) em feedback visível.
@@ -66,6 +75,12 @@ class ApiService {
             tone: 'warning',
             message: 'Sessão expirada ou credenciais inválidas. Faça login novamente.',
           });
+
+          try {
+            this.unauthorizedHandler?.();
+          } catch {
+            // noop
+          }
         }
 
         return Promise.reject(error);
@@ -82,6 +97,25 @@ class ApiService {
   clearCredentials() {
     this.credentials = null;
     delete this.axiosInstance.defaults.headers.common['Authorization'];
+  }
+
+  setToken(token: string) {
+    this.credentials = null;
+    this.axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  }
+
+  clearToken() {
+    this.credentials = null;
+    delete this.axiosInstance.defaults.headers.common['Authorization'];
+  }
+
+  setUnauthorizedHandler(handler: (() => void) | null) {
+    this.unauthorizedHandler = handler;
+  }
+
+  async login(payload: { login: string; senha: string }): Promise<AuthSession> {
+    const response = await this.axiosInstance.post('/auth/login', payload);
+    return response.data;
   }
 
   async getUsuarioMe(): Promise<Usuario> {
@@ -245,6 +279,42 @@ class ApiService {
     data: { altura: number; largura: number; larguraCaule: number; descricao?: string; obs?: string }
   ): Promise<void> {
     await this.axiosInstance.patch(`/plantas/${id}/crescer`, data);
+  }
+
+  async getOrCreateDoctorSession(plantaId: number): Promise<DoctorChatSessao> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/doctor/session`);
+    return response.data;
+  }
+
+  async getDoctorSession(plantaId: number): Promise<DoctorChatSessao> {
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/doctor/session`);
+    return response.data;
+  }
+
+  async sendDoctorMessage(
+    plantaId: number,
+    payload: DoctorChatMensagemEnvioPayload
+  ): Promise<DoctorChatRespostaEnvio> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/doctor/session/messages`, {
+      mensagem: payload.mensagem,
+      modo: payload.modo ?? null,
+    });
+    return response.data;
+  }
+
+  async resetDoctorSession(plantaId: number): Promise<DoctorChatSessao> {
+    const response = await this.axiosInstance.post(`/plantas/${plantaId}/doctor/session/reset`);
+    return response.data;
+  }
+
+  async getPlantaCodexEstagios(plantaId: number): Promise<CodexEstagio[]> {
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/codex/estagios`);
+    return response.data;
+  }
+
+  async getPlantaCodexEstagioAtual(plantaId: number): Promise<CodexEstagio> {
+    const response = await this.axiosInstance.get(`/plantas/${plantaId}/codex/estagio-atual`);
+    return response.data;
   }
 }
 

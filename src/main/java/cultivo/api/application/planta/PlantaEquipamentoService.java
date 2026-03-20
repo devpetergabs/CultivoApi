@@ -63,7 +63,7 @@ public class PlantaEquipamentoService {
         if (litros == null) throw new IllegalArgumentException("VASO sem capacidade_litros configurada");
 
         // sincroniza campo legado
-        planta.atualizarDados(null, null, null, null, null, null, litrosParaTamanhoVaso(litros), null, null, null, null);
+        planta.atualizarDados(null, null, null, null, null, null, litrosParaTamanhoVaso(litros), null, null, null, null, null, null);
         plantaRepository.save(planta);
 
         return upsertPote(planta, vaso, corHex, skinId, apelido, true);

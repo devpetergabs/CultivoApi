@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { PokedexModal } from './ui/PokedexModal';
 import { apiService } from '../services/api';
 import type { Aditivo } from '../types';
 
@@ -69,15 +69,6 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
 
   useEffect(() => {
     if (!open) return;
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
-
-  useEffect(() => {
-    if (!open) return;
 
     setError(null);
     setPestType(PEST_CATALOG[0].value);
@@ -116,8 +107,6 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
     };
   }, [open]);
 
-  if (!open || typeof document === 'undefined') return null;
-
   const canInteract = !isSaving && !isLoading;
 
   const handleAplicar = async () => {
@@ -155,86 +144,75 @@ export function InsecticideModal({ open, onClose, plantId, plantName }: Insectic
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div
-        className="w-[380px] max-w-[92vw] rounded-xl border border-[#f39a5c]/25 bg-gradient-to-b from-[#101a2b] to-[#0B1220] p-4 shadow-[0_12px_30px_rgba(9,15,25,0.5)]"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Registrar sinal de praga"
-      >
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold text-white tracking-tight">Sinal de Praga</h3>
-          <p className="text-xs text-[#9fb0c0] font-normal">Marcação de praga na planta: {plantName}</p>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Tipo de praga</label>
-            <select
-              value={pestType}
-              onChange={(event) => setPestType(event.target.value as PestType)}
-              disabled={!canInteract}
-              className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-            >
-              {PEST_CATALOG.map((pest) => (
-                <option key={pest.value} value={pest.value}>
-                  {pest.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">Intensidade</label>
-            <select
-              value={intensity}
-              onChange={(event) => setIntensity(event.target.value as PestIntensity)}
-              disabled={!canInteract}
-              className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-            >
-              <option value="BAIXA">Baixa</option>
-              <option value="MEDIA">Média</option>
-              <option value="ALTA">Alta</option>
-            </select>
-          </div>
-        </div>
-
-        <label className="mt-3 block text-xs font-medium text-slate-300 uppercase tracking-[0.06em]">
-          Observação (opcional)
-        </label>
-        <textarea
-          rows={3}
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          disabled={!canInteract}
-          className="mt-1 w-full rounded-lg border border-slate-600/70 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/70 focus:ring-1 focus:ring-[#f39a5c]/20 disabled:opacity-60"
-        />
-
-        {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
-
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-600/70 px-3 py-2 text-xs font-medium text-slate-300 hover:border-slate-400 disabled:opacity-60"
+  return (
+    <PokedexModal
+      open={open}
+      onClose={onClose}
+      title="Sinal de Praga"
+      subtitle={`Marcação de praga: ${plantName}`}
+      widthClass="w-full max-w-[380px]"
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5">Tipo de praga</label>
+          <select
+            value={pestType}
+            onChange={(event) => setPestType(event.target.value as PestType)}
             disabled={!canInteract}
+            className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60"
           >
-            Cancelar
-          </button>
+            {PEST_CATALOG.map((pest) => (
+              <option key={pest.value} value={pest.value}>
+                {pest.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <button
-            type="button"
-            onClick={handleAplicar}
-            className="rounded-lg bg-[#f39a5c] px-3 py-2 text-xs font-semibold text-[#0B1220] hover:brightness-110 disabled:opacity-60"
-            disabled={!canInteract || !selectedProduct}
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5">Intensidade</label>
+          <select
+            value={intensity}
+            onChange={(event) => setIntensity(event.target.value as PestIntensity)}
+            disabled={!canInteract}
+            className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60"
           >
-            {isSaving ? 'Registrando...' : 'Registrar sinal'}
-          </button>
+            <option value="BAIXA">Baixa</option>
+            <option value="MEDIA">Média</option>
+            <option value="ALTA">Alta</option>
+          </select>
         </div>
       </div>
-    </div>,
-    document.body
+
+      <label className="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5">Observação (opcional)</label>
+      <textarea
+        rows={3}
+        value={notes}
+        onChange={(event) => setNotes(event.target.value)}
+        disabled={!canInteract}
+        className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-[#f39a5c]/50 focus:ring-1 focus:ring-[#f39a5c]/30 disabled:opacity-60"
+      />
+
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:border-white/20 hover:text-slate-200 transition-all disabled:opacity-60"
+          disabled={!canInteract}
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleAplicar}
+          className="rounded-lg bg-[#f39a5c] px-3 py-2 text-xs font-semibold text-[#080B14] hover:brightness-110 disabled:opacity-60 transition-all"
+          disabled={!canInteract || !selectedProduct}
+        >
+          {isSaving ? 'Registrando...' : 'Registrar sinal'}
+        </button>
+      </div>
+    </PokedexModal>
   );
 }

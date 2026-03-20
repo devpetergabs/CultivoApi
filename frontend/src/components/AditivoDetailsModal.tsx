@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { PokedexModal } from './ui/PokedexModal';
 import type { Aditivo } from '../types';
 import { apiService } from '../services/api';
 import {
@@ -44,10 +44,13 @@ function classeLabel(value: string): string {
 
 function estagioLabel(value: string): string {
   switch (value) {
+    case 'VEGETATIVO':
     case 'VEGETATIVA':
       return 'Vegetativa';
     case 'FLORACAO':
       return 'Floração';
+    case 'CICLO_INTEGRADO':
+      return 'Ciclo Integrado';
     case 'FINALIZACAO':
       return 'Finalização';
     default:
@@ -155,16 +158,7 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
     }
   }, [open, aditivo]);
 
-  useEffect(() => {
-    if (!open) return;
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
-
-  if (!open || !aditivo || typeof document === 'undefined') return null;
+  if (!aditivo) return null;
 
   const currentStock = stock ?? getAditivoStock(aditivo.id);
 
@@ -258,33 +252,17 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div
-        className="relative w-[640px] max-w-[92vw] rounded-xl border border-[#6fbf86]/25 bg-gradient-to-b from-[#101a2b] to-[#0B1220] p-4 shadow-[0_16px_40px_rgba(9,15,25,0.62)]"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Detalhes do aditivo"
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
+  return (
+    <PokedexModal
+      open={open}
+      onClose={onClose}
+      title="Detalhes do produto"
+      subtitle={`ID: #${String(aditivo.id).padStart(3, '0')}`}
+      widthClass="w-[640px] max-w-[92vw]"
+    >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
           <div>
-            <div className="text-sm font-semibold text-white tracking-tight">Detalhes do produto</div>
-            <div className="text-xs text-[#9fb0c0]">ID: #{String(aditivo.id).padStart(3, '0')}</div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-white/80 hover:text-white text-xl transition-colors font-semibold"
-            aria-label="Fechar"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
-          <div>
-            <div className="relative flex h-[220px] items-center justify-center rounded-xl border border-white/10 bg-gradient-to-b from-[#172232] to-[#0B1220] shadow-[0_0_18px_rgba(111,191,134,0.12)]">
+            <div className="relative flex h-[220px] items-center justify-center rounded-xl border border-white/10 bg-[#101726]">
               {iconDataUrl ? (
                 <img
                   src={iconDataUrl}
@@ -317,7 +295,26 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
               />
             </div>
 
-            {derived?.hasData ? (
+            {isEquipment ? (
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                {currentStock.tracked ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="text-[11px] font-semibold text-white/80 tracking-wide uppercase">Quantidade</div>
+                      <div className="text-[11px] font-mono font-semibold text-white">{currentStock.unidades} un.</div>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between">
+                      <div className="text-[11px] font-semibold text-white/80 tracking-wide uppercase">Tamanho</div>
+                      <div className="text-[11px] font-mono font-semibold text-white">{currentStock.mlFrasco || 5} L</div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-[11px] text-[#9fb0c0]">
+                    Quantidade não configurada ainda.
+                  </div>
+                )}
+              </div>
+            ) : derived?.hasData ? (
               <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="flex items-center justify-between">
                   <div className="text-[11px] font-semibold text-white/80 tracking-wide uppercase">Estoque (mL)</div>
@@ -353,25 +350,33 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
           </div>
 
           <div>
-            <div className="rounded-xl border border-white/10 bg-gradient-to-b from-[#0f1726] to-[#0B1220] p-4">
+            <div className="rounded-xl border border-white/10 bg-[#101726] p-4">
               <div className="flex flex-col gap-1">
                 <div className="text-base font-semibold text-white leading-tight">{aditivo.nome}</div>
                 <div className="text-xs text-[#9fb0c0]">{aditivo.marca}</div>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                  <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Classe</div>
-                  <div className="text-xs font-semibold text-white">{classeLabel(String(aditivo.classe ?? ''))}</div>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                  <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Estágio</div>
-                  <div className="text-xs font-semibold text-white">{estagioLabel(String(aditivo.estagio ?? ''))}</div>
-                </div>
-              </div>
+{(() => {
+                  const estagioExibicao = aditivo.estagiosMacro || aditivo.estagio;
+                  const hasEstagio = estagioExibicao && ['VEGETATIVO', 'VEGETATIVA', 'FLORACAO', 'CICLO_INTEGRADO', 'FINALIZACAO'].includes(String(estagioExibicao));
+                  return !isEquipment ? (
+                    <div className={`mt-3 grid gap-2 ${hasEstagio ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                        <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Classe</div>
+                        <div className="text-xs font-semibold text-white">{classeLabel(String(aditivo.classe ?? ''))}</div>
+                      </div>
+                      {hasEstagio && (
+                        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="text-[10px] text-white/60 uppercase tracking-[0.08em]">Estágio</div>
+                          <div className="text-xs font-semibold text-white">{estagioLabel(String(estagioExibicao ?? ''))}</div>
+                        </div>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
 
               <div className="mt-3 text-xs text-slate-200/90 leading-relaxed whitespace-pre-wrap">
-                {aditivo.descricao || '—'}
+                {aditivo.descricaoTecnica || aditivo.descricao || '—'}
               </div>
 
               {!isEquipment && (
@@ -425,47 +430,65 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
               <div className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3">
                 <div className="text-[11px] font-semibold text-white/80 tracking-wide uppercase">Configurar estoque</div>
 
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-[10px] text-white/60 uppercase tracking-[0.08em]">Stock atual (mL)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={currentStock.stockMlAtual}
-                      onChange={(e) => setStock({ ...currentStock, stockMlAtual: Number(e.target.value), tracked: true })}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
-                    />
+                {isEquipment ? (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Quantidade</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={currentStock.unidades}
+                        onChange={(e) => setStock({ ...currentStock, unidades: Number(e.target.value), tracked: true })}
+                        className="mt-1 w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+                      />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-[10px] text-white/60 uppercase tracking-[0.08em]">Unidades</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={currentStock.unidades}
-                      onChange={(e) => setStock({ ...currentStock, unidades: Number(e.target.value), tracked: true })}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
-                    />
+                ) : (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Stock atual (mL)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={currentStock.stockMlAtual}
+                        onChange={(e) => setStock({ ...currentStock, stockMlAtual: Number(e.target.value), tracked: true })}
+                        className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Unidades</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={currentStock.unidades}
+                          onChange={(e) => setStock({ ...currentStock, unidades: Number(e.target.value), tracked: true })}
+                          className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">mL por frasco</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={currentStock.mlFrasco}
+                          onChange={(e) => setStock({ ...currentStock, mlFrasco: Number(e.target.value), tracked: true })}
+                          className="w-full rounded-lg border border-white/10 bg-[#080B14] px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30"
+                        />
+                      </div>
+                    </div>
                   </div>
+                )}
 
-                  <div>
-                    <label className="block text-[10px] text-white/60 uppercase tracking-[0.08em]">mL por frasco</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={currentStock.mlFrasco}
-                      onChange={(e) => setStock({ ...currentStock, mlFrasco: Number(e.target.value), tracked: true })}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-[#0f1726] px-3 py-2 text-sm text-white outline-none focus:border-[#6fbf86]/60 focus:ring-1 focus:ring-[#6fbf86]/20"
-                    />
+                {!isEquipment && (
+                  <div className="mt-2 text-[11px] text-[#9fb0c0]">
+                    * Unidades e mL/frasco são apenas metadados (barra/UX). O sistema **não** reabastece sozinho.
                   </div>
-                </div>
-
-                <div className="mt-2 text-[11px] text-[#9fb0c0]">
-                  * Unidades e mL/frasco são apenas metadados (barra/UX). O sistema **não** reabastece sozinho.
-                </div>
+                )}
 
                 {error && <div className="mt-2 text-[11px] text-red-300 font-semibold">{error}</div>}
 
@@ -482,7 +505,7 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
                     type="button"
                     onClick={handleSave}
                     disabled={saving}
-                    className="rounded-lg border border-[#6fbf86]/30 bg-gradient-to-r from-[#6fbf86] to-[#3f6f57] px-3 py-2 text-xs font-semibold text-[#0B1220] shadow-[0_0_12px_rgba(111,191,134,0.18)] hover:shadow-[0_0_14px_rgba(111,191,134,0.26)] disabled:opacity-60"
+                    className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold text-[#080B14] hover:bg-emerald-300 transition disabled:opacity-60"
                   >
                     {saving ? 'Salvando…' : 'Salvar'}
                   </button>
@@ -491,8 +514,6 @@ export function AditivoDetailsModal({ open, aditivo, onClose, onUpdated, onStock
             </div>
           </div>
         </div>
-      </div>
-    </div>,
-    document.body
+    </PokedexModal>
   );
 }

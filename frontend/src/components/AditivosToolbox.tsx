@@ -18,7 +18,12 @@ type Phase = 'VEGETATIVA' | 'FLORACAO' | 'FINALIZACAO';
 
 function plantStageToPhase(stage: PlantType): Phase {
   if (stage === 'FINALIZACAO') return 'FINALIZACAO';
-  if (stage === 'GERMINACAO' || stage === 'VEGETATIVO') return 'VEGETATIVA';
+  if (
+    stage === 'GERMINACAO'
+    || stage === 'VEGETATIVO_INICIAL'
+    || stage === 'VEGETATIVO_MEDIO'
+    || stage === 'VEGETATIVO_AVANCADO'
+  ) return 'VEGETATIVA';
   return 'FLORACAO';
 }
 

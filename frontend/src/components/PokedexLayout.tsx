@@ -5,16 +5,19 @@ import { usePokedexStore } from '../store/pokedexStore';
 import { PokedexGrid } from './PokedexGrid';
 import { PlantDetailDrawer } from './PlantDetailDrawer';
 import { InventarioView } from './InventarioView';
+import { StageCodexView } from './StageCodexView';
 import type { Plant } from '../types/pokedex';
 import { apiService } from '../services/api';
 import { mapPlantaToPokedexPlant } from '../utils/mapPlantaToPokedex';
 import { PlantFormModal } from './PlantFormModal';
+import { StageCodexModal } from './StageCodexModal';
+import type { CodexEstagio } from '../types';
 import type { PlantType } from '../types/pokedex';
 import { getPlantStageLabel } from './TypeBadge';
 import { potLitersToEnum } from '../utils/plantFormUtils';
 
 export function PokedexLayout() {
-  const { cultivador, usuario } = useAuth();
+  const { cultivador, usuario, logout } = useAuth();
   const {
     plants,
     selectedPlantId,
@@ -46,8 +49,13 @@ export function PokedexLayout() {
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [levelUpError, setLevelUpError] = useState<string | null>(null);
 
-  const [activeView, setActiveView] = useState<'POKEDEX' | 'INVENTARIO'>('POKEDEX');
+  const [activeView, setActiveView] = useState<'POKEDEX' | 'INVENTARIO' | 'CODEX'>('POKEDEX');
   const [inventoryCount, setInventoryCount] = useState(0);
+  const [stageReveal, setStageReveal] = useState<{
+    plant: Plant;
+    entry: CodexEstagio;
+    reason: 'create' | 'level-up';
+  } | null>(null);
 
   const filtered = filteredPlants();
   const selectedPlant = plants.find((p) => p.id === selectedPlantId) || null;
@@ -87,7 +95,7 @@ export function PokedexLayout() {
   // Navegação global (ex: BAÚ vindo do menu radial da planta)
   useEffect(() => {
     const handler = (event: Event) => {
-      const custom = event as CustomEvent<{ view?: 'POKEDEX' | 'INVENTARIO' } | undefined>;
+      const custom = event as CustomEvent<{ view?: 'POKEDEX' | 'INVENTARIO' | 'CODEX' } | undefined>;
       const view = custom?.detail?.view;
       if (!view) return;
       switchView(view);
@@ -160,9 +168,19 @@ export function PokedexLayout() {
     load();
   }, [setPlants, cultivador?.usuarioNome, cultivador?.telefone]);
 
+  const openStageReveal = async (plant: Plant, reason: 'create' | 'level-up') => {
+    try {
+      const entry = await apiService.getPlantaCodexEstagioAtual(plant.id);
+      setStageReveal({ plant, entry, reason });
+    } catch (error) {
+      console.error('Erro ao carregar codex do estágio atual:', error);
+    }
+  };
+
   const handlePlantCreated = (plant: Plant) => {
     addPlant(plant);
     setSelectedPlant(plant.id);
+    void openStageReveal(plant, 'create');
   };
 
   const handlePlantEdited = (plant: Plant) => {
@@ -212,6 +230,7 @@ export function PokedexLayout() {
       });
 
       updatePlant(mapped);
+      void openStageReveal(mapped, 'level-up');
       setLevelUpPlant(null);
       setLevelUpCurrentStage(null);
       setLevelUpNextStage(null);
@@ -224,11 +243,10 @@ export function PokedexLayout() {
     }
   };
 
-  const switchView = (next: 'POKEDEX' | 'INVENTARIO') => {
+  const switchView = (next: 'POKEDEX' | 'INVENTARIO' | 'CODEX') => {
     if (next === activeView) return;
 
-    if (next === 'INVENTARIO') {
-      setSelectedPlant(null);
+    if (next !== 'POKEDEX') {
       setIsCreateModalOpen(false);
       setEditPlant(null);
       setDeletePlant(null);
@@ -247,71 +265,107 @@ export function PokedexLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0B1220] text-white overflow-hidden">
-      <header className="relative border-b-4 border-[#6fbf86] bg-gradient-to-b from-[#2b0f0f] to-[#3a1212] px-6 py-5 shrink-0 shadow-2xl">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-[#6fbf86]" />
+      <header className="relative border-b-2 border-[#6fbf86]/60 bg-gradient-to-b from-[#2b0f0f] to-[#3a1212] px-4 sm:px-6 shrink-0 shadow-2xl">
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#6fbf86]" />
 
-        {/* Linha 1: marca + usuário + contador */}
-        <div className="flex items-start justify-between gap-6">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="text-3xl animate-float shrink-0">🌱</div>
-            <div className="min-w-0">
-              <h1 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg leading-tight">
-                POKÉDEX PLANTAS
-              </h1>
+        {/* ── Mobile: 2 linhas ── Desktop: grid 3 colunas ── */}
 
-              <div className="mt-1 text-[12px] text-white/70">
-                <span>Olá, </span>
-                <span className="font-semibold text-white">{usuario?.nome ?? cultivador?.usuarioNome ?? '—'}</span>
-                <span className="text-white/40"> {cultivador?.usuarioLogin ? `(@${cultivador.usuarioLogin})` : ''}</span>
-              </div>
+        {/* Desktop: grid-cols-3 → logo | tabs (centro) | perfil */}
+        {/* Mobile: flex-col → linha 1 (logo+sair) | linha 2 (tabs) */}
+        <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center sm:h-16 py-2 sm:py-0 gap-1.5 sm:gap-0">
+
+          {/* Coluna 1 / Linha 1 mobile: Logo + botão Sair (mobile only) */}
+          <div className="flex items-center justify-between sm:justify-start gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xl animate-float">🌱</span>
+              <span className="text-sm sm:text-base font-semibold tracking-tight text-white leading-none">
+                POKÉDEX<span className="hidden sm:inline"> PLANTAS</span>
+              </span>
+            </div>
+            {/* Olá + Sair — visível só no mobile, no canto direito da linha 1 */}
+            <div className="sm:hidden flex items-center gap-2 text-[12px] text-white/60">
+              <span>Olá, <span className="font-semibold text-white">{usuario?.nome ?? cultivador?.usuarioNome ?? '—'}</span></span>
+              <button
+                type="button"
+                onClick={logout}
+                title="Sair da conta"
+                className="flex items-center gap-1 text-white/40 hover:text-red-400 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span className="text-[11px]">Sair</span>
+              </button>
             </div>
           </div>
 
-          <div className="bg-[#6fbf86] text-[#0B1220] rounded-full px-4 py-2 font-semibold border-2 border-[#0B1220]/80 shadow-lg shrink-0">
-            <div className="text-center">
-              <div className="text-xl font-semibold">
-                {activeView === 'POKEDEX' ? plants.length : inventoryCount}
-              </div>
-              <div className="text-xs font-medium uppercase tracking-[0.12em]">
-                {activeView === 'POKEDEX' ? 'PLANTAS' : 'INVENTÁRIO'}
-              </div>
+          {/* Coluna 2 (centro) / Linha 2 mobile: Tabs */}
+          <div className="flex justify-center sm:justify-center">
+            <div className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 p-0.5 backdrop-blur-md w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => switchView('POKEDEX')}
+                className={`flex-1 sm:flex-none h-8 px-4 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                  activeView === 'POKEDEX'
+                    ? 'bg-[#6fbf86]/20 text-white border border-[#6fbf86]/30 shadow-[0_0_10px_rgba(111,191,134,0.18)]'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Pokédex
+              </button>
+              <button
+                type="button"
+                onClick={() => switchView('INVENTARIO')}
+                className={`flex-1 sm:flex-none h-8 px-4 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                  activeView === 'INVENTARIO'
+                    ? 'bg-[#e7c35a]/15 text-white border border-[#e7c35a]/25 shadow-[0_0_10px_rgba(231,195,90,0.14)]'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Inventário
+              </button>
+              <button
+                type="button"
+                onClick={() => switchView('CODEX')}
+                className={`flex-1 sm:flex-none h-8 px-4 rounded-lg text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
+                  activeView === 'CODEX'
+                    ? 'bg-sky-300/15 text-white border border-sky-300/25 shadow-[0_0_10px_rgba(125,211,252,0.14)]'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Estágios
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Linha 2: clima + navegação */}
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <WeatherBox compact className="max-w-full" />
-
-          <div className="inline-flex items-center rounded-2xl border border-white/10 bg-white/5 p-1 backdrop-blur-md">
+          {/* Coluna 3 (direita) — só desktop */}
+          <div className="hidden sm:flex items-center justify-end gap-3 text-[12px] text-white/70">
+            <WeatherBox variant="strip" />
+            <div className="h-4 w-px bg-white/15" />
+            <span>
+              Olá, <span className="font-semibold text-white">{usuario?.nome ?? cultivador?.usuarioNome ?? '—'}</span>
+            </span>
+            <span className="text-white/20">·</span>
             <button
               type="button"
-              onClick={() => switchView('POKEDEX')}
-              className={`h-9 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
-                activeView === 'POKEDEX'
-                  ? 'bg-[#6fbf86]/20 text-white border border-[#6fbf86]/30 shadow-[0_0_10px_rgba(111,191,134,0.18)]'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
-              }`}
-              title="Voltar para o Pokédex"
+              onClick={logout}
+              title="Sair da conta"
+              className="flex items-center gap-1 text-white/40 hover:text-red-400 transition-colors duration-150"
             >
-              Pokédex
-            </button>
-            <button
-              type="button"
-              onClick={() => switchView('INVENTARIO')}
-              className={`h-9 px-3 rounded-xl text-xs font-semibold uppercase tracking-[0.10em] transition-colors ${
-                activeView === 'INVENTARIO'
-                  ? 'bg-[#e7c35a]/15 text-white border border-[#e7c35a]/25 shadow-[0_0_10px_rgba(231,195,90,0.14)]'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
-              }`}
-              title="Abrir inventário"
-            >
-              Inventário
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span className="text-[11px]">Sair</span>
             </button>
           </div>
+
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#6fbf86]" />
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6fbf86]/40" />
       </header>
 
       <div className="flex-1 overflow-hidden flex flex-col bg-[#0B1220]">
@@ -329,8 +383,10 @@ export function PokedexLayout() {
             hideCannabis={hideCannabis}
             onHideCannabisChange={setHideCannabis}
           />
-        ) : (
+        ) : activeView === 'INVENTARIO' ? (
           <InventarioView onCountChange={setInventoryCount} />
+        ) : (
+          <StageCodexView plant={selectedPlant ?? filtered[0] ?? plants[0] ?? null} />
         )}
       </div>
 
@@ -488,6 +544,14 @@ export function PokedexLayout() {
           </div>
         </div>
       )}
+
+      <StageCodexModal
+        open={Boolean(stageReveal)}
+        onClose={() => setStageReveal(null)}
+        plant={stageReveal?.plant ?? null}
+        entry={stageReveal?.entry ?? null}
+        reason={stageReveal?.reason ?? 'create'}
+      />
     </div>
   );
 }

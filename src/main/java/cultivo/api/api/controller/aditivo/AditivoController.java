@@ -55,6 +55,24 @@ public class AditivoController {
             : classificadorAditivoService.inferirClasse(dados.nome(), dados.descricao());
 
         var aditivo = new Aditivo(dados.nome(), dados.marca(), dados.descricao(), dados.estagio(), classe, dados.dosePadraoEmML());
+        aditivo.atualizarDados(
+            null,
+            null,
+            null,
+            dados.descricaoTecnica(),
+            null,
+            dados.estagiosMacro(),
+            dados.estagiosLista(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        );
         repository.save(aditivo);
         var uriBuilder = uri.path("/aditivos/{id}").buildAndExpand(aditivo.getId()).toUri();
         return ResponseEntity.created(uriBuilder).body(aditivo);
@@ -98,7 +116,10 @@ public class AditivoController {
                     a.getNome(),
                     a.getMarca(),
                     a.getDescricao(),
+                    a.getDescricaoTecnica(),
                     a.getEstagio(),
+                    a.getEstagiosMacro(),
+                    a.getEstagiosLista(),
                     a.getClasse(),
                     a.getDosePadraoEmML(),
                     a.getAtivo(),
@@ -146,7 +167,10 @@ public class AditivoController {
                 a.getNome(),
                 a.getMarca(),
                 a.getDescricao(),
+            a.getDescricaoTecnica(),
                 a.getEstagio(),
+            a.getEstagiosMacro(),
+            a.getEstagiosLista(),
                 a.getClasse(),
                 a.getDosePadraoEmML(),
                 a.getAtivo(),
@@ -185,7 +209,10 @@ public class AditivoController {
                     dados.nome(),
                     dados.marca(),
                     dados.descricao(),
+                    dados.descricaoTecnica(),
                     dados.estagio(),
+                    dados.estagiosMacro(),
+                    dados.estagiosLista(),
                     dados.classe(),
                     dados.dosePadraoEmML(),
                     tipo,
